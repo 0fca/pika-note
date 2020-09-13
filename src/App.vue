@@ -5,17 +5,17 @@
           <h2>
             <router-link to="/">
             <a class="white-text">
-              <img src="./assets/pikacloud_large-white.png" alt="Pika Cloud" height="150" class="img-responsive hide-on-small-and-down"/>
-              <p class="hide-on-med-and-up">Pika Cloud</p>
+              <img src="./assets/pikacloud_note.svg" alt="Pika Note" height="150" class="img-responsive hide-on-small-and-down"/>
+              <p class="hide-on-med-and-up">Pika Note</p>
             </a>
             </router-link>
           </h2>
-          <small>This is <router-link to="/about" class="red-text text-accent-2">Pika Note</router-link> aka "Nicole"</small>
+          <small>This is <router-link to="/about" class="red-text text-accent-2">Pika Note</router-link> aka "Alexis"</small>
           <br/>
           <small>This is ALPHA build.</small>
         </div>
       </div>
-      <div class="row whitesmoke pt-5">
+      <div class="row whitesmoke padding">
         <div class="container center">
           <router-view></router-view>
         </div>
@@ -30,3 +30,9 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.padding{
+  padding-top: 20px;
+}
+</style>

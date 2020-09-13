@@ -1,9 +1,9 @@
 <template>
   <router-link :to="{ name: 'editor', params: { id: this.id } }">
-  <div class="card whitesmoke note-cursor" v-on:click="persist">
+  <div v-bind:id="this.id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
     <div class="card-content grey-text text-darken-1">
       <span class="card-title">{{ name }}</span>
-      {{ date }}
+      {{ this.formatDate(date) }}
     </div>
   </div>
   </router-link>
@@ -22,6 +22,22 @@ export default {
     persist() {
       localStorage.name = this.name;
       localStorage.content = this.content;
+    },
+    addShadow(id){
+      const card = document.getElementById(id);
+      card.setAttribute("class", card.getAttribute("class").replace('z-depth-0', 'z-depth-2'));
+    },
+    removeShadow(id){
+      const card = document.getElementById(id);
+      card.setAttribute("class", card.getAttribute("class").replace('z-depth-2', 'z-depth-0'));
+    },
+    formatDate(date){
+      const locale = navigator.language.split("-")[0];
+      const d = Date.parse(date);
+      const ye = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(d)
+      const mo = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d)
+      const da = new Intl.DateTimeFormat(locale, { day: '2-digit' }).format(d)
+      return `${da} ${mo} ${ye}`;
     }
   }
 }

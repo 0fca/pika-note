@@ -1,7 +1,7 @@
 <template>
-  <div class="editor sticky-section">
+  <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)">
         <div class="row">
-      <div class="input-field col s12 m12 l12 active">
+      <div class="input-field col s12 m12 l12">
         <input id="title-input" class="validate" type="text" v-model="name" autofocus aria-selected="true"/>
         <label for="title-input">Title</label>
       </div>
@@ -34,9 +34,8 @@
 </template>
 
 <script>
-import { Editor, EditorContent } from 'tiptap'
-import M from 'materialize-css'
-const baseUrl = "https://pikanoteapi.azurewebsites.net";
+import { Editor, EditorContent } from 'tiptap';
+import M from 'materialize-css';
 import {
   Blockquote,
   CodeBlock,
@@ -53,6 +52,9 @@ import {
   Link,
   History,
 } from 'tiptap-extensions'
+
+const baseUrl = "https://pikanoteapi.azurewebsites.net";
+
 export default {
 
   components: {
@@ -63,28 +65,7 @@ export default {
       id: this.$route.params.id,
       name: localStorage.name ?? 'Sample title',
       content: localStorage.content ?? "Some stuff to do or other things",
-      editor: new Editor({
-        extensions: [
-          new Blockquote(),
-          new BulletList(),
-          new CodeBlock(),
-          new HardBreak(),
-          new Heading({ levels: [1, 2, 3] }),
-          new ListItem(),
-          new OrderedList(),
-          new TodoItem(),
-          new TodoList(),
-          new Bold(),
-          new Code(),
-          new Italic(),
-          new Link(),
-          new History(),
-        ],
-        content: JSON.parse(localStorage.content),
-        onUpdate: function (promiseMirrorObject){
-          localStorage.content = JSON.stringify(promiseMirrorObject.getJSON());
-        }
-      }),
+      editor: null
     }
   },
   beforeDestroy() {
@@ -97,25 +78,51 @@ export default {
       toolbarEnabled: false,
       hoverEnabled: false
     });
+    let content = localStorage.content;
+    try{
+      content = JSON.parse(content);
+    }catch(e){
+      // ignore
+    }
+
+    M.updateTextFields();
+    this.editor = new Editor({
+      extensions: [
+        new Blockquote(),
+        new BulletList(),
+        new CodeBlock(),
+        new HardBreak(),
+        new Heading({ levels: [1, 2, 3] }),
+        new ListItem(),
+        new OrderedList(),
+        new TodoItem(),
+        new TodoList(),
+        new Bold(),
+        new Code(),
+        new Italic(),
+        new Link(),
+        new History(),
+      ],
+      content: content,
+      onUpdate: function (promiseMirrorObject){
+        localStorage.content = JSON.stringify(promiseMirrorObject.getJSON());
+      }
+    })
   },
   methods:{
     save: function (){
       if(document.getElementById('title-input').value){
         if(this.id){
-          saveNote(this.id, this.name, this.editor.content).then(data => {
-            console.log(data);
+          saveNote(this.id, this.name, localStorage.content).then(() => {
             M.toast({html: 'Note saved!'})
-          }).catch((error) => {
-            console.log(error)
+          }).catch(() => {
             M.toast({html: 'Note couldnt be saved!'})
           });
         }else{
-          addNote(this.name, this.editor.content).then(data => {
-            console.log(data);
+          addNote(this.name, localStorage.content).then(() => {
             M.toast({html: 'Note created!'})
-          }).catch((error) => {
-            console.log(error)
-            M.toast({html: 'Note couldnt be created!'})
+          }).catch(() => {
+            M.toast({html: 'Note couldn\'t be created!'})
           });
         }
       }else{
@@ -163,6 +170,10 @@ async function addNote(name, content){
     })
   });
 }
+
+document.addEventListener('keydown', () => {
+
+});
 </script>
 
 <style scoped>
@@ -175,6 +186,7 @@ async function addNote(name, content){
   .toolbar-icon:hover{
     color: indigo;
   }
+
   .cursor-color{
     caret-color: #ff5252;
     border-bottom-color: #ff5252;
