@@ -142,7 +142,7 @@ export default {
 }
 
 async function saveNote(id, name, content){
-  const url = `${baseUrl}/notes/${id}/update`;
+  const url = `${baseUrl}/notes/${id}`;
   return await fetch(url, {
     method: 'PUT',
     headers: {
@@ -157,7 +157,7 @@ async function saveNote(id, name, content){
 }
 
 async function addNote(name, content){
-  const url = `${baseUrl}/notes/add`;
+  const url = `${baseUrl}/notes`;
   return await fetch(url, {
     method: 'POST',
     headers: {
