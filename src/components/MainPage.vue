@@ -7,32 +7,24 @@
         </div>
       </div>
       <div class="row">
-        <div class="input-field col s6">
+        <div class="input-field col s12">
           <select id="order" v-model="order" v-on:change="reloadOnOrderChange">
             <option value="0" selected>Ascending</option>
             <option value="1">Descending</option>
           </select>
           <label for="order">Order</label>
         </div>
-        <div class="input-field col s6">
-          <select id="count" v-model="count" v-on:change="reloadOnCountChange">
-            <option value="10">10</option>
-            <option value="15">15</option>
-            <option value="50">50</option>
-          </select>
-          <label for="count">Count</label>
-        </div>
       </div>
     </div>
     <div class="row" id="notes">
-      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
-      <Error v-if="error" />
-      <Note v-for="(note, index) in notes"
-            v-bind:key="index"
-            v-bind:id="note.id"
-            v-bind:name="note.name"
-            v-bind:date="note.timestamp"
-            v-bind:content="note.content"></Note>
+        <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
+        <Error v-if="error" />
+        <Note v-for="(note, index) in notes"
+              v-bind:key="index"
+              v-bind:id="note.id"
+              v-bind:name="note.name"
+              v-bind:date="note.timestamp"
+              v-bind:content="note.content"></Note>
     </div>
     <div class="fixed-action-btn">
       <router-link to="editor">

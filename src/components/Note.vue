@@ -1,11 +1,13 @@
 <template>
   <router-link :to="{ name: 'editor', params: { id: this.id } }">
-  <div v-bind:id="this.id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
-    <div class="card-content grey-text text-darken-1">
-      <span class="card-title">{{ name }}</span>
-      {{ this.formatDate(date) }}
+    <transition name="slide-fade">
+    <div v-bind:id="this.id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
+      <div class="card-content grey-text text-darken-1">
+        <span class="card-title">{{ name }}</span>
+        {{ this.formatDate(date) }}
+      </div>
     </div>
-  </div>
+    </transition>
   </router-link>
 </template>
 
