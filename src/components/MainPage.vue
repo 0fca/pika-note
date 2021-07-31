@@ -39,8 +39,8 @@ import Note from '@/components/Note';
 import M from 'materialize-css';
 import Preloader from "@/components/Preloader";
 import Error from "@/components/Error";
+import NoteService from "@/services/noteService";
 
-const baseUrl = "https://pikanoteapi.azurewebsites.net";
 let order = localStorage.order ?? 0;
 let count = localStorage.count ?? 10;
 
@@ -52,7 +52,8 @@ export default {
     Preloader
   },
   mounted: function() {
-    readData(baseUrl + '/notes?order='+order+"&count="+count)
+    this.noteService = new NoteService()
+    this.noteService.readData('/notes?order='+order+"&count="+count)
         .then(data => {
           this.onDataReceived(data);
         })
@@ -77,7 +78,7 @@ export default {
   methods: {
     reloadOnOrderChange: function (event){
       localStorage.order = event.target.value
-      readData(baseUrl + '/notes?order='+event.target.value+"&count="+count)
+      this.noteService.readData('/notes?order='+event.target.value+"&count="+count)
           .then(data => {
             this.onDataReceived(data);
           })
@@ -88,7 +89,7 @@ export default {
     reloadOnCountChange: function (event){
       localStorage.count = event.target.value
 
-      readData(baseUrl + '/notes?order='+order+"&count="+event.target.value)
+      this.noteService.readData('/notes?order='+order+"&count="+event.target.value)
           .then(data => {
             this.onDataReceived(data);
           })
@@ -102,15 +103,4 @@ export default {
     }
   }
 }
-
-async function readData(url = '') {
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Origin': baseUrl
-    }
-  });
-  return response.json();
-}
-
 </script>

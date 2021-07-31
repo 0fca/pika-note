@@ -52,11 +52,10 @@ import {
   Link,
   History,
 } from 'tiptap-extensions'
+import NoteService from "@/services/noteService";
 
-const baseUrl = "https://pikanoteapi.azurewebsites.net";
 
 export default {
-
   components: {
     EditorContent
   },
@@ -74,6 +73,7 @@ export default {
     this.editor.destroy()
   },
   mounted() {
+    this.noteService = new NoteService();
     M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), {
       toolbarEnabled: false,
       hoverEnabled: false
@@ -113,13 +113,13 @@ export default {
     save: function (){
       if(document.getElementById('title-input').value){
         if(this.id){
-          saveNote(this.id, this.name, localStorage.content).then(() => {
+          this.noteService.saveNote(this.id, this.name, localStorage.content).then(() => {
             M.toast({html: 'Note saved!'})
           }).catch(() => {
-            M.toast({html: 'Note couldnt be saved!'})
+            M.toast({html: 'Note couldn\'t be saved!'})
           });
         }else{
-          addNote(this.name, localStorage.content).then(() => {
+          this.noteService.addNote(this.name, localStorage.content).then(() => {
             M.toast({html: 'Note created!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be created!'})
@@ -140,40 +140,6 @@ export default {
     }
   }
 }
-
-async function saveNote(id, name, content){
-  const url = `${baseUrl}/notes/${id}`;
-  return await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Origin': baseUrl,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      "name": name,
-      "content": content
-    })
-  });
-}
-
-async function addNote(name, content){
-  const url = `${baseUrl}/notes`;
-  return await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Origin': baseUrl,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      "name": name,
-      "content": content
-    })
-  });
-}
-
-document.addEventListener('keydown', () => {
-
-});
 </script>
 
 <style scoped>
