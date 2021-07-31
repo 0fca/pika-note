@@ -36,8 +36,13 @@ export default class NoteService {
         });
     }
 
-    async addNote(name, content) {
+    async addNote(name, content, rawContent) {
         const url = `${this.baseUrl}/notes`;
+        const mlService = new MlService();
+        const p = await mlService.validateLanguage(name, rawContent)
+        if (p.prediction === false) {
+            throw new Error('Mind your language!')
+        }
         return await fetch(url, {
             method: 'POST',
             headers: {

@@ -1,12 +1,12 @@
 <template>
-  <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)">
+  <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)" v-on:keydown.ctrl.s.prevent="save">
     <div class="row">
       <div class="input-field col s12 m12 l12">
         <input id="title-input" class="validate" type="text" v-model="name" autofocus aria-selected="true"/>
         <label for="title-input">Title</label>
       </div>
       <div class="character-count">
-        {{ limit }} characters
+        {{ $store.getters.count }}/{{ $store.getters.limit }} characters
       </div>
       <div class="fixed-action-btn">
         <a class="btn-floating btn-large red accent-2 toolbar-icon">
@@ -31,54 +31,28 @@
       </div>
     </div>
     <div class="row background">
-      <editor-content class="editor__content cursor-color editor-height" :editor="editor"/>
-
+      <div id="editor"></div>
     </div>
-
   </div>
 </template>
 
 <script>
-import {Editor, EditorContent} from 'tiptap';
 import M from 'materialize-css';
-import CharacterCount from '@tiptap/extension-character-count'
-
-import {
-  Blockquote,
-  CodeBlock,
-  HardBreak,
-  Heading,
-  OrderedList,
-  BulletList,
-  ListItem,
-  TodoItem,
-  TodoList,
-  Bold,
-  Code,
-  Italic,
-  Link,
-  History
-} from 'tiptap-extensions'
 import NoteService from "@/services/noteService";
-
+import MediumEditor from "medium-editor";
 
 export default {
-  components: {
-    EditorContent
-  },
+  components: {},
   data() {
     return {
       id: this.$route.params.id,
-      name: localStorage.name ?? 'Sample title',
-      content: localStorage.content ?? "<p>Some stuff to do or other things</p>",
+      name: this.$store.getters.name ?? 'Sample title',
+      content: this.$store.getters.content ?? "<p>Some stuff to do or other things</p>",
       editor: null,
-      limit: 500
     }
   },
-  beforeDestroy() {
-    localStorage.removeItem('name')
-    localStorage.removeItem('content');
-    this.editor.destroy()
+  unmount() {
+    this.editor.destroy();
   },
   mounted() {
     this.noteService = new NoteService();
@@ -86,51 +60,45 @@ export default {
       toolbarEnabled: false,
       hoverEnabled: false
     });
-    let content = localStorage.content;
-    try {
-      content = JSON.parse(content);
-    } catch (e) {
-      // ignore
-    }
-
+    let content = this.$store.getters.content;
     M.updateTextFields();
-    this.editor = new Editor({
-      extensions: [
-        new Blockquote(),
-        new BulletList(),
-        new CodeBlock(),
-        new HardBreak(),
-        new Heading({levels: [1, 2, 3]}),
-        new ListItem(),
-        new OrderedList(),
-        new TodoItem(),
-        new TodoList(),
-        new Bold(),
-        new Code(),
-        new Italic(),
-        new Link(),
-        new History(),
-        CharacterCount.configure({
-          limit: this.limit,
-        }),
-      ],
-      content: content,
-      onUpdate: function (promiseMirrorObject) {
-        localStorage.content = JSON.stringify(promiseMirrorObject.getJSON());
+    this.editor = new MediumEditor('#editor', {
+      placeholder: {
+        text: 'Type your note...',
+        hideOnClick: true
       }
     })
+    this.editor.setContent(content, 0);
+    this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
+    this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+    const _this = this;
+    this.editor.subscribe('editableInput', function (event) {
+      if (event.inputType === 'insertText') {
+        _this.$store.commit({type: 'updateRawText', update: event.data});
+        _this.$store.commit('increaseCharactersCounter')
+      }
+      if(event.inputType === 'deleteContentBackward'){
+        _this.$store.commit('decreaseCharactersCounter');
+        _this.$store.commit({type: 'updateRawText', update: event.data});
+      }
+    });
   },
   methods: {
     save: function () {
       if (document.getElementById('title-input').value) {
+        if(this.$store.getters.count >= this.$store.getters.limit){
+          M.toast({html: 'Okay, that\'s too much!'});
+          return;
+        }
         if (this.id) {
-          this.noteService.saveNote(this.id, this.name, localStorage.content, this.editor.state.doc.textContent).then(() => {
+
+          this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note saved!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be saved!'})
           });
         } else {
-          this.noteService.addNote(this.name, localStorage.content).then(() => {
+          this.noteService.addNote(this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note created!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be created!'})
@@ -142,13 +110,14 @@ export default {
     },
     clearAll: function () {
       M.toast({html: 'Cleared!'})
-      this.editor.clearContent();
+      this.$store.commit({type: 'setCharactersCount', count: 0});
+      this.editor.resetContent();
     }
   },
   watch: {
     name(newName) {
       localStorage.name = newName;
-    }
+    },
   }
 }
 </script>

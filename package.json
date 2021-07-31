@@ -1,6 +1,6 @@
 {
   "name": "pika-note",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -10,26 +10,22 @@
   "dependencies": {
     "core-js": "^3.6.5",
     "materialize-css": "^1.0.0",
-    "tiptap-extensions": "^1.32.4",
-    "vue": "^3.1.5",
+    "medium-editor": "^5.23.3",
+    "vue": "^3.0.0",
     "vue-ui-preloader": "^1.2.0",
-    "vuex-persistedstate": "^3.2.1",
-    "tiptap": "^1.32.2",
-    "@tiptap/core": "^2.0.0-beta.93"
+    "vuex-persistedstate": "^4.0.0"
   },
   "devDependencies": {
-    "@tiptap/extension-character-count": "^2.0.0-beta.13",
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-plugin-eslint": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^6.7.2",
-    "eslint-plugin-vue": "^6.2.2",
-    "tiptap": "^1.32.2",
-    "@tiptap/core": "^2.0.0-beta.93",
-    "vue-router": "^3.4.3",
-    "vuex": "^3.5.1",
-    "@vue/compiler-sfc": "^3.0.0"
+    "@babel/core": "^7.12.16",
+    "@babel/eslint-parser": "^7.12.16",
+    "@vue/cli-plugin-babel": "^5.0.0-beta.2",
+    "@vue/cli-plugin-eslint": "^5.0.0-beta.2",
+    "@vue/cli-service": "^5.0.0-beta.2",
+    "@vue/compiler-sfc": "^3.0.0",
+    "eslint": "^7.20.0",
+    "eslint-plugin-vue": "^7.6.0",
+    "vue-router": "^4.0.10",
+    "vuex": "^4.0.2"
   },
   "eslintConfig": {
     "root": true,
@@ -41,7 +37,7 @@
       "eslint:recommended"
     ],
     "parserOptions": {
-      "parser": "babel-eslint"
+      "parser": "@babel/eslint-parser"
     },
     "rules": {}
   },

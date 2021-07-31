@@ -1,10 +1,10 @@
 <template>
-  <router-link :to="{ name: 'editor', params: { id: this.id } }">
+  <router-link :to="{ name: 'editor', params: { id: id } }">
     <transition name="slide-fade">
-    <div v-bind:id="this.id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
+    <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
       <div class="card-content grey-text text-darken-1">
         <span class="card-title">{{ name }}</span>
-        {{ this.formatDate(date) }}
+        {{ formatDate(date) }}
       </div>
     </div>
     </transition>
@@ -22,8 +22,8 @@ export default {
   ],
   methods: {
     persist() {
-      localStorage.name = this.name;
-      localStorage.content = this.content;
+      this.$store.commit({type: 'updateContent', content: this.content});
+      this.$store.commit({type: 'updateName', name: this.name});
     },
     addShadow(id){
       const card = document.getElementById(id);

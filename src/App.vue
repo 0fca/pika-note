@@ -11,8 +11,6 @@
             </router-link>
           </h2>
           <small>This is <router-link to="/about" class="red-text text-accent-2">Pika Note</router-link> aka "Alexis"</small>
-          <br/>
-          <small>This is ALPHA build.</small>
         </div>
       </div>
       <div class="row whitesmoke padding">
