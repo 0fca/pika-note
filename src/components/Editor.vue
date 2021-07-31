@@ -1,41 +1,48 @@
 <template>
   <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)">
-        <div class="row">
+    <div class="row">
       <div class="input-field col s12 m12 l12">
         <input id="title-input" class="validate" type="text" v-model="name" autofocus aria-selected="true"/>
         <label for="title-input">Title</label>
       </div>
+      <div class="character-count">
+        {{ limit }} characters
+      </div>
       <div class="fixed-action-btn">
-          <a class="btn-floating btn-large red accent-2 toolbar-icon">
-            <i class="large material-icons">mode_edit</i>
-          </a>
-          <ul>
-            <li>
-              <button @click="save" class="btn-floating red accent-2 toolbar-icon">
-                <i class="material-icons">
-                  save
-                </i>
-              </button>
-            </li>
-            <li>
-              <button @click="clearAll" class="btn-floating red accent-2 toolbar-icon">
-                <i class="material-icons">
-                  clear_all
-                </i>
-              </button>
-            </li>
-          </ul>
+        <a class="btn-floating btn-large red accent-2 toolbar-icon">
+          <i class="large material-icons">mode_edit</i>
+        </a>
+        <ul>
+          <li>
+            <button @click="save" class="btn-floating red accent-2 toolbar-icon">
+              <i class="material-icons">
+                save
+              </i>
+            </button>
+          </li>
+          <li>
+            <button @click="clearAll" class="btn-floating red accent-2 toolbar-icon">
+              <i class="material-icons">
+                clear_all
+              </i>
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
     <div class="row background">
       <editor-content class="editor__content cursor-color editor-height" :editor="editor"/>
+
     </div>
+
   </div>
 </template>
 
 <script>
-import { Editor, EditorContent } from 'tiptap';
+import {Editor, EditorContent} from 'tiptap';
 import M from 'materialize-css';
+import CharacterCount from '@tiptap/extension-character-count'
+
 import {
   Blockquote,
   CodeBlock,
@@ -50,7 +57,7 @@ import {
   Code,
   Italic,
   Link,
-  History,
+  History
 } from 'tiptap-extensions'
 import NoteService from "@/services/noteService";
 
@@ -63,8 +70,9 @@ export default {
     return {
       id: this.$route.params.id,
       name: localStorage.name ?? 'Sample title',
-      content: localStorage.content ?? "Some stuff to do or other things",
-      editor: null
+      content: localStorage.content ?? "<p>Some stuff to do or other things</p>",
+      editor: null,
+      limit: 500
     }
   },
   beforeDestroy() {
@@ -79,9 +87,9 @@ export default {
       hoverEnabled: false
     });
     let content = localStorage.content;
-    try{
+    try {
       content = JSON.parse(content);
-    }catch(e){
+    } catch (e) {
       // ignore
     }
 
@@ -92,7 +100,7 @@ export default {
         new BulletList(),
         new CodeBlock(),
         new HardBreak(),
-        new Heading({ levels: [1, 2, 3] }),
+        new Heading({levels: [1, 2, 3]}),
         new ListItem(),
         new OrderedList(),
         new TodoItem(),
@@ -102,34 +110,37 @@ export default {
         new Italic(),
         new Link(),
         new History(),
+        CharacterCount.configure({
+          limit: this.limit,
+        }),
       ],
       content: content,
-      onUpdate: function (promiseMirrorObject){
+      onUpdate: function (promiseMirrorObject) {
         localStorage.content = JSON.stringify(promiseMirrorObject.getJSON());
       }
     })
   },
-  methods:{
-    save: function (){
-      if(document.getElementById('title-input').value){
-        if(this.id){
-          this.noteService.saveNote(this.id, this.name, localStorage.content).then(() => {
+  methods: {
+    save: function () {
+      if (document.getElementById('title-input').value) {
+        if (this.id) {
+          this.noteService.saveNote(this.id, this.name, localStorage.content, this.editor.state.doc.textContent).then(() => {
             M.toast({html: 'Note saved!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be saved!'})
           });
-        }else{
+        } else {
           this.noteService.addNote(this.name, localStorage.content).then(() => {
             M.toast({html: 'Note created!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be created!'})
           });
         }
-      }else{
+      } else {
         M.toast({html: 'It is a damn good idea to add a title!'})
       }
     },
-    clearAll: function (){
+    clearAll: function () {
       M.toast({html: 'Cleared!'})
       this.editor.clearContent();
     }
@@ -143,32 +154,35 @@ export default {
 </script>
 
 <style scoped>
-  .background{
-    padding: 10px;
-    background-color: ghostwhite;
-    border-radius: 10px;
-    height: 50vh;
-  }
-  .toolbar-icon:hover{
-    color: indigo;
-  }
+.background {
+  padding: 10px;
+  background-color: ghostwhite;
+  border-radius: 10px;
+  height: 50vh;
+}
 
-  .cursor-color{
-    caret-color: #ff5252;
-    border-bottom-color: #ff5252;
-  }
+.toolbar-icon:hover {
+  color: indigo;
+}
 
-  /* label underline focus color */
-  .input-field input[type=text]:focus {
-    border-bottom: 1px solid #ff5252;
-    box-shadow: 0 1px 0 0 #ff5252;
-  }
-  /* label color */
-  .input-field label {
-    color: #000;
-  }
-  /* label focus color */
-  .input-field input[type=text]:focus + label {
-    color: #ff5252;
-  }
+.cursor-color {
+  caret-color: #ff5252;
+  border-bottom-color: #ff5252;
+}
+
+/* label underline focus color */
+.input-field input[type=text]:focus {
+  border-bottom: 1px solid #ff5252;
+  box-shadow: 0 1px 0 0 #ff5252;
+}
+
+/* label color */
+.input-field label {
+  color: #000;
+}
+
+/* label focus color */
+.input-field input[type=text]:focus + label {
+  color: #ff5252;
+}
 </style>

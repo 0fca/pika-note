@@ -11,21 +11,25 @@
     "core-js": "^3.6.5",
     "materialize-css": "^1.0.0",
     "tiptap-extensions": "^1.32.4",
-    "vue": "^2.6.11",
-    "vue-ui-preloader": "^1.1.0",
-    "vuex-persistedstate": "^3.1.0"
+    "vue": "^3.1.5",
+    "vue-ui-preloader": "^1.2.0",
+    "vuex-persistedstate": "^3.2.1",
+    "tiptap": "^1.32.2",
+    "@tiptap/core": "^2.0.0-beta.93"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.4.0",
-    "@vue/cli-plugin-eslint": "~4.4.0",
-    "@vue/cli-service": "~4.4.0",
+    "@tiptap/extension-character-count": "^2.0.0-beta.13",
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-plugin-eslint": "~4.5.0",
+    "@vue/cli-service": "~4.5.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^6.7.2",
     "eslint-plugin-vue": "^6.2.2",
-    "tiptap": "^1.29.5",
+    "tiptap": "^1.32.2",
+    "@tiptap/core": "^2.0.0-beta.93",
     "vue-router": "^3.4.3",
-    "vue-template-compiler": "^2.6.11",
-    "vuex": "^3.5.1"
+    "vuex": "^3.5.1",
+    "@vue/compiler-sfc": "^3.0.0"
   },
   "eslintConfig": {
     "root": true,

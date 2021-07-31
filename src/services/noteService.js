@@ -16,10 +16,10 @@ export default class NoteService {
         return response.json();
     }
 
-    async saveNote(id, name, content) {
+    async saveNote(id, name, content, rawContent) {
         const url = `${this.baseUrl}/notes/${id}`;
         const mlService = new MlService();
-        const p = await mlService.validateLanguage(name, content)
+        const p = await mlService.validateLanguage(name, rawContent)
         if (p.prediction === false) {
             throw new Error('Mind your language!')
         }
