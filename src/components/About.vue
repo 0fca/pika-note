@@ -1,5 +1,5 @@
 <template>
-  <div class="card white">
+  <div class="card white" v-once>
     <div class="card-content grey-text text-darken-1">
       <span class="card-title">About</span>
       <p>This application's purpose is to be a simple web notepad.</p>

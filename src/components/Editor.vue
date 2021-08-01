@@ -55,7 +55,6 @@ export default {
     this.$store.commit({type: 'updateContent', content: ""})
     this.$store.commit(({type: 'updateName', name: ""}))
     this.editor.destroy();
-    console.log('unmount');
   },
   mounted() {
     this.noteService = new NoteService();

@@ -1,30 +1,25 @@
 <template>
   <div class="container">
     <div class="row card-panel filter-bar z-depth-0">
-      <div class="row" v-if="overallCount">
-        <div class="col s12 m12 l12">
-          <p> Zapisane notatki: {{ overallCount }}</p>
-        </div>
-      </div>
-      <div class="row">
-        <div class="input-field col s12">
-          <select id="order" v-model="order" v-on:change="reloadOnOrderChange">
-            <option value="0" selected>Ascending</option>
-            <option value="1">Descending</option>
-          </select>
-          <label for="order">Order</label>
-        </div>
+      <div class="col s12">
+         <p class="left" style="margin: unset;">Loaded {{ actuallyLoaded }} {{ actuallyLoaded > 1 || actuallyLoaded === 0 ? 'notes' : 'note' }}</p>
+          <span class="material-icons right" style="cursor: pointer; margin-left: 15px;" v-on:click="reloadOnOrderChange">
+              low_priority
+          </span>
+          <p class="right" style="margin:unset">{{ this.order }}</p>
       </div>
     </div>
     <div class="row" id="notes">
-        <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
-        <Error v-if="error" />
+      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
+      <Error v-if="error"/>
+      <transition-group name="slide-fade" appear>
         <Note v-for="(note, index) in notes"
               v-bind:key="index"
               v-bind:id="note.id"
               v-bind:name="note.name"
               v-bind:date="note.timestamp"
               v-bind:content="note.content"></Note>
+      </transition-group>
     </div>
     <div class="fixed-action-btn">
       <router-link to="editor">
@@ -51,9 +46,9 @@ export default {
     Note,
     Preloader
   },
-  mounted: function() {
+  mounted: function () {
     this.noteService = new NoteService()
-    this.noteService.readData('/notes?order='+order+"&count="+count)
+    this.noteService.readData('/notes?order=' + order + "&count=" + count)
         .then(data => {
           this.onDataReceived(data);
         })
@@ -65,20 +60,22 @@ export default {
     let elems = document.querySelectorAll('select');
     M.FormSelect.init(elems, null);
   },
-  data: function() {
+  data: function () {
     return {
       notes: [],
-      order: localStorage.order ?? order,
+      order: localStorage.order ?? 0,
       count: localStorage.count ?? count,
       overallCount: localStorage.overallCount,
       loaded: false,
-      error: false
+      error: false,
+      actuallyLoaded: 0
     }
   },
   methods: {
-    reloadOnOrderChange: function (event){
-      localStorage.order = event.target.value
-      this.noteService.readData('/notes?order='+event.target.value+"&count="+count)
+    reloadOnOrderChange: function () {
+     order = (order === 0) ? 1 : 0;
+     localStorage.order = order;
+      this.noteService.readData('/notes?order=' + order + "&count=" + count)
           .then(data => {
             this.onDataReceived(data);
           })
@@ -86,10 +83,10 @@ export default {
             this.loaded = true;
           });
     },
-    reloadOnCountChange: function (event){
+    reloadOnCountChange: function (event) {
       localStorage.count = event.target.value
 
-      this.noteService.readData('/notes?order='+order+"&count="+event.target.value)
+      this.noteService.readData('/notes?order=' + order + "&count=" + event.target.value)
           .then(data => {
             this.onDataReceived(data);
           })
@@ -100,6 +97,7 @@ export default {
     onDataReceived: function (data) {
       this.notes = data.payload;
       this.loaded = true;
+      this.actuallyLoaded = this.notes.length;
     }
   }
 }

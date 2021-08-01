@@ -1,13 +1,11 @@
 <template>
   <router-link :to="{ name: 'editor', params: { id: id } }">
-    <transition name="slide-fade">
     <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
       <div class="card-content grey-text text-darken-1">
         <span class="card-title">{{ name }}</span>
         {{ formatDate(date) }}
       </div>
     </div>
-    </transition>
   </router-link>
 </template>
 
@@ -49,4 +47,6 @@ export default {
  .note-cursor{
     cursor: pointer;
   }
+
+
 </style>

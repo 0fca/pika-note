@@ -1,5 +1,5 @@
 <template>
-    <div class="fullscreen-container">
+    <div class="fullscreen-container" v-once>
       <div class="row master-head z-depth-2">
         <div class="container center white-text">
           <h2>
