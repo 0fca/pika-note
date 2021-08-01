@@ -2,11 +2,11 @@
   <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)" v-on:keydown.ctrl.s.prevent="save">
     <div class="row">
       <div class="input-field col s12 m12 l12">
-        <input id="title-input" class="validate" type="text" v-model="name" autofocus aria-selected="true"/>
+        <input id="title-input" class="validate" type="text" autofocus aria-selected="true" v-model='name'/>
         <label for="title-input">Title</label>
       </div>
-      <div class="character-count">
-        {{ $store.getters.count }}/{{ $store.getters.limit }} characters
+      <div class="character-count right">
+        <small>{{ $store.getters.count }}/{{ $store.getters.limit }} characters</small>
       </div>
       <div class="fixed-action-btn">
         <a class="btn-floating btn-large red accent-2 toolbar-icon">
@@ -52,6 +52,8 @@ export default {
     }
   },
   unmount() {
+    this.$store.commit({type: 'updateContent', content: ""})
+    this.$store.commit(({type: 'updateName', name: ""}))
     this.editor.destroy();
   },
   mounted() {
@@ -114,11 +116,6 @@ export default {
       this.editor.resetContent();
     }
   },
-  watch: {
-    name(newName) {
-      localStorage.name = newName;
-    },
-  }
 }
 </script>
 

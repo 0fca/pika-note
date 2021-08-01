@@ -25,7 +25,7 @@ const store = createStore({
       count: 0,
       content: '',
       name: '',
-      limit: 10
+      limit: 500
     }
   },
   mutations: {
