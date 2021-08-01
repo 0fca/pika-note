@@ -51,7 +51,7 @@ export default {
       editor: null,
     }
   },
-  unmount() {
+  unmounted() {
     this.$store.commit({type: 'updateContent', content: ""})
     this.$store.commit(({type: 'updateName', name: ""}))
     this.editor.destroy();
@@ -72,7 +72,7 @@ export default {
       }
     })
     this.editor.setContent(content, 0);
-    console.log(content);
+    console.log(this.editor.elements.length);
     this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
     this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
     const _this = this;
