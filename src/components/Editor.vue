@@ -55,6 +55,7 @@ export default {
     this.$store.commit({type: 'updateContent', content: ""})
     this.$store.commit(({type: 'updateName', name: ""}))
     this.editor.destroy();
+    console.log('unmount');
   },
   mounted() {
     this.noteService = new NoteService();
@@ -71,6 +72,7 @@ export default {
       }
     })
     this.editor.setContent(content, 0);
+    console.log(content);
     this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
     this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
     const _this = this;
