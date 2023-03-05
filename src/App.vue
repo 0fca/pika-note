@@ -10,7 +10,7 @@
             </a>
             </router-link>
           </h2>
-          <small>This is <router-link to="/about" class="red-text text-accent-2">Pika Note</router-link> aka "Alexis"</small>
+          <small>This is <router-link to="/about" class="red-text text-accent-2">Pika Note</router-link> aka "Isabelle"</small>
         </div>
       </div>
       <div class="row whitesmoke padding">
