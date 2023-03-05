@@ -7,15 +7,15 @@ export default class MlService {
     }
 
     async validateLanguage(name, content) {
-        const mlModuleEndpoint = `${this.baseMlModuleUrl}/api/sentiment/text/predict`;
+        const mlModuleEndpoint = `${this.baseMlModuleUrl}/api/hs/predict`;
         return await fetch(mlModuleEndpoint, {
-            method: 'POST',
-            headers: {
-                'Origin': this.baseMlModuleUrl,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(new Input(`${name} ${content}`))
-        })
+                method: 'POST',
+                headers: {
+                    'Origin': this.baseMlModuleUrl,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(new Input(`${name} ${content}`))
+            })
             .then(b => {
                 return b.json().then(b => {
                     return Prediction.from(b);

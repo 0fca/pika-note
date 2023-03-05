@@ -20,7 +20,7 @@ export default class NoteService {
         const url = `${this.baseUrl}/notes/${id}`;
         const mlService = new MlService();
         const p = await mlService.validateLanguage(name, rawContent)
-        if (p.prediction === false) {
+        if (p.prediction >= 2) {
             throw new Error('Mind your language!')
         }
         return await fetch(url, {
@@ -40,7 +40,7 @@ export default class NoteService {
         const url = `${this.baseUrl}/notes`;
         const mlService = new MlService();
         const p = await mlService.validateLanguage(name, rawContent)
-        if (p.prediction === false) {
+        if (p.prediction >= 2) {
             throw new Error('Mind your language!')
         }
         return await fetch(url, {
