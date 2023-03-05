@@ -12,6 +12,7 @@
         "materialize-css": "^1.0.0",
         "medium-editor": "^5.23.3",
         "vue": "^3.2.47",
+        "vue-ui-preloader": "^1.2.1",
         "vuex-persistedstate": "^4.0.0"
     },
     "devDependencies": {
