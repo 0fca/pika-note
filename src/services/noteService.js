@@ -1,23 +1,35 @@
 import MlService from "@/services/mlService";
+import UnauthorizedException from "../components/exceptions/UnauthorizedException";
 
 export default class NoteService {
     constructor() {
         this.baseUrl = "https://pikanoteapi.azurewebsites.net";
     }
 
-    async readData(url = '') {
+    async readData(url = '', method = 'GET') {
         url = this.baseUrl + url;
         const response = await fetch(url, {
-            method: 'GET',
+            method: method,
             headers: {
-                'Origin': this.baseUrl
-            }
+                'Origin': this.baseUrl,
+            },
+            credentials: 'include'
         });
-        return response.json();
+        if(response.ok){
+            return response.json();
+        }
+        throw new UnauthorizedException();
+    }
+
+    async getNote(id) {
+        const url = `/notes/${id}`; 
+        const rawJson = await this.readData(url);
+        return rawJson.payload;
     }
 
     async saveNote(id, name, content, rawContent) {
         const url = `${this.baseUrl}/notes/${id}`;
+        console.log(rawContent);
         const mlService = new MlService();
         const p = await mlService.validateLanguage(name, rawContent)
         if (p.prediction >= 2) {
@@ -32,12 +44,15 @@ export default class NoteService {
             body: JSON.stringify({
                 "name": name,
                 "content": content
-            })
+            }),
+            credentials: 'include'
         });
     }
 
-    async addNote(name, content, rawContent) {
-        const url = `${this.baseUrl}/notes`;
+    async addNote(bucketId, name, content, rawContent) {
+        console.log(bucketId);
+        console.log(rawContent);
+        const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
         const mlService = new MlService();
         const p = await mlService.validateLanguage(name, rawContent)
         if (p.prediction >= 2) {
@@ -52,7 +67,32 @@ export default class NoteService {
             body: JSON.stringify({
                 "name": name,
                 "content": content
-            })
+            }),
+            credentials: 'include'
         });
+    }
+
+    async removeNote(id){
+        const url = `${this.baseUrl}/notes/${id}`;
+        return await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'Origin': this.baseUrl,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+    }
+
+    async getBuckets(){
+        const url = `${this.baseUrl}/notes/buckets`;
+        return await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Origin': this.baseUrl,
+                'Content-Type': 'application/json'
+            },
+            'credentials': 'include'
+        })
     }
 }

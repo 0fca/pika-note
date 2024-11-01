@@ -1,15 +1,11 @@
 <template>
   <div class="row card-panel red accent-2 white-text">
-    <p class="flow-text">Crap, we have a problem here, but don't you worry! Our cyber pikas are working on it!</p>
+    <p class="flow-text">It appears that some unknown error happened, sorry for the inconvenience.</p>
   </div>
 </template>
 
 <script>
 export default {
-name: "Error"
+  name: "Error",
 }
 </script>
-
-<style scoped>
-
-</style>

@@ -45,7 +45,8 @@ export default {
   components: {},
   data() {
     return {
-      id: this.$route.params.id,
+      id: this.$store.getters.id,
+      bucketId: this.$store.getters.bucketUuid,
       name: this.$store.getters.name ?? 'Sample title',
       content: this.$store.getters.content ?? "<p>Some stuff to do or other things</p>",
       editor: null,
@@ -62,16 +63,22 @@ export default {
       toolbarEnabled: false,
       hoverEnabled: false
     });
-    let content = this.$store.getters.content;
+    if(this.id !== ''){
+      this.noteService.getNote(this.id)
+      .then(n => {
+        const content = JSON.parse(n.content);
+        this.$store.commit({type: 'updateContent', content: content.content});
+        this.editor.setContent(this.$store.getters.content, 0);
+        this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+      });
+    }
     M.updateTextFields();
     this.editor = new MediumEditor('#editor', {
       placeholder: {
         text: 'Type your note...',
         hideOnClick: true
       }
-    })
-    this.editor.setContent(content, 0);
-    console.log(this.editor.elements.length);
+    });
     this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
     this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
     const _this = this;
@@ -94,14 +101,13 @@ export default {
           return;
         }
         if (this.id) {
-
           this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note saved!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be saved!'})
           });
         } else {
-          this.noteService.addNote(this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
+          this.noteService.addNote(this.bucketId, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note created!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be created!'})
@@ -125,7 +131,8 @@ export default {
   padding: 10px;
   background-color: ghostwhite;
   border-radius: 10px;
-  height: 50vh;
+  height: fit-content;
+  min-height: 50vh;
 }
 
 .toolbar-icon:hover {

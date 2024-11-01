@@ -3,14 +3,18 @@ import {createRouter,createWebHistory} from 'vue-router'
 import App from './App'
 import About from './components/About'
 import MainPage from "@/components/MainPage"
+import Callback from "@/components/Callback"
 import Editor from '@/components/Editor'
+import NoteRedirectHandler from '@/components/NoteRedirectHandler'
 import { createStore } from 'vuex'
 import loader from "vue-ui-preloader";
 
 const routes = [
-  { path: '/', component: MainPage },
+  { path: '/', name: 'index', component: MainPage },
   { path: '/about', component: About },
-  { path: '/editor', name: 'editor', component: Editor }
+  { path: '/editor', name: 'editor', component: Editor },
+  { path: '/callback', name: 'callback', component: Callback },
+  { path: '/note_redirect_handler', name: 'note_redirect_handler', component: NoteRedirectHandler }
 ]
 
 const history =  createWebHistory()
@@ -25,7 +29,13 @@ const store = createStore({
       count: 0,
       content: '',
       name: '',
-      limit: 500
+      limit: 5000,
+      id: '',
+      order: 0,
+      noteCount: 10,
+      loggedIn: false,
+      bucketName: localStorage.getItem('bucketName') ?? "",
+      bucketUuid: localStorage.getItem('bucketUuid') ?? ""
     }
   },
   mutations: {
@@ -55,6 +65,22 @@ const store = createStore({
     },
     updateName(state, payload){
       state.name = payload.name;
+    },
+    updateId(state, payload){
+      state.id = payload.id; 
+    },
+    updateOrder(state, payload){
+      state.order = payload.order;
+    },
+    updateNoteCount(state, payload){
+      state.noteCount = payload.noteCount;
+    },
+    updateLoggedInState(state, payload){
+      state.loggedIn = payload.loggedIn;
+    },
+    updateCurrentBucket(state, payload){
+      state.bucketUuid = payload.bucketUuid;
+      state.bucketName = payload.bucketName;
     }
   },
   getters: {
@@ -69,6 +95,24 @@ const store = createStore({
     },
     limit(state){
       return state.limit;
+    },
+    id(state){
+      return state.id;
+    },
+    order(state){
+      return state.order;
+    },
+    noteCount(state){
+      return state.noteCount;
+    },
+    loggedIn(state){
+      return state.loggedIn;
+    },
+    bucketName(state){
+      return state.bucketName;
+    },
+    bucketUuid(state){
+      return state.bucketUuid;
     }
   }
 });

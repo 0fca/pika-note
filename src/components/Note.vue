@@ -1,6 +1,6 @@
 <template>
   <router-link :to="{ name: 'editor', params: { id: id } }">
-    <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
+    <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist(id)" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
       <div class="card-content grey-text text-darken-1">
         <span class="card-title">{{ name }}</span>
         {{ formatDate(date) }}
@@ -10,6 +10,7 @@
 </template>
 
 <script>
+
 export default {
   name: "Note",
   props: [
@@ -19,7 +20,8 @@ export default {
     'content'
   ],
   methods: {
-    persist() {
+    persist(id) {
+      this.$store.commit({type: 'updateId', id: id});
       this.$store.commit({type: 'updateContent', content: this.content});
       this.$store.commit({type: 'updateName', name: this.name});
     },
@@ -47,6 +49,4 @@ export default {
  .note-cursor{
     cursor: pointer;
   }
-
-
 </style>

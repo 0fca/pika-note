@@ -9,23 +9,24 @@
     },
     "dependencies": {
         "core-js": "^3.29.0",
+        "jwt-decode": "^4.0.0",
         "materialize-css": "^1.0.0",
         "medium-editor": "^5.23.3",
-        "vue": "^3.2.47",
+        "vue": "^3.3.11",
         "vue-ui-preloader": "^1.2.1",
-        "vuex-persistedstate": "^4.0.0"
+        "vuex-persistedstate": "^4.1.0"
     },
     "devDependencies": {
-        "@babel/core": "^7.12.16",
-        "@babel/eslint-parser": "^7.12.16",
-        "@vue/cli-plugin-babel": "^5.0.0-beta.2",
-        "@vue/cli-plugin-eslint": "^5.0.0-beta.2",
-        "@vue/cli-service": "^5.0.0-beta.2",
-        "@vue/compiler-sfc": "^3.0.0",
+        "@babel/core": "^7.23.6",
+        "@babel/eslint-parser": "^7.23.3",
+        "@vue/cli-plugin-babel": "^5.0.8",
+        "@vue/cli-plugin-eslint": "^5.0.8",
+        "@vue/cli-service": "^5.0.8",
+        "@vue/compiler-sfc": "^3.3.11",
         "eslint": "^7.20.0",
-        "eslint-plugin-vue": "^7.6.0",
-        "vue-router": "^4.0.10",
-        "vuex": "^4.0.2"
+        "eslint-plugin-vue": "^7.20.0",
+        "vue-router": "^4.2.5",
+        "vuex": "^4.1.0"
     },
     "eslintConfig": {
         "root": true,

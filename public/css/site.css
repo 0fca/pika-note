@@ -28,7 +28,7 @@ a, .btn-link {
     min-height: 30vh;
     display: flex;
     align-items: center;
-    background-color: #3f51b5 ;
+    background-color:#0A4492 !important;
     margin-bottom: 5vh;
 }
 
@@ -111,7 +111,7 @@ a, .btn-link {
 }
 
 .slide-fade-enter-active {
-    transition: all .3s ease;
+    transition: all .8s cubic-bezier(1.0, 0.5, 0.8, 1.0);
 }
 .slide-fade-leave-active {
     transition: all .8s cubic-bezier(1.0, 0.5, 0.8, 1.0);
@@ -120,4 +120,42 @@ a, .btn-link {
     /* .slide-fade-leave-active below version 2.1.8 */ {
     transform: translateX(10px);
     opacity: 0;
+}
+
+.input {
+    color: black !important;
+}
+
+nav{
+    background-color: #0A4492 !important;
+}
+
+.navlink {
+    color: whitesmoke;
+}
+
+.navlink:hover, .navlink:focus {
+    color: #212121 !important;
+}
+
+
+.appdropdown {
+    width: 300px !important;
+    top: 105% !important;
+}
+.browse-collection-item, .app-menu-item {
+    color: rgb(12, 12, 12) !important;
+    background-color: inherit !important;
+    border-bottom: #000 !important;
+    border-width: 1px !important;
+}
+
+
+.borderless-collection {
+    border-width: 0 !important;
+}
+
+
+.browse-collection-item:hover {
+    color: #ff6f00;
 }
