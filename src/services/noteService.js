@@ -3,7 +3,7 @@ import UnauthorizedException from "../components/exceptions/UnauthorizedExceptio
 
 export default class NoteService {
     constructor() {
-        this.baseUrl = "https://pikanoteapi.azurewebsites.net";
+        this.baseUrl = "https://noteapi.lukas-bownik.net";
     }
 
     async readData(url = '', method = 'GET') {

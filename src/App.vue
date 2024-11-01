@@ -11,7 +11,7 @@
                     </a>
                 </li>
                 <li v-if="this.$store.getters.loggedIn === false">
-                  <form method="post" action="https://pikanoteapi.azurewebsites.net/Security/LocalLogin">
+                  <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
                     <button class="btn btn-flat white-text">
                       LOGIN
                     </button>

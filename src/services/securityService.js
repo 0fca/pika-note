@@ -1,6 +1,6 @@
 export default class SecurityService {
     constructor() {
-        this.baseUrl = "https://pikanoteapi.azurewebsites.net";
+        this.baseUrl = "https://noteapi.lukas-bownik.net";
     }
 
     async validateLoggedInState() {
