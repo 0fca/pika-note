@@ -9,6 +9,7 @@ import NoteRedirectHandler from '@/components/NoteRedirectHandler'
 import { createStore } from 'vuex'
 import loader from "vue-ui-preloader";
 
+
 const routes = [
   { path: '/', name: 'index', component: MainPage },
   { path: '/about', component: About },
@@ -18,7 +19,8 @@ const routes = [
 ]
 
 const history =  createWebHistory()
-const router = createRouter({routes: routes, history: history})
+const router = createRouter({routes: routes, history: history});
+
 const app = createApp(App);
 app.use(router)
 // Create a new store instance.
@@ -35,7 +37,9 @@ const store = createStore({
       noteCount: 10,
       loggedIn: false,
       bucketName: localStorage.getItem('bucketName') ?? "",
-      bucketUuid: localStorage.getItem('bucketUuid') ?? ""
+      bucketUuid: localStorage.getItem('bucketUuid') ?? "",
+      lastSavedAt: null,
+      isSaving: false
     }
   },
   mutations: {
@@ -81,6 +85,12 @@ const store = createStore({
     updateCurrentBucket(state, payload){
       state.bucketUuid = payload.bucketUuid;
       state.bucketName = payload.bucketName;
+    },
+    updateLastSavedAt(state, payload){
+      state.lastSavedAt = payload.lastSavedAt;
+    },
+    updateIsSaving(state, payload){
+      state.isSaving = payload.isSaving;
     }
   },
   getters: {
@@ -113,9 +123,16 @@ const store = createStore({
     },
     bucketUuid(state){
       return state.bucketUuid;
+    },
+    lastSavedAt(state){
+      return state.lastSavedAt;
+    },
+    isSaving(state){
+      return state.isSaving;
     }
   }
 });
 app.use(store);
+
 app.component('loader', loader)
 app.mount('#app')

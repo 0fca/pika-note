@@ -16,10 +16,10 @@
       </div>
     </div>
     <div class="row" id="notes">
-      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
+      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded && isLoggedIn"/>
       <Error v-if="error"/>
       <Info v-if="bucketId === '' && this.$store.getters.loggedIn === true" message="You should use a dropdown above to choose a bucket"/>
-      <Info v-if="this.$store.getters.loggedIn === false" message="It seems that you have been logged out. Click on LOGIN button above to follow to the SSO"/>
+      <Info v-if="this.$store.getters.loggedIn === false" message="To view or create notes you have to log in first. To do so, click a button in the right upper corner."/>
       <transition-group name="slide-fade" appear>
         <Note v-for="(note, index) in notes"
               v-bind:key="index"
@@ -29,7 +29,7 @@
               v-bind:content="note.content"></Note>
       </transition-group>
     </div>
-    <div class="fixed-action-btn">
+    <div class="fixed-action-btn" v-if="this.$store.getters.loggedIn === true">
       <router-link to="editor">
         <a class="btn-floating btn-large red"><i class="material-icons">add</i></a>
       </router-link>
@@ -92,7 +92,8 @@ export default {
       overallCount: localStorage.overallCount,
       loaded: false,
       error: false,
-      actuallyLoaded: 0
+      actuallyLoaded: 0,
+      isLoggedIn: this.$store.getters.isLoggedIn
     }
   },
   methods: {
