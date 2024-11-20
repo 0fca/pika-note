@@ -35,7 +35,9 @@ const store = createStore({
       noteCount: 10,
       loggedIn: false,
       bucketName: localStorage.getItem('bucketName') ?? "",
-      bucketUuid: localStorage.getItem('bucketUuid') ?? ""
+      bucketUuid: localStorage.getItem('bucketUuid') ?? "",
+      lastSavedAt: null,
+      isSaving: false
     }
   },
   mutations: {
@@ -81,6 +83,12 @@ const store = createStore({
     updateCurrentBucket(state, payload){
       state.bucketUuid = payload.bucketUuid;
       state.bucketName = payload.bucketName;
+    },
+    updateLastSavedAt(state, payload){
+      state.lastSavedAt = payload.lastSavedAt;
+    },
+    updateIsSaving(state, payload){
+      state.isSaving = payload.isSaving;
     }
   },
   getters: {
@@ -113,6 +121,12 @@ const store = createStore({
     },
     bucketUuid(state){
       return state.bucketUuid;
+    },
+    lastSavedAt(state){
+      return state.lastSavedAt;
+    },
+    isSaving(state){
+      return state.isSaving;
     }
   }
 });

@@ -1,13 +1,6 @@
 <template>
   <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)" v-on:keydown.ctrl.s.prevent="save">
     <div class="row">
-      <div class="input-field col s12 m12 l12">
-        <input id="title-input" class="validate" type="text" autofocus aria-selected="true" v-model='name'/>
-        <label for="title-input">Title</label>
-      </div>
-      <div class="character-count right">
-        <small>{{ $store.getters.count }}/{{ $store.getters.limit }} characters</small>
-      </div>
       <div class="fixed-action-btn">
         <a class="btn-floating btn-large red accent-2 toolbar-icon">
           <i class="large material-icons">mode_edit</i>
@@ -31,7 +24,7 @@
       </div>
     </div>
     <div class="row background">
-      <div id="editor"></div>
+      <div id="editor" style=""></div>
     </div>
   </div>
 </template>
@@ -100,18 +93,26 @@ export default {
           M.toast({html: 'Okay, that\'s too much!'});
           return;
         }
+        this.$store.commit({type: 'updateIsSaving', isSaving: true});
         if (this.id) {
-          this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
-            M.toast({html: 'Note saved!'})
+          /*this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
+            M.toast({html: 'Note saved!'});
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be saved!'})
-          });
+          });*/
+          const now = new Date();
+          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         } else {
+          /*
           this.noteService.addNote(this.bucketId, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note created!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be created!'})
-          });
+          });*/
+          const now = new Date();
+          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         }
       } else {
         M.toast({html: 'It is a damn good idea to add a title!'})
