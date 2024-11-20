@@ -2,7 +2,7 @@
   <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)" v-on:keydown.ctrl.s.prevent="save">
     <div class="row">
       <div class="fixed-action-btn">
-        <a class="btn-floating btn-large red accent-2 toolbar-icon">
+        <a id="create_floating_btn" class="btn-floating btn-large red accent-2 toolbar-icon">
           <i class="large material-icons">mode_edit</i>
         </a>
         <ul>
@@ -23,8 +23,14 @@
         </ul>
       </div>
     </div>
+    <div id="tap-target" class="tap-target red accent-2 white-text" data-target="create_floating_btn" v-if="this.editorDiscoveryMessage === true">
+      <div class="tap-target-content">
+        <h5>Editor Context Actions</h5>
+        <p>This floating button hides a context menu which allows you to either reset the editor's content or save your note. Tap anywhere to dismiss.</p>
+      </div>
+    </div>
     <div class="row background">
-      <div id="editor" style=""></div>
+      <div id="editor"></div>
     </div>
   </div>
 </template>
@@ -40,10 +46,19 @@ export default {
     return {
       id: this.$store.getters.id,
       bucketId: this.$store.getters.bucketUuid,
-      name: this.$store.getters.name ?? 'Sample title',
-      content: this.$store.getters.content ?? "<p>Some stuff to do or other things</p>",
+      name: this.$store.getters.name,
+      content: this.$store.getters.content,
       editor: null,
+      editorDiscoveryMessage: localStorage.getItem('editors_discovery') === null ?? false
     }
+  },
+  beforeRouteEnter(to, from, next){
+    next(vm => {
+      if(vm.$store.getters.loggedIn === false){
+        M.toast({html: 'Please, log in to use editor'});
+        vm.$router.push("/");
+      }
+    })
   },
   unmounted() {
     this.$store.commit({type: 'updateContent', content: ""})
@@ -51,6 +66,14 @@ export default {
     this.editor.destroy();
   },
   mounted() {
+    M.AutoInit();
+    if(localStorage.getItem('editors_discovery') === null){
+      const instance = M.TapTarget.getInstance(document.getElementById('tap-target'));
+      if(instance !== undefined){
+        instance.open();
+        localStorage.setItem('editors_discovery', '1');
+      }
+    }
     this.noteService = new NoteService();
     M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), {
       toolbarEnabled: false,
@@ -94,22 +117,21 @@ export default {
           return;
         }
         this.$store.commit({type: 'updateIsSaving', isSaving: true});
-        if (this.id) {
-          /*this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
+        if (this.$store.getters.id) {
+          this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note saved!'});
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be saved!'})
-          });*/
+          });
           const now = new Date();
           this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
           this.$store.commit({type: 'updateIsSaving', isSaving: false});
         } else {
-          /*
           this.noteService.addNote(this.bucketId, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note created!'})
           }).catch(() => {
             M.toast({html: 'Note couldn\'t be created!'})
-          });*/
+          });
           const now = new Date();
           this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
           this.$store.commit({type: 'updateIsSaving', isSaving: false});

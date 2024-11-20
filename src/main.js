@@ -9,6 +9,7 @@ import NoteRedirectHandler from '@/components/NoteRedirectHandler'
 import { createStore } from 'vuex'
 import loader from "vue-ui-preloader";
 
+
 const routes = [
   { path: '/', name: 'index', component: MainPage },
   { path: '/about', component: About },
@@ -18,7 +19,8 @@ const routes = [
 ]
 
 const history =  createWebHistory()
-const router = createRouter({routes: routes, history: history})
+const router = createRouter({routes: routes, history: history});
+
 const app = createApp(App);
 app.use(router)
 // Create a new store instance.
@@ -131,5 +133,6 @@ const store = createStore({
   }
 });
 app.use(store);
+
 app.component('loader', loader)
 app.mount('#app')
