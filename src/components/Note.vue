@@ -22,7 +22,7 @@ export default {
   methods: {
     persist(id) {
       this.$store.commit({type: 'updateId', id: id});
-      this.$store.commit({type: 'updateContent', content: this.content});
+      //this.$store.commit({type: 'updateContent', content: this.content});
       this.$store.commit({type: 'updateName', name: this.name});
     },
     addShadow(id){

@@ -13,7 +13,7 @@
             </div>
             <div class="col s10 m4 l4 left">
               <input v-if="$router.currentRoute.value.fullPath.endsWith('editor') === true"
-                class="input-field white-text" placeholder="Note title..." id="title-input" />
+                class="input-field white-text" placeholder="Note title..." id="title-input" v-bind:value="this.name" @input="onTitleInput"/>
             </div>
             <div class="col m4 l4 hide-on-med-and-down">
               <div class="right">
@@ -31,7 +31,7 @@
                   </li>
                   <li v-if="this.$store.getters.loggedIn === false">
                     <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
-                      <button id="login" class="btn btn-flat white-text left" style="height: inherit;">
+                      <button id="login" class="btn-flat btn-nav white-text left" style="height: inherit;">
                         <i class="material-icons" style="position:relative; height:inherit;">
                           exit_to_app
                         </i>
@@ -40,7 +40,7 @@
                   </li>
                   <li v-if="this.$store.getters.loggedIn === true">
                     <form method="post" action="https://core.lukas-bownik.net/Identity/Gateway/Logout">
-                      <button class="btn btn-flat white-text left" style="height: inherit;">
+                      <button class="btn-flat btn-nav white-text left" style="height: inherit;">
                         <i class="material-icons rotate" style="position:relative; height:inherit;">
                           exit_to_app
                         </i>
@@ -63,7 +63,7 @@
       </div>
     </div>
     <div id="login_discovery" class="tap-target feature-discovery white-text show-on-small-only" data-target="hamburger"
-      v-if="this.loginDiscoveryMessage === true">
+      v-if="this.loginDiscoveryMessage === true && isTouchScreen">
       <div class="tap-target-content">
         <h5>Federated Identity</h5>
         <p>Pika Note is federated with Pika Core with single identity. Tap here to open sidenav and then LOG IN to
@@ -130,6 +130,7 @@
 import AppDropdown from '@/components/molecules/AppDropdown';
 import SecurityService from '@/services/securityService';
 import M from 'materialize-css';
+import MobileDetectService from './services/mobileDetectService';
 
 export default {
   name: 'App',
@@ -138,7 +139,9 @@ export default {
   },
   data(){
     return {
-      loginDiscoveryMessage: localStorage.getItem('login_discovery') === null
+      loginDiscoveryMessage: localStorage.getItem('login_discovery') === null,
+      isTouchScreen: MobileDetectService.isTouchScreen(),
+      currentTitle: this.$store.getters.name
     }
   },
   mounted: async function() {
@@ -159,6 +162,13 @@ export default {
       this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
       
     }, 60000);
+  },
+  methods: {
+    onTitleInput(e){
+      let title = e.target.value;
+      this.name = title;
+      this.$store.commit({type: 'updateName', name: title});
+    }
   }
 }
 </script>

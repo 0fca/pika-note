@@ -1,5 +1,6 @@
 import MlService from "@/services/mlService";
 import UnauthorizedException from "../components/exceptions/UnauthorizedException";
+//import { raw } from "core-js/core/string";
 
 export default class NoteService {
     constructor() {
@@ -50,7 +51,6 @@ export default class NoteService {
     }
 
     async addNote(bucketId, name, content, rawContent) {
-        console.log(bucketId);
         console.log(rawContent);
         const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
         const mlService = new MlService();
