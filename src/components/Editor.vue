@@ -120,25 +120,27 @@ export default {
         if (this.$store.getters.id) {
           this.noteService.saveNote(this.id, document.getElementById('title-input').value, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note saved!'});
+            const now = new Date();
             this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            M.toast({html: 'Note couldn\'t be saved!'})
+            M.toast({html: 'Note couldn\'t be saved!'});
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
-          const now = new Date();
-          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         } else {
           this.noteService.addNote(this.bucketId, document.getElementById('title-input').value, this.editor.getContent(0), this.editor.elements[0].innerText).then((r) => {
             r.json().then(json => {
               const id = json.payload.id;
               this.$store.commit({type: 'updateId', id: id});
+              const now = new Date();
               this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+              this.$store.commit({type: 'updateIsSaving', isSaving: false});
             });
             M.toast({html: 'Note created!'})
           }).catch(() => {
-            M.toast({html: 'Note couldn\'t be created!'})
+            M.toast({html: 'Note couldn\'t be created!'});
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
-          const now = new Date();
-          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         }
       } else {
         M.toast({html: 'It is a damn good idea to add a title!'})
