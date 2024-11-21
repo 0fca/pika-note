@@ -13,7 +13,7 @@
             </div>
             <div class="col s10 m4 l4 left">
               <input v-if="$router.currentRoute.value.fullPath.endsWith('editor') === true"
-                class="input-field white-text" placeholder="Note title..." id="title-input" v-bind:value="this.name" @input="onTitleInput"/>
+                class="input-field white-text" placeholder="Note title..." id="title-input" v-model="title"/>
             </div>
             <div class="col m4 l4 hide-on-med-and-down">
               <div class="right">
@@ -137,11 +137,21 @@ export default {
   components: {
     AppDropdown
   },
+  computed: {
+    title: {
+      get(){
+        return this.$store.getters.name;
+      },
+      set(name){
+        this.$store.commit({type: 'updateName', name: name})
+      }
+    }
+  },
   data(){
     return {
       loginDiscoveryMessage: localStorage.getItem('login_discovery') === null,
       isTouchScreen: MobileDetectService.isTouchScreen(),
-      currentTitle: this.$store.getters.name
+      name: this.$store.getters.name
     }
   },
   mounted: async function() {
@@ -163,13 +173,6 @@ export default {
       
     }, 60000);
   },
-  methods: {
-    onTitleInput(e){
-      let title = e.target.value;
-      this.name = title;
-      this.$store.commit({type: 'updateName', name: title});
-    }
-  }
 }
 </script>
 
