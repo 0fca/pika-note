@@ -42,9 +42,18 @@ import MediumEditor from "medium-editor";
 
 export default {
   components: {},
+  computed: {
+    id: {
+      get(){
+        return this.$store.getters.id;
+      },
+      set(id){
+        this.$store.commit({type: 'updateId', id: id});
+      }
+    }
+  },
   data() {
     return {
-      id: this.$store.getters.id,
       bucketId: this.$store.getters.bucketUuid,
       name: this.$store.getters.name,
       editor: null,
