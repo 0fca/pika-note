@@ -11,12 +11,6 @@
                     </span>
                     Pika Core
                 </a>
-                <a class="collection-item navlink app-menu-item" href="https://player.lukas-bownik.net/" title="Pika Player">
-                    <span class="material-icons secondary-content navlink red-text text-accent-2">
-                        play_arrow
-                    </span>
-                    Pika Player
-                </a>
                 <a class="collection-item navlink app-menu-item" href="https://infra.lukas-bownik.net/" title="Pika Status">
                     <span class="material-icons secondary-content navlink red-text text-accent-2">
                         favorite_border
