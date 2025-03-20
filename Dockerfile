@@ -1,10 +1,11 @@
-FROM node:23-bookworm-slim as build-stage
+FROM node:21-bookworm-slim as build-stage
 ARG MAJOR
 ARG MINOR
 ARG BUILD
 WORKDIR /app
-RUN cat package.json | sed 's/\({"version":"\)[^"]*\("}\)/\1${MAJOR}.${MINOR}.${BUILD}\2/g'
 COPY package*.json ./
+RUN cat package.json | sed 's/\({"version":"\)[^"]*\("}\)/\1${MAJOR}.${MINOR}.${BUILD}\2/g' > package.json
+
 RUN npm install --legacy-peer-deps
 COPY ./ .
 RUN npm run build
