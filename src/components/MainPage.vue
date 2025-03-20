@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="row" id="notes">
-      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded && isLoggedIn"/>
+      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
       <Error v-if="error"/>
       <Info v-if="bucketId === '' && this.$store.getters.loggedIn === true" message="You should use a dropdown above to choose a bucket"/>
       <Info v-if="this.$store.getters.loggedIn === false" message="To view or create notes you have to log in first. To do so, click a button in the right upper corner."/>

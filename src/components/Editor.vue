@@ -42,12 +42,20 @@ import MediumEditor from "medium-editor";
 
 export default {
   components: {},
+  computed: {
+    id: {
+      get(){
+        return this.$store.getters.id;
+      },
+      set(id){
+        this.$store.commit({type: 'updateId', id: id});
+      }
+    }
+  },
   data() {
     return {
-      id: this.$store.getters.id,
       bucketId: this.$store.getters.bucketUuid,
       name: this.$store.getters.name,
-      content: this.$store.getters.content,
       editor: null,
       editorDiscoveryMessage: localStorage.getItem('editors_discovery') === null ?? false
     }
@@ -61,8 +69,9 @@ export default {
     })
   },
   unmounted() {
-    this.$store.commit({type: 'updateContent', content: ""})
-    this.$store.commit(({type: 'updateName', name: ""}))
+    this.$store.commit({type: 'updateContent', content: ""});
+    this.$store.commit(({type: 'updateName', name: ""}));
+    this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
     this.editor.destroy();
   },
   mounted() {
@@ -118,23 +127,29 @@ export default {
         }
         this.$store.commit({type: 'updateIsSaving', isSaving: true});
         if (this.$store.getters.id) {
-          this.noteService.saveNote(this.id, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
+          this.noteService.saveNote(this.id, document.getElementById('title-input').value, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note saved!'});
+            const now = new Date();
+            this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            M.toast({html: 'Note couldn\'t be saved!'})
+            M.toast({html: 'Note couldn\'t be saved!'});
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
-          const now = new Date();
-          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
-          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         } else {
-          this.noteService.addNote(this.bucketId, this.name, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
+          this.noteService.addNote(this.bucketId, document.getElementById('title-input').value, this.editor.getContent(0), this.editor.elements[0].innerText).then((r) => {
+            r.json().then(json => {
+              const id = json.payload.id;
+              this.$store.commit({type: 'updateId', id: id});
+              const now = new Date();
+              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+              this.$store.commit({type: 'updateIsSaving', isSaving: false});
+            });
             M.toast({html: 'Note created!'})
           }).catch(() => {
-            M.toast({html: 'Note couldn\'t be created!'})
+            M.toast({html: 'Note couldn\'t be created!'});
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
-          const now = new Date();
-          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
-          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         }
       } else {
         M.toast({html: 'It is a damn good idea to add a title!'})

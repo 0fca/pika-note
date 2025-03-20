@@ -1,5 +1,5 @@
 <template>
-  <div class="row card-panel blue accent-2 white-text">
+  <div class="row card-panel havelock white-text">
     <output>{{message}}</output>
   </div>
 </template>

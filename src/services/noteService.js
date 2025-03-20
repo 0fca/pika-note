@@ -15,25 +15,26 @@ export default class NoteService {
             },
             credentials: 'include'
         });
-        if(response.ok){
+        if (response.ok) {
             return response.json();
         }
         throw new UnauthorizedException();
     }
 
     async getNote(id) {
-        const url = `/notes/${id}`; 
+        const url = `/notes/${id}`;
         const rawJson = await this.readData(url);
         return rawJson.payload;
     }
 
     async saveNote(id, name, content, rawContent) {
         const url = `${this.baseUrl}/notes/${id}`;
-        console.log(rawContent);
-        const mlService = new MlService();
-        const p = await mlService.validateLanguage(name, rawContent)
-        if (p.prediction >= 2) {
-            throw new Error('Mind your language!')
+        if (process.env === 'PROD') {
+            const mlService = new MlService();
+            const p = await mlService.validateLanguage(name, rawContent)
+            if (p.prediction >= 2) {
+                throw new Error('Mind your language!')
+            }
         }
         return await fetch(url, {
             method: 'PUT',
@@ -50,13 +51,13 @@ export default class NoteService {
     }
 
     async addNote(bucketId, name, content, rawContent) {
-        console.log(bucketId);
-        console.log(rawContent);
         const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
-        const mlService = new MlService();
-        const p = await mlService.validateLanguage(name, rawContent)
-        if (p.prediction >= 2) {
-            throw new Error('Mind your language!')
+        if (process.env === 'PROD') {
+            const mlService = new MlService();
+            const p = await mlService.validateLanguage(name, rawContent)
+            if (p.prediction >= 2) {
+                throw new Error('Mind your language!')
+            }
         }
         return await fetch(url, {
             method: 'POST',
@@ -72,7 +73,7 @@ export default class NoteService {
         });
     }
 
-    async removeNote(id){
+    async removeNote(id) {
         const url = `${this.baseUrl}/notes/${id}`;
         return await fetch(url, {
             method: 'DELETE',
@@ -84,7 +85,7 @@ export default class NoteService {
         });
     }
 
-    async getBuckets(){
+    async getBuckets() {
         const url = `${this.baseUrl}/notes/buckets`;
         return await fetch(url, {
             method: 'GET',
