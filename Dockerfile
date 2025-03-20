@@ -4,7 +4,8 @@ ARG MINOR
 ARG BUILD
 WORKDIR /app
 COPY package*.json ./
-RUN cat package.json | sed "s/\(\"version\": \"\)[^\"]*\(\"\)/\1${MAJOR}.${MINOR}.${BUILD}\2/g" > package.json
+
+RUN sed -e "s/0.3.0/${MAJOR}.${MINOR}.${BUILD}/g"
 
 
 RUN npm install --legacy-peer-deps
