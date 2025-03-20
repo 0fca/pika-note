@@ -5,7 +5,7 @@ ARG BUILD
 WORKDIR /app
 COPY package*.json ./
 
-RUN sed -e "s/0.3.0/${MAJOR}.${MINOR}.${BUILD}/g" > package.json
+RUN cat package.json | sed -e "s/0.3.0/${MAJOR}.${MINOR}.${BUILD}/g" > package.json.new
 
 RUN npm install --legacy-peer-deps
 COPY ./ .
