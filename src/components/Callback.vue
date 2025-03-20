@@ -14,7 +14,9 @@
 export default {
     name:"Callback",
     mounted: function() {
-       
+      setTimeout(() => {
+             this.$router.push({ path: "/"})
+      }, 2000);
     }
 }
 </script>
