@@ -4,11 +4,10 @@ ARG MINOR
 ARG BUILD
 WORKDIR /app
 COPY package*.json ./
-
-RUN sed -e "s/0.3.0/${MAJOR}.${MINOR}.${BUILD}/g" -i package.json
+COPY ./ .
 
 RUN npm install --legacy-peer-deps
-COPY ./ .
+RUN sed -e "s/0.3.0/${MAJOR}.${MINOR}.${BUILD}/g" -i package.json
 RUN npm run build
 
 FROM nginx:1.27-bookworm as production-stage
