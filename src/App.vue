@@ -24,7 +24,7 @@
                     </router-link>
                   </li>
                   <li>
-                    <a id="app-drop-link" class='dropdown-trigger navlink havelock-text' href='#'
+                    <a id="app-drop-link" class='dropdown-trigger navlink white-text' href='#'
                       data-target='app-dropdown' title="Pika Cloud Apps">
                       <i class="large material-icons">apps</i>
                     </a>
