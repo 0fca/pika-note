@@ -2,7 +2,7 @@
   <div class="editor sticky-section" v-on:keydown.esc="$router.go(-1)" v-on:keydown.ctrl.s.prevent="save">
     <div class="row">
       <div class="fixed-action-btn">
-        <a id="create_floating_btn" class="btn-floating btn-large red accent-2 toolbar-icon">
+        <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon">
           <i class="large material-icons">mode_edit</i>
         </a>
         <ul>
@@ -29,9 +29,6 @@
         <p>This floating button hides a context menu which allows you to either reset the editor's content or save your note. Tap anywhere to dismiss.</p>
       </div>
     </div>
-    <span>
-        <small v-if="$store.getters.content === ''">Loading...</small>
-    </span>
     <div class="row background">
       <div id="editor"></div>
     </div>
@@ -103,12 +100,12 @@ export default {
         this.editor.setContent(this.$store.getters.content, 0);
         this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
         this.$store.commit({type: "updateIfError", error: false});
-        this.runAutoSaveJob();
       }).catch(() => {
         console.log("Error while loading note, auto save feature won't be avialable");
           this.$store.commit({type: "updateIfError", error: true});
       });
     }
+    this.runAutoSaveJob();
     M.updateTextFields();
     this.editor = new MediumEditor('#editor', {
       placeholder: {
@@ -139,9 +136,13 @@ export default {
           M.toast({html: 'Okay, that\'s too much!'});
           return;
         }
+        const content = this.editor.getContent(0);
+        if(this.$store.getters.count === 0){
+          return;
+        }
         this.$store.commit({type: 'updateIsSaving', isSaving: true});
         if (this.$store.getters.id) {
-          this.noteService.saveNote(this.id, document.getElementById('title-input').value, this.editor.getContent(0), this.editor.elements[0].innerText).then(() => {
+          this.noteService.saveNote(this.id, document.getElementById('title-input').value, content, this.editor.elements[0].innerText).then(() => {
             M.toast({html: 'Note saved!'});
             const now = new Date();
             this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
@@ -151,7 +152,7 @@ export default {
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         } else {
-          this.noteService.addNote(this.bucketId, document.getElementById('title-input').value, this.editor.getContent(0), this.editor.elements[0].innerText).then((r) => {
+          this.noteService.addNote(this.bucketId, document.getElementById('title-input').value, content, this.editor.elements[0].innerText).then((r) => {
             r.json().then(json => {
               const id = json.payload.id;
               this.$store.commit({type: 'updateId', id: id});

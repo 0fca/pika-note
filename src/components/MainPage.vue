@@ -140,9 +140,11 @@ export default {
       if(order == 0){
         localStorage.setItem('order', 1);
         this.$store.commit({type: 'updateOrder', order: 1});
+        order = 1;
       } else if(order == 1) {
         localStorage.setItem('order', 0);
         this.$store.commit({type: 'updateOrder', order: 0});
+        order = 0;
       }
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId=" + this.bucketId)
           .then(data => {

@@ -178,12 +178,16 @@ export default {
   methods: {
     formatDate(date){
       const locale = navigator.language.split("-")[0];
-      const d = Date.parse(date);
-      const ye = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(d)
-      const mo = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d)
-      const da = new Intl.DateTimeFormat(locale, { day: '2-digit' }).format(d)
-      const h = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric'}).format(d);
-      return `${da} ${mo} ${ye} ${h}`;
+
+      if(date !== null && date !== undefined){
+        const d = Date.parse(date);
+        const ye = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(d)
+        const mo = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d)
+        const da = new Intl.DateTimeFormat(locale, { day: '2-digit' }).format(d)
+        const h = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric'}).format(d);
+        return `${da} ${mo} ${ye} ${h}`;
+      }
+      return null;
     }
   },
   data(){
