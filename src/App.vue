@@ -95,6 +95,14 @@
           Pika Status
         </a>
       </li>
+      <li>
+        <a class="collection-item navlink app-menu-item" href="/About" title="About Pika Note">
+          <span class="material-icons secondary-content navlink havelock-text">
+            info_outline
+          </span>
+          About
+        </a>
+      </li>
       <li v-if="this.$store.getters.loggedIn === false">
         <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
           <button class="btn btn-flat">
