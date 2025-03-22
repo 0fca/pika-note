@@ -29,17 +29,20 @@ const store = createStore({
     return {
       rawText: '',
       count: 0,
-      content: '',
+      content: localStorage.getItem('content') ?? "",
       name: '',
-      limit: 5000,
+      limit: 20000,
       id: '',
-      order: 0,
-      noteCount: 10,
+      order: localStorage.getItem('order') ?? 1,
+      noteCount: localStorage.getItem('count') ?? 10,
       loggedIn: false,
       bucketName: localStorage.getItem('bucketName') ?? "",
       bucketUuid: localStorage.getItem('bucketUuid') ?? "",
       lastSavedAt: null,
-      isSaving: false
+      isSaving: false,
+      errorLoadingNote: false,
+      updateLock: false,
+      autoSaveJobId: 0
     }
   },
   mutations: {
@@ -66,6 +69,7 @@ const store = createStore({
     },
     updateContent(state, payload){
       state.content = payload.content;
+      localStorage.setItem("content", state.content);
     },
     updateName(state, payload){
       state.name = payload.name;
@@ -91,6 +95,15 @@ const store = createStore({
     },
     updateIsSaving(state, payload){
       state.isSaving = payload.isSaving;
+    },
+    updateIfError(state, payload){
+      state.errorLoadingNote = payload.error;
+    },
+    updateLock(state, payload){
+      state.updateLock = payload.updateLock;
+    },
+    updateIntervalId(state, payload){
+      state.autoSaveJobId = payload.autoSaveJobId;
     }
   },
   getters: {
@@ -129,6 +142,15 @@ const store = createStore({
     },
     isSaving(state){
       return state.isSaving;
+    },
+    errorLoadingNote(state){
+      return state.errorLoadingNote;
+    },
+    canSave(state){
+      return state.updateLock;
+    },
+    autoSaveJobId(state){
+      return state.autoSaveJobId;
     }
   }
 });

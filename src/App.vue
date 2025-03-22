@@ -72,17 +72,25 @@
     </div>
     <ul id="slide-out" class="sidenav">
       <li>
+        <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
+          <span class="material-symbols-outlined secondary-content navlink havelock-text">
+              cloud
+          </span>
+          Pika Cloudfront
+        </a>
+      </li>
+      <li>
         <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/" title="Pika Core">
-          <span class="material-icons secondary-content navlink red-text text-accent-2">
-            search
+          <span class="material-symbols-outlined secondary-content navlink havelock-text">
+              storage
           </span>
           Pika Core
         </a>
       </li>
       <li>
-        <a class="collection-item navlink app-menu-item" href="https://infra.lukas-bownik.net/" title="Pika Status">
-          <span class="material-icons secondary-content navlink red-text text-accent-2">
-            favorite_border
+        <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
+          <span class="material-symbols-outlined secondary-content navlink havelock-text">
+              vital_signs
           </span>
           Pika Status
         </a>
@@ -103,7 +111,7 @@
       </li>
     </ul>
     <div class="row whitesmoke padding">
-      <div class="container center">
+      <div class="container">
         <router-view></router-view>
       </div>
     </div>
@@ -111,15 +119,35 @@
     <AppDropdown />
     <footer class="stats-footer" v-if="$router.currentRoute.value.fullPath.endsWith('editor') === true">
       <div class="row black-text">
-        <div class="col s6 m3 l2 left">
-          <small v-if="$store.getters.isSaving === false">Last saved: {{ $store.getters.lastSavedAt ?? "Never saved"}}</small>
+        <div class="col s6 m4 l4 left">
+          <small v-if="$store.getters.isSaving === false">Last saved: {{ formatDate($store.getters.lastSavedAt) ?? "Never saved"}}</small>
           <small v-if="$store.getters.isSaving === true">
-            <i class="material-icons animate-rotation">cached</i> <span
-              style="bottom: 8px;position: relative;">Saving...</span>
+            <span class="material-symbols-outlined animate-rotation">
+              autorenew
+              </span>
+            <span style="bottom: 8px;position: relative;">Saving...</span>
           </small>
         </div>
-        <div class="col s4 m1 l1 left">
+        <div class="col s4 m3 l3 left">
           <small>{{ $store.getters.count }}/{{ $store.getters.limit }} characters</small>
+        </div>
+        <div class="col s2 m2 l2 right">
+          <small v-if="$store.getters.autoSaveJobId > 0" style="cursor:pointer;">
+            <span class="material-symbols-outlined" style="font-size: large;" v-if="$store.getters.autoSaveJobId > 0">
+              check
+            </span>
+            <span>
+              Auto-save enabled
+            </span>
+          </small>
+          <small v-if="$store.getters.autoSaveJobId === 0" style="cursor:pointer;">
+            <span class="material-symbols-outlined" style="font-size:large;" v-if="$store.getters.autoSaveJobId === 0">
+              block
+            </span>
+            <span>
+              Auto-save disabled
+            </span>
+          </small>
         </div>
       </div>
     </footer>
@@ -145,6 +173,17 @@ export default {
       set(name){
         this.$store.commit({type: 'updateName', name: name})
       }
+    }
+  },
+  methods: {
+    formatDate(date){
+      const locale = navigator.language.split("-")[0];
+      const d = Date.parse(date);
+      const ye = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(d)
+      const mo = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d)
+      const da = new Intl.DateTimeFormat(locale, { day: '2-digit' }).format(d)
+      const h = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric'}).format(d);
+      return `${da} ${mo} ${ye} ${h}`;
     }
   },
   data(){

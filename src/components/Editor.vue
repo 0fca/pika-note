@@ -29,6 +29,9 @@
         <p>This floating button hides a context menu which allows you to either reset the editor's content or save your note. Tap anywhere to dismiss.</p>
       </div>
     </div>
+    <span>
+        <small v-if="$store.getters.content === ''">Loading...</small>
+    </span>
     <div class="row background">
       <div id="editor"></div>
     </div>
@@ -73,6 +76,10 @@ export default {
     this.$store.commit(({type: 'updateName', name: ""}));
     this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
     this.editor.destroy();
+    const id = this.$store.getters.autoSaveJobId;
+    clearInterval(id);
+    this.$store.commit({type: 'updateIntervalId', autoSaveJobId: 0});
+    localStorage.removeItem('content');
   },
   mounted() {
     M.AutoInit();
@@ -95,6 +102,11 @@ export default {
         this.$store.commit({type: 'updateContent', content: content.content});
         this.editor.setContent(this.$store.getters.content, 0);
         this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+        this.$store.commit({type: "updateIfError", error: false});
+        this.runAutoSaveJob();
+      }).catch(() => {
+        console.log("Error while loading note, auto save feature won't be avialable");
+          this.$store.commit({type: "updateIfError", error: true});
       });
     }
     M.updateTextFields();
@@ -108,14 +120,16 @@ export default {
     this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
     const _this = this;
     this.editor.subscribe('editableInput', function (event) {
+      _this.$store.commit({type: 'updateLock', updateLock: true});
       if (event.inputType === 'insertText') {
         _this.$store.commit({type: 'updateRawText', update: event.data});
-        _this.$store.commit('increaseCharactersCounter')
+        _this.$store.commit('increaseCharactersCounter');
       }
       if(event.inputType === 'deleteContentBackward'){
         _this.$store.commit('decreaseCharactersCounter');
         _this.$store.commit({type: 'updateRawText', update: event.data});
       }
+      _this.runEditTimeout();
     });
   },
   methods: {
@@ -159,6 +173,23 @@ export default {
       M.toast({html: 'Cleared!'})
       this.$store.commit({type: 'setCharactersCount', count: 0});
       this.editor.resetContent();
+    },
+    runAutoSaveJob: function() {
+      const autoSaveJobId = setInterval(() => {
+        console.log("auto-save");
+          if(this.$store.getters.errorLoadingNote){
+            return;
+          }
+          if(!this.$store.getters.canSave && !this.$store.getters.isSaving){
+            this.save();
+          }
+      }, 300000);
+      this.$store.commit({type: 'updateIntervalId', autoSaveJobId: autoSaveJobId});
+    },
+    runEditTimeout: function(){
+      setTimeout(() => {
+        this.$store.commit({type: 'updateLock', updateLock: false});
+      }, 5000);
     }
   },
 }

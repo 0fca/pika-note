@@ -1,9 +1,9 @@
 <template>
-  <router-link :to="{ name: 'editor', params: { id: id } }">
+  <router-link :to="{ name: 'editor' }">
     <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist(id)" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
       <div class="card-content grey-text text-darken-1">
-        <span class="card-title">{{ name }}</span>
-        {{ formatDate(date) }}
+        <strong class="card-title flow-text note-title">{{ name }}</strong>
+        <span class="right">{{ formatDate(date) }}</span>
       </div>
     </div>
   </router-link>
@@ -23,6 +23,7 @@ export default {
     persist(id) {
       this.$store.commit({type: 'updateId', id: id});
       this.$store.commit({type: 'updateName', name: this.name});
+      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: this.date});
     },
     addShadow(id){
       const card = document.getElementById(id);
@@ -38,7 +39,8 @@ export default {
       const ye = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(d)
       const mo = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d)
       const da = new Intl.DateTimeFormat(locale, { day: '2-digit' }).format(d)
-      return `${da} ${mo} ${ye}`;
+      const h = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric'}).format(d);
+      return `${da} ${mo} ${ye} ${h}`;
     }
   }
 }

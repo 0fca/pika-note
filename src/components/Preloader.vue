@@ -1,17 +1,9 @@
 <template>
-  <div id="preloader">
-  <p class="flow-text grey-text text-darken-2">{{ message}}</p>
-  <div class="preloader-wrapper big active">
-    <div class="spinner-layer spinner-red-only">
-      <div class="circle-clipper left">
-        <div class="circle"></div>
-      </div><div class="gap-patch">
-      <div class="circle"></div>
-    </div><div class="circle-clipper right">
-      <div class="circle"></div>
-    </div>
-    </div>
-  </div>
+  <div id="preloader" class="card-panel center havelock">
+  <p class="flow-text white-text">{{ message}}</p>
+      <div class="progress havelock">
+        <div class="indeterminate"></div>
+      </div>
   </div>
 </template>
 

@@ -1,37 +1,40 @@
 <template>
   <div class="container">
     <div class="row card-panel filter-bar z-depth-0">
-      <div class="col s12">
-          <div class="left">
-            <Select dropdownText="Choose bucket" :entries="buckets" :onchange="onBucketSelectChange"  v-if="this.$store.getters.loggedIn === true"/>
-          </div>
-          <input class="right text-black" style="cursor: pointer; margin-left: 15px; width: 4em;"  :value="this.$store.getters.noteCount" type="number" min="10" max="250" v-on:change="reloadOnCountChange" />
-          <span class="material-icons right" style="cursor: pointer; margin-left: 15px; margin-top: 10px;" v-on:click="reloadOnOrderChange">
-              reorder
-          </span>
-          <p class="right" style="margin-left: 10px;">{{ this.$store.getters.order == 1 ? "ASC" : "DESC" }}</p>
-          <div class="right"> 
-            <p>Loaded {{ actuallyLoaded }} {{ actuallyLoaded > 1 || actuallyLoaded === 0 ? 'notes' : 'note' }}</p>
+      <div class="col s12 m10 l6">
+          <Select dropdownText="Choose bucket" :entries="buckets" :onchange="onBucketSelectChange"  v-if="this.$store.getters.loggedIn === true"/>
+      </div>
+      <div class="col s12 m2 l6">
+        <div class="right"> 
+            <div class="row">
+            <div class="col s8 m6 l8">
+              <NoteCountDropdown @count-changed="reloadOnCountChange" v-bind:loadedCount="getActuallyLoaded"></NoteCountDropdown>
+            </div>
+            <div class="col s4 m4 l2">
+              <OrderSwitch @order-change="reloadOnOrderChange"/>
+            </div>
+            </div>
           </div>
       </div>
     </div>
     <div class="row" id="notes">
-      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded"/>
+      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded && this.$store.getters.loggedIn"/>
       <Error v-if="error"/>
       <Info v-if="bucketId === '' && this.$store.getters.loggedIn === true" message="You should use a dropdown above to choose a bucket"/>
       <Info v-if="this.$store.getters.loggedIn === false" message="To view or create notes you have to log in first. To do so, click a button in the right upper corner."/>
-      <transition-group name="slide-fade" appear>
+      <transition-group name="slide-fade" appear v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
         <Note v-for="(note, index) in notes"
               v-bind:key="index"
               v-bind:id="note.id"
               v-bind:name="note.humanName"
-              v-bind:date="note.timestamp"
-              v-bind:content="note.content"></Note>
+              v-bind:date="note.timestamp">
+        </Note>
       </transition-group>
+      <Info v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" message="This bucket appears to be empty"/>
     </div>
     <div class="fixed-action-btn" v-if="this.$store.getters.loggedIn === true">
       <router-link to="editor">
-        <a class="btn-floating btn-large red"><i class="material-icons">add</i></a>
+        <a class="btn-floating btn-large floating-btn-orange"><i class="material-icons">add</i></a>
       </router-link>
     </div>
   </div>
@@ -45,8 +48,9 @@ import Error from "@/components/Error";
 import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
+import NoteCountDropdown from './molecules/NoteCountDropdown.vue';
+import OrderSwitch from './molecules/OrderSwitch.vue';
 
-let order = localStorage.order;
 let count = localStorage.count ?? 10;
 
 export default {
@@ -56,14 +60,48 @@ export default {
     Note,
     Preloader,
     Select,
-    Info
+    Info,
+    NoteCountDropdown,
+    OrderSwitch
+  },
+  computed: {
+    order: {
+      get() {
+        return this.$store.getters.order;
+      },
+      set(order){
+        this.$store.commit({type: 'updateOrder', order: order});
+      }
+    },
+    count: {
+      get() {
+        return this.$store.getters.noteCount;
+      },
+      set(count) {
+        this.$store.commit({type: 'updateNoteCount', noteCount: count});
+      }
+    },
+    loggedIn: {
+      get() {
+        return this.$store.getters.loggedIn;
+      },
+      set(loggedIn)
+      {
+        this.$store.commit({type: 'updateLoggedInState', loggedIn: loggedIn});
+      },
+    },
+    getActuallyLoaded()
+    {
+      return this.actuallyLoaded;
+    }
   },
   mounted: function () {
     this.loggedIn = this.$store.getters.loggedIn;
+    let order = this.$store.getters.order;
     if(this.$store.getters.bucketUuid !== ""){
       this.bucketId = this.$store.getters.bucketUuid;
     }
-    this.noteService = new NoteService()
+    this.noteService = new NoteService();
     this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId=" + this.bucketId)
         .then(data => {
           this.onDataReceived(data);
@@ -86,42 +124,48 @@ export default {
       notes: [],
       buckets: [],
       bucketId: "",
-      order:  this.$store.getters.order ?? localStorage.order,
-      count: this.$store.getters.count ?? localStorage.count,
       orderString: "ASC",
       overallCount: localStorage.overallCount,
       loaded: false,
       error: false,
-      actuallyLoaded: 0,
-      isLoggedIn: this.$store.getters.isLoggedIn
+      actuallyLoaded: 0
     }
   },
   methods: {
     reloadOnOrderChange: function () {
-     order = (order === 0) ? 1 : 0;
-     this.$store.commit('updateOrder', {order: order});
-     localStorage.order = order;
+      this.notes = [];
+      this.loaded = false;
+      let order = this.$store.getters.order;
+      let count = this.$store.getters.noteCount;
+      if(order == 0){
+        localStorage.setItem('order', 1);
+        this.$store.commit({type: 'updateOrder', order: 1});
+      } else if(order == 1) {
+        localStorage.setItem('order', 0);
+        this.$store.commit({type: 'updateOrder', order: 0});
+      }
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId=" + this.bucketId)
           .then(data => {
             this.onDataReceived(data);
           })
           .catch(() => {
             this.loaded = true;
+            this.error = true;
           });
     },
-    reloadOnCountChange: function (event) {
-      localStorage.count = event.target.value
-      if(event.target.value === ""){
-        localStorage.count = "10";
-      }
-      this.$store.commit('updateNoteCount', {noteCount: localStorage.count});
-
-      this.noteService.readData('/notes?order=' + order + "&pageSize=" + localStorage.count + "&bucketId=" + this.bucketId)
+    reloadOnCountChange: function () {
+      this.notes = [];
+      this.loaded = false;
+      let order = this.$store.getters.order;
+      let count = this.$store.getters.noteCount;
+      localStorage.setItem("count", this.$store.getters.noteCount);
+      this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId=" + this.bucketId)
           .then(data => {
             this.onDataReceived(data);
           })
           .catch(() => {
             this.loaded = true;
+            this.error = true;
           });
     },
     onDataReceived: function (data) {
@@ -150,12 +194,14 @@ export default {
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
       localStorage.setItem('bucketName', bucketName);
       localStorage.setItem('bucketUuid', bucketUuid);
+      let order = this.$store.getters.order;
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId="+this.bucketId)
         .then(data => {
           this.onDataReceived(data);
           this.error = false;
         })
         .catch(() => {
+          console.log("Error");
           this.error = true;
           this.loaded = true;
         });
