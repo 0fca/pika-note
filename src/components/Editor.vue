@@ -7,14 +7,14 @@
         </a>
         <ul>
           <li>
-            <button @click="save" class="btn-floating red accent-2 toolbar-icon">
+            <button @click="save" class="btn-floating floating-btn-orange toolbar-icon">
               <i class="material-icons">
                 save
               </i>
             </button>
           </li>
           <li>
-            <button @click="clearAll" class="btn-floating red accent-2 toolbar-icon">
+            <button @click="clearAll" class="btn-floating floating-btn-orange toolbar-icon">
               <i class="material-icons">
                 clear_all
               </i>
@@ -23,7 +23,7 @@
         </ul>
       </div>
     </div>
-    <div id="tap-target" class="tap-target red accent-2 white-text" data-target="create_floating_btn" v-if="this.editorDiscoveryMessage === true">
+    <div id="tap-target" class="tap-target floating-btn-orange white-text" data-target="create_floating_btn" v-if="this.editorDiscoveryMessage === true">
       <div class="tap-target-content">
         <h5>Editor Context Actions</h5>
         <p>This floating button hides a context menu which allows you to either reset the editor's content or save your note. Tap anywhere to dismiss.</p>
