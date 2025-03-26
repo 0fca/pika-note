@@ -142,27 +142,36 @@ export default {
         }
         this.$store.commit({type: 'updateIsSaving', isSaving: true});
         if (this.$store.getters.id) {
-          this.noteService.saveNote(this.id, document.getElementById('title-input').value, content, this.editor.elements[0].innerText).then(() => {
-            M.toast({html: 'Note saved!'});
-            const now = new Date();
-            this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+          this.noteService.saveNote(this.id, document.getElementById('title-input').value, content, this.editor.elements[0].innerText)
+          .then((r) => {
+            if(r.ok){
+              M.toast({html: 'Note saved!'});
+              const now = new Date();
+              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+            } else {
+              M.toast({html: `A server responded with non-success code: ${r.status}`});
+            }
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            M.toast({html: 'Note couldn\'t be saved!'});
+            M.toast({html: 'An unexpected error occured, reload the page'});
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         } else {
           this.noteService.addNote(this.bucketId, document.getElementById('title-input').value, content, this.editor.elements[0].innerText).then((r) => {
-            r.json().then(json => {
-              const id = json.payload.id;
-              this.$store.commit({type: 'updateId', id: id});
-              const now = new Date();
-              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
-              this.$store.commit({type: 'updateIsSaving', isSaving: false});
-            });
-            M.toast({html: 'Note created!'})
+            if(r.ok){
+              r.json().then(json => {
+                const id = json.payload.id;
+                this.$store.commit({type: 'updateId', id: id});
+                const now = new Date();
+                this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+              });
+              M.toast({html: 'Note created!'})
+            } else {
+              M.toast({html: `A server responded with non-success code: ${r.status}`});
+            }
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            M.toast({html: 'Note couldn\'t be created!'});
+            M.toast({html: 'An unexpected error occured, reload the page'});
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         }
