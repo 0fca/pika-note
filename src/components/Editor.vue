@@ -108,6 +108,10 @@ export default {
     this.runAutoSaveJob();
     M.updateTextFields();
     this.editor = new MediumEditor('#editor', {
+      toolbar: {
+          buttons: ['bold', 'italic', 'underline', 'strikethrough', 'quote', 'anchor', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'orderedlist', 'unorderedlist', 'outdent', 'indent', 'h2', 'h3', 'h4', 'h5'],
+      },
+      'buttonLabels': 'fontawesome',
       placeholder: {
         text: 'Type your note...',
         hideOnClick: true
@@ -123,8 +127,17 @@ export default {
         _this.$store.commit('increaseCharactersCounter');
       }
       if(event.inputType === 'deleteContentBackward'){
-        _this.$store.commit('decreaseCharactersCounter');
+        if(event.data !== '' && event.data !== null && event.data !== undefined){
+          _this.$store.commit({type: 'setCharactersCount', count: _this.editor.elements[0].innerText.length});
+        } else 
+        {
+          _this.$store.commit({type: 'setCharactersCount', count: 0});
+        }
         _this.$store.commit({type: 'updateRawText', update: event.data});
+      }
+      // An empty eventType for medium-editor means that some edit was done, but it was most probably pasted into it
+      if(event.inputType === '' && _this.editor.elements[0].children.length > 0){
+        _this.$store.commit({type: 'setCharactersCount', count: _this.editor.elements[0].innerText.length});
       }
       _this.runEditTimeout();
     });

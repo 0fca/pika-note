@@ -7,7 +7,6 @@ import Callback from "@/components/Callback"
 import Editor from '@/components/Editor'
 import NoteRedirectHandler from '@/components/NoteRedirectHandler'
 import { createStore } from 'vuex'
-import loader from "vue-ui-preloader";
 
 
 const routes = [
@@ -156,5 +155,4 @@ const store = createStore({
 });
 app.use(store);
 
-app.component('loader', loader)
 app.mount('#app')

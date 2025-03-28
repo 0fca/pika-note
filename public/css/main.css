@@ -432,3 +432,7 @@ nav{
 a {
   color: #ff6f00 !important;
 }
+
+.dropdown-content li > a, .dropdown-content li > span {
+  color: #0A4492 !important;
+}
