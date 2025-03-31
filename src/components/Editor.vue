@@ -108,14 +108,22 @@ export default {
     this.runAutoSaveJob();
     M.updateTextFields();
     this.editor = new MediumEditor('#editor', {
+      targetBlank: true,
+      paste: {
+        forcePlainText: false,
+        cleanPastedHTML: true,
+        cleanAttrs: ['style', 'dir'],
+        cleanTags: ['label', 'meta', 'script']
+      },
       toolbar: {
-          buttons: ['bold', 'italic', 'underline', 'strikethrough', 'quote', 'anchor', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'orderedlist', 'unorderedlist', 'outdent', 'indent', 'h2', 'h3', 'h4', 'h5'],
+          buttons: ['bold', 'italic', 'underline', 'strikethrough', 'quote', 'anchor', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'orderedlist', 'unorderedlist', 'outdent', 'indent', 'h2', 'h3', 'h4', 'h5', 'h6'],
       },
       'buttonLabels': 'fontawesome',
       placeholder: {
         text: 'Type your note...',
         hideOnClick: true
-      }
+      },
+      autoLink: true
     });
     this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
     this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
@@ -127,19 +135,20 @@ export default {
         _this.$store.commit('increaseCharactersCounter');
       }
       if(event.inputType === 'deleteContentBackward'){
-        if(event.data !== '' && event.data !== null && event.data !== undefined){
-          _this.$store.commit({type: 'setCharactersCount', count: _this.editor.elements[0].innerText.length});
-        } else 
-        {
-          _this.$store.commit({type: 'setCharactersCount', count: 0});
-        }
+        if(_this.editor.elements[0].innerText !== null && _this.editor.elements[0].innerText !== undefined){
+          _this.$store.commit('decreaseCharactersCounter');
+        } 
         _this.$store.commit({type: 'updateRawText', update: event.data});
       }
-      // An empty eventType for medium-editor means that some edit was done, but it was most probably pasted into it
-      if(event.inputType === '' && _this.editor.elements[0].children.length > 0){
-        _this.$store.commit({type: 'setCharactersCount', count: _this.editor.elements[0].innerText.length});
-      }
       _this.runEditTimeout();
+      if(event.inputType === 'deleteByCut'){
+        _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
+      }
+    });
+    this.editor.subscribe('editablePaste', function(event){
+      if(event.target.innerText !== ''){
+        _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
+      }
     });
   },
   methods: {
@@ -227,28 +236,6 @@ export default {
   min-height: 50vh;
 }
 
-.toolbar-icon:hover {
-  color: indigo;
-}
 
-.cursor-color {
-  caret-color: #ff5252;
-  border-bottom-color: #ff5252;
-}
 
-/* label underline focus color */
-.input-field input[type=text]:focus {
-  border-bottom: 1px solid #ff5252;
-  box-shadow: 0 1px 0 0 #ff5252;
-}
-
-/* label color */
-.input-field label {
-  color: #000;
-}
-
-/* label focus color */
-.input-field input[type=text]:focus + label {
-  color: #ff5252;
-}
 </style>

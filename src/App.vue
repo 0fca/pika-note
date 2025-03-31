@@ -5,9 +5,9 @@
         <div class="nav-wrapper whitesmoke">
           <div class="row">
             <div id="hamburger" class="col s2 m4 l4">
-              <router-link to="/" class="left hide-on-small-only">
+              <router-link to="/" class="left">
                 <img src="./assets/pikacloud_note.svg" height="50px" style="margin-top: 5px;" alt="Pika Note"
-                  class="brand-logo" />
+                  class="brand-logo only-large-scr" />
               </router-link>
               <a href="#" data-target="slide-out" class="sidenav-trigger"><i class="material-icons">menu</i></a>
             </div>
@@ -228,7 +228,14 @@ export default {
 </script>
 
 <style scoped>
+@import 'assets/main.css';
+@import 'assets/materialize.css';
+@import 'assets/material-icons.css';
+@import 'assets/normalize.css';
+@import 'assets/beagle.css';
 .padding{
   padding-top: 20px;
 }
+
+
 </style>

@@ -180,11 +180,6 @@ textarea {
   color:red;
 }
 
-blockquote{
-  margin: 20px 0;
-  padding-left: 1.5rem;
-  border-left: 5px solid #607FBA !important; /* Just change the color value and that's it*/
-}
 
 .section_paragraph{
 	font-size: 1.15em;
@@ -435,4 +430,20 @@ a {
 
 .dropdown-content li > a, .dropdown-content li > span {
   color: #0A4492 !important;
+}
+
+.medium-editor-element > ul {
+  padding-left: revert !important;
+  list-style: auto !important;
+  list-style-type: disc !important;
+}
+
+.medium-editor-element > ul > li {
+  list-style-type: disc !important;
+}
+
+@media only screen and (max-width: 992px) {
+    .only-large-scr {
+        display: none !important;
+    }
 }
