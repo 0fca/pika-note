@@ -9,15 +9,17 @@ export default class NoteService {
     async readData(url = '', method = 'GET') {
         url = this.baseUrl + url;
         const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Origin': this.baseUrl,
-            },
-            credentials: 'include'
-        });
+                method: method,
+                headers: {
+                    'Origin': this.baseUrl,
+                },
+                credentials: 'include'
+            });
+
         if (response.ok) {
             return response.json();
         }
+
         throw new UnauthorizedException();
     }
 
