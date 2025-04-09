@@ -447,3 +447,14 @@ a {
         display: none !important;
     }
 }
+
+ul {
+  padding-left: revert !important;
+  list-style-type: disc !important; 
+}
+
+ul > li {
+  padding-left: revert !important;
+  list-style-type: disc !important;
+}
+

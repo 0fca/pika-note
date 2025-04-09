@@ -235,7 +235,4 @@ export default {
   height: fit-content;
   min-height: 50vh;
 }
-
-
-
 </style>
