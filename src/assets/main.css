@@ -448,12 +448,12 @@ a {
     }
 }
 
-ul {
+#editor ul {
   padding-left: revert !important;
   list-style-type: disc !important; 
 }
 
-ul > li {
+#editor ul > li {
   padding-left: revert !important;
   list-style-type: disc !important;
 }
