@@ -17,6 +17,12 @@
                     </span>
                     Pika Core
                 </a>
+                <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
+                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                        chat
+                    </span>
+                    Pika Chat
+                </a>
                 <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/status" title="Pika Status">
                     <span class="material-symbols-outlined secondary-content navlink havelock-text">
                         vital_signs
