@@ -88,6 +88,14 @@
         </a>
       </li>
       <li>
+        <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
+          <span class="material-symbols-outlined secondary-content navlink havelock-text">
+              chat
+          </span>
+          Pika Chat
+        </a>
+      </li>
+      <li>
         <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
           <span class="material-symbols-outlined secondary-content navlink havelock-text">
               vital_signs
