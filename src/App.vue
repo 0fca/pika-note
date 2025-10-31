@@ -39,7 +39,7 @@
                     </form>
                   </li>
                   <li v-if="this.$store.getters.loggedIn === true">
-                    <form method="post" action="https://core.lukas-bownik.net/Identity/Gateway/Logout">
+                    <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
                       <button class="btn-flat btn-nav white-text left" style="height: inherit;">
                         <i class="material-icons rotate" style="position:relative; height:inherit;">
                           exit_to_app
@@ -119,7 +119,7 @@
         </form>
       </li>
       <li v-if="this.$store.getters.loggedIn === true">
-        <form method="post" action="https://core.lukas-bownik.net/Identity/Gateway/Logout">
+        <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
           <button class="btn btn-flat">
             LOG OUT
           </button>

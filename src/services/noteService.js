@@ -3,7 +3,7 @@ import UnauthorizedException from "../components/exceptions/UnauthorizedExceptio
 
 export default class NoteService {
     constructor() {
-        this.baseUrl = "https://noteapi.lukas-bownik.net";
+        this.baseUrl = "https://localhost:8001";
     }
 
     async readData(url = '', method = 'GET') {
