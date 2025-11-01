@@ -2,17 +2,15 @@ import {createApp} from 'vue'
 import {createRouter,createWebHistory} from 'vue-router'
 import App from './App'
 import About from './components/About'
-import MainPage from "@/components/MainPage"
+import WorkspaceLayout from "@/components/WorkspaceLayout"
 import Callback from "@/components/Callback"
-import Editor from '@/components/Editor'
 import NoteRedirectHandler from '@/components/NoteRedirectHandler'
 import { createStore } from 'vuex'
 
 
 const routes = [
-  { path: '/', name: 'index', component: MainPage },
+  { path: '/', name: 'index', component: WorkspaceLayout },
   { path: '/about', component: About },
-  { path: '/editor', name: 'editor', component: Editor },
   { path: '/callback', name: 'callback', component: Callback },
   { path: '/note_redirect_handler', name: 'note_redirect_handler', component: NoteRedirectHandler }
 ]
@@ -41,7 +39,8 @@ const store = createStore({
       isSaving: false,
       errorLoadingNote: false,
       updateLock: false,
-      autoSaveJobId: 0
+      autoSaveJobId: 0,
+      autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false' // Default true
     }
   },
   mutations: {
@@ -103,6 +102,9 @@ const store = createStore({
     },
     updateIntervalId(state, payload){
       state.autoSaveJobId = payload.autoSaveJobId;
+    },
+    updateAutoSaveEnabled(state, payload){
+      state.autoSaveEnabled = payload.autoSaveEnabled;
     }
   },
   getters: {
@@ -150,6 +152,9 @@ const store = createStore({
     },
     autoSaveJobId(state){
       return state.autoSaveJobId;
+    },
+    autoSaveEnabled(state){
+      return state.autoSaveEnabled;
     }
   }
 });

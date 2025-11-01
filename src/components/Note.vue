@@ -1,12 +1,10 @@
 <template>
-  <router-link :to="{ name: 'editor' }">
-    <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist(id)" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
-      <div class="card-content grey-text text-darken-1">
-        <strong class="card-title flow-text note-title">{{ name }}</strong>
-        <span class="right">{{ formatDate(date) }}</span>
-      </div>
+  <div v-bind:id="id" class="card whitesmoke note-cursor z-depth-0" v-on:click="persist(id)" v-on:mouseenter="addShadow(id)" v-on:mouseleave="removeShadow(id)">
+    <div class="card-content grey-text text-darken-1">
+      <strong class="card-title flow-text note-title">{{ name }}</strong>
+      <span class="right">{{ formatDate(date) }}</span>
     </div>
-  </router-link>
+  </div>
 </template>
 
 <script>
@@ -47,7 +45,20 @@ export default {
 </script>
 
 <style scoped>
- .note-cursor{
-    cursor: pointer;
-  }
+.note-cursor {
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.card-content {
+  color: var(--color-text) !important;
+}
+
+.card-title {
+  color: var(--color-heading) !important;
+}
+
+.grey-text {
+  color: var(--color-text) !important;
+}
 </style>
