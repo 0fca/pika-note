@@ -87,18 +87,30 @@ export default {
           this.editor.setContent('', 0);
           this.$store.commit({type: 'updateContent', content: ''});
           this.$store.commit({type: 'setCharactersCount', count: 0});
+          this.isProgrammaticTitleUpdate = true;
           this.noteTitle = '';
+          this.isProgrammaticTitleUpdate = false;
           this.showStatsFooter = false;
+          // Reset unsaved changes for new note
+          this.hasUnsavedChanges = false;
         } else {
           // Load existing note
           this.loadNote(newId);
+          this.isProgrammaticTitleUpdate = true;
           this.noteTitle = this.$store.getters.name;
+          this.isProgrammaticTitleUpdate = false;
+          // hasUnsavedChanges will be reset in loadNote
         }
       }
     },
     noteTitle() {
-      // Trigger debounced auto-save when title changes
-      this.triggerDebouncedAutoSave();
+      // Only mark as unsaved if this is a user edit, not a programmatic update
+      if (!this.isProgrammaticTitleUpdate) {
+        // Mark as having unsaved changes when title changes
+        this.hasUnsavedChanges = true;
+        // Trigger debounced auto-save on title changes
+        this.triggerDebouncedAutoSave();
+      }
     }
   },
   data() {
@@ -111,7 +123,9 @@ export default {
       noteTitle: '',
       showStatsFooter: false,
       autoSaveDebounceTimer: null,
-      autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false' // Default true
+      autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false', // Default true
+      hasUnsavedChanges: false,
+      isProgrammaticTitleUpdate: false
     }
   },
   beforeRouteEnter(to, from, next){
@@ -192,12 +206,16 @@ export default {
       if(event.inputType === 'deleteByCut'){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
       }
+      // Mark as having unsaved changes
+      _this.hasUnsavedChanges = true;
       // Trigger debounced auto-save on content change
       _this.triggerDebouncedAutoSave();
     });
     this.editor.subscribe('editablePaste', function(event){
       if(event.target.innerText !== ''){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
+        // Mark as having unsaved changes
+        _this.hasUnsavedChanges = true;
         // Trigger debounced auto-save on paste
         _this.triggerDebouncedAutoSave();
       }
@@ -228,7 +246,11 @@ export default {
             this.editor.setContent(content.content, 0);
             this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
             this.$store.commit({type: "updateIfError", error: false});
+            this.isProgrammaticTitleUpdate = true;
             this.noteTitle = this.$store.getters.name;
+            this.isProgrammaticTitleUpdate = false;
+            // Reset unsaved changes flag when loading a note
+            this.hasUnsavedChanges = false;
           }).catch(() => {
             console.log("Error while loading note");
             this.$store.commit({type: "updateIfError", error: true});
@@ -265,6 +287,8 @@ export default {
               this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
               // Update the title in store after saving
               this.$store.commit({type: 'updateName', name: titleValue});
+              // Reset unsaved changes flag
+              this.hasUnsavedChanges = false;
               // Emit event to parent to reload notes list
               this.$emit('note-saved');
             } else {
@@ -284,6 +308,8 @@ export default {
                 this.$store.commit({type: 'updateName', name: titleValue});
                 const now = new Date();
                 this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+                // Reset unsaved changes flag
+                this.hasUnsavedChanges = false;
                 // Emit event to parent to reload notes list
                 this.$emit('note-saved');
               });
@@ -337,6 +363,12 @@ export default {
     },
     
     performAutoSave() {
+      // Check if there are unsaved changes
+      if (!this.hasUnsavedChanges) {
+        console.log("No unsaved changes, skipping auto-save");
+        return;
+      }
+      
       // Validate that we have content before auto-saving
       if (!this.noteTitle || !this.noteTitle.trim()) {
         return;
