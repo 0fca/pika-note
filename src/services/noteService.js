@@ -3,7 +3,7 @@ import UnauthorizedException from "../components/exceptions/UnauthorizedExceptio
 
 export default class NoteService {
     constructor() {
-        this.baseUrl = "https://noteapi.lukas-bownik.net";
+        this.baseUrl = process.env.VUE_APP_API_BASE_URL || "https://noteapi.lukas-bownik.net";
     }
 
     async readData(url = '', method = 'GET') {
@@ -31,7 +31,7 @@ export default class NoteService {
 
     async saveNote(id, name, content, rawContent) {
         const url = `${this.baseUrl}/notes/${id}`;
-        if (process.env === 'PROD') {
+        if (process.env.VUE_APP_ENV === 'production') {
             const mlService = new MlService();
             const p = await mlService.validateLanguage(name, rawContent)
             if (p.prediction >= 2) {
@@ -54,7 +54,7 @@ export default class NoteService {
 
     async addNote(bucketId, name, content, rawContent) {
         const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
-        if (process.env === 'PROD') {
+        if (process.env.VUE_APP_ENV === 'production') {
             const mlService = new MlService();
             const p = await mlService.validateLanguage(name, rawContent)
             if (p.prediction >= 2) {

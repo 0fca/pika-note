@@ -1,6 +1,6 @@
 export default class SecurityService {
     constructor() {
-        this.baseUrl = "https://noteapi.lukas-bownik.net";
+        this.baseUrl = process.env.VUE_APP_API_BASE_URL || "https://noteapi.lukas-bownik.net";
     }
 
     async validateLoggedInState() {

@@ -3,7 +3,7 @@ import Prediction from "@/models/prediction";
 
 export default class MlService {
     constructor() {
-        this.baseMlModuleUrl = 'https://ml.lukas-bownik.net';
+        this.baseMlModuleUrl = process.env.VUE_APP_ML_BASE_URL || 'https://ml.lukas-bownik.net';
     }
 
     async validateLanguage(name, content) {
