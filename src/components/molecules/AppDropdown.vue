@@ -1,8 +1,11 @@
-<template>
+
+	components: {
+		Note,
+	},<template>
     <div id="app-dropdown" class="card dropdown-content hide-on-small-and-down appdropdown right z-depth-1-half" tabindex="0">
         <div class="card-content text-left">
             <span class="card-title grey-text text-darken-4 center">
-                <img src="https://core.lukas-bownik.net/images/pika-logos/pikacloud_apps.svg" alt="Pika"/>
+                <img :src="pikaAppsLogo" alt="Pika Apps"/>
             </span>
             <div class="collection borderless-collection">
                 <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
@@ -33,3 +36,26 @@
         </div>
     </div>
 </template>
+
+<script>
+import pikaAppsLogo from '@/assets/pikacloud_apps.svg';
+
+export default {
+  name: 'AppDropdown',
+  data() {
+    return {
+      pikaAppsLogo
+    }
+  }
+}
+</script>
+
+<style scoped>
+.card-title {
+  color: var(--color-heading) !important;
+}
+
+.grey-text {
+  color: var(--color-text) !important;
+}
+</style>

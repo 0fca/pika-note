@@ -45,7 +45,7 @@ export default {
             for(let i = 0; i < elems.length; i++){
                 if(elems[i].innerText == this.$store.getters.noteCount){
                     const li = elems[i];
-                    li.setAttribute('class', 'havelock white-text');
+                    li.setAttribute('class', 'selected-option');
                 }
             }
         },
@@ -62,3 +62,10 @@ export default {
     }
 }
 </script>
+
+<style>
+.selected-option {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+</style>

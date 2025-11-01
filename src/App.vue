@@ -4,22 +4,21 @@
       <nav class="z-depth-0">
         <div class="nav-wrapper whitesmoke">
           <div class="row">
-            <div id="hamburger" class="col s2 m4 l4">
+            <div id="hamburger" class="col s2 m2 l2">
               <router-link to="/" class="left">
                 <img src="./assets/pikacloud_note.svg" height="50px" style="margin-top: 5px;" alt="Pika Note"
                   class="brand-logo only-large-scr" />
               </router-link>
               <a href="#" data-target="slide-out" class="sidenav-trigger"><i class="material-icons">menu</i></a>
             </div>
-            <div class="col s10 m4 l4 left">
-              <input v-if="$router.currentRoute.value.fullPath.endsWith('editor') === true"
-                class="input-field white-text" placeholder="Note title..." id="title-input" v-model="title"/>
+            <div class="col s8 m8 l8 center">
+              <h5 class="nav-title" v-if="$store.getters.id !== '' && $store.getters.name">{{ $store.getters.name }}</h5>
             </div>
-            <div class="col m4 l4 hide-on-med-and-down">
+            <div class="col s2 m2 l2 hide-on-med-and-down">
               <div class="right">
                 <ul class="right hide-on-med-and-down">
                   <li>
-                    <router-link to="/About">
+                    <router-link to="/About" class="navlink">
                         <i class="material-icons">info_outline</i>
                     </router-link>
                   </li>
@@ -31,7 +30,7 @@
                   </li>
                   <li v-if="this.$store.getters.loggedIn === false">
                     <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
-                      <button id="login" class="btn-flat btn-nav white-text left" style="height: inherit;">
+                      <button id="login" class="btn-flat btn-nav navlink white-text left" style="height: inherit;">
                         <i class="material-icons" style="position:relative; height:inherit;">
                           exit_to_app
                         </i>
@@ -40,7 +39,7 @@
                   </li>
                   <li v-if="this.$store.getters.loggedIn === true">
                     <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
-                      <button class="btn-flat btn-nav white-text left" style="height: inherit;">
+                      <button class="btn-flat btn-nav navlink white-text left" style="height: inherit;">
                         <i class="material-icons rotate" style="position:relative; height:inherit;">
                           exit_to_app
                         </i>
@@ -71,46 +70,7 @@
       </div>
     </div>
     <ul id="slide-out" class="sidenav">
-      <li>
-        <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
-          <span class="material-symbols-outlined secondary-content navlink havelock-text">
-              cloud
-          </span>
-          Pika Cloudfront
-        </a>
-      </li>
-      <li>
-        <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/" title="Pika Core">
-          <span class="material-symbols-outlined secondary-content navlink havelock-text">
-              storage
-          </span>
-          Pika Core
-        </a>
-      </li>
-      <li>
-        <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
-          <span class="material-symbols-outlined secondary-content navlink havelock-text">
-              chat
-          </span>
-          Pika Chat
-        </a>
-      </li>
-      <li>
-        <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
-          <span class="material-symbols-outlined secondary-content navlink havelock-text">
-              vital_signs
-          </span>
-          Pika Status
-        </a>
-      </li>
-      <li>
-        <a class="collection-item navlink app-menu-item" href="/About" title="About Pika Note">
-          <span class="material-icons secondary-content navlink havelock-text">
-            info_outline
-          </span>
-          About
-        </a>
-      </li>
+      <!-- Login/Logout at top -->
       <li v-if="this.$store.getters.loggedIn === false">
         <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
           <button class="btn btn-flat">
@@ -125,6 +85,73 @@
           </button>
         </form>
       </li>
+      
+      <!-- Collapsible Applications menu -->
+      <li>
+        <ul class="collapsible collapsible-accordion">
+          <li>
+            <a class="collapsible-header">
+              Applications
+              <i class="material-icons right">expand_more</i>
+            </a>
+            <div class="collapsible-body">
+              <ul>
+                <li>
+                  <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
+                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                        cloud
+                    </span>
+                    Pika Cloudfront
+                  </a>
+                </li>
+                <li>
+                  <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/" title="Pika Core">
+                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                        storage
+                    </span>
+                    Pika Core
+                  </a>
+                </li>
+                <li>
+                  <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
+                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                        chat
+                    </span>
+                    Pika Chat
+                  </a>
+                </li>
+                <li>
+                  <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
+                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                        vital_signs
+                    </span>
+                    Pika Status
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+        </ul>
+      </li>
+      
+      <li>
+        <a class="collection-item navlink app-menu-item" href="/About" title="About Pika Note">
+          <span class="material-icons secondary-content navlink havelock-text">
+            info_outline
+          </span>
+          About
+        </a>
+      </li>
+      
+      <!-- Divider before notes list -->
+      <li><div class="divider"></div></li>
+      
+      <!-- Notes list for mobile/tablet -->
+      <li class="mobile-notes-section hide-on-large-only" v-if="this.$store.getters.loggedIn">
+        <div class="mobile-notes-header">
+          <h6 class="sidenav-section-title">My Notes</h6>
+        </div>
+      </li>
     </ul>
     <div class="row whitesmoke padding">
       <div class="container">
@@ -133,7 +160,7 @@
     </div>
 
     <AppDropdown />
-    <footer class="stats-footer" v-if="$router.currentRoute.value.fullPath.endsWith('editor') === true">
+    <footer class="stats-footer" v-if="$store.getters.loggedIn && ($store.getters.id !== '' || $store.getters.count > 0)">
       <div class="row black-text">
         <div class="col s6 m4 l4 left">
           <small v-if="$store.getters.isSaving === false">Last saved: {{ formatDate($store.getters.lastSavedAt) ?? "Never saved"}}</small>
@@ -148,16 +175,16 @@
           <small>{{ $store.getters.count }}/{{ $store.getters.limit }} characters</small>
         </div>
         <div class="col s2 m2 l2 right">
-          <small v-if="$store.getters.autoSaveJobId > 0" style="cursor:pointer;">
-            <span class="material-symbols-outlined" style="font-size: large;" v-if="$store.getters.autoSaveJobId > 0">
+          <small v-if="$store.getters.autoSaveEnabled" style="cursor:pointer;">
+            <span class="material-symbols-outlined" style="font-size: large;">
               check
             </span>
             <span>
               Auto-save enabled
             </span>
           </small>
-          <small v-if="$store.getters.autoSaveJobId === 0" style="cursor:pointer;">
-            <span class="material-symbols-outlined" style="font-size:large;" v-if="$store.getters.autoSaveJobId === 0">
+          <small v-if="!$store.getters.autoSaveEnabled" style="cursor:pointer;">
+            <span class="material-symbols-outlined" style="font-size:large;">
               block
             </span>
             <span>
@@ -235,15 +262,104 @@ export default {
 }
 </script>
 
+<style>
+/* Import order matters - base styles first, then framework, then custom */
+@import './assets/normalize.css';
+@import './assets/materialize.css';
+@import './assets/material-icons.css';
+@import './assets/main.css';
+@import './assets/beagle.css';
+</style>
+
 <style scoped>
-@import 'assets/main.css';
-@import 'assets/materialize.css';
-@import 'assets/material-icons.css';
-@import 'assets/normalize.css';
-@import 'assets/beagle.css';
-.padding{
-  padding-top: 20px;
+.padding {
+  padding-top: var(--spacing-xl);
 }
 
+.nav-title {
+  color: var(--color-nav-text);
+  margin: 0;
+  padding: 0;
+  line-height: 64px;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
+/* Navbar icons - ensure they're white */
+nav .material-icons {
+  color: white !important;
+}
+
+nav .btn-nav .material-icons {
+  color: white !important;
+}
+
+/* Navbar hover effects for all buttons and links */
+nav .navlink:hover {
+  background-color: var(--color-nav-hover) !important;
+}
+
+nav .navlink:hover .material-icons {
+  color: var(--color-primary) !important;
+}
+
+nav button.navlink {
+  border: none;
+  background-color: transparent;
+}
+
+nav button.navlink:hover {
+  background-color: var(--color-nav-hover) !important;
+}
+
+/* Sidenav customizations */
+.sidenav .collapsible {
+  border: none;
+  box-shadow: none;
+  margin: 0;
+}
+
+.sidenav .collapsible-header {
+  padding: 0 32px;
+  font-weight: var(--font-weight-semibold);
+  border: none;
+  background-color: transparent;
+}
+
+.sidenav .collapsible-body {
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}
+
+.sidenav .collapsible-body ul {
+  padding: 0;
+  margin: 0;
+}
+
+.sidenav .collapsible-body li {
+  padding: 0;
+}
+
+.mobile-notes-section {
+  padding: 0 !important;
+}
+
+.mobile-notes-header {
+  padding: 16px 32px 8px;
+}
+
+.sidenav-section-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.sidenav .divider {
+  margin: 8px 0;
+}
 </style>
