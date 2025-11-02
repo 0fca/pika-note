@@ -322,10 +322,53 @@ select {
   width: 100vw;
   background-color: var(--color-background-soft) !important;
   border-top: 1px solid var(--color-border);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 8px 16px;
   color: var(--color-text);
   z-index: 10;
   box-shadow: var(--shadow-md);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 6px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.stats-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats-item small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.stats-item strong {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 600px) {
+  .stats-footer {
+    padding: 6px 12px;
+  }
+  
+  .stats-grid {
+    gap: 4px 12px;
+  }
+  
+  .stats-item small {
+    font-size: 11px;
+  }
 }
 
 .black-text {

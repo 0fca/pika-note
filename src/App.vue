@@ -12,7 +12,14 @@
               <a href="#" data-target="slide-out" class="sidenav-trigger"><i class="material-icons">menu</i></a>
             </div>
             <div class="col s8 m8 l8 center">
-              <h5 class="nav-title" v-if="$store.getters.id !== '' && $store.getters.name">{{ $store.getters.name }}</h5>
+              <div v-if="$store.getters.id !== '' && $store.getters.name">
+                <h5 class="nav-title">{{ $store.getters.name }}</h5>
+              </div>
+              <div v-else-if="$store.getters.bucketName && $store.getters.loggedIn" class="hide-on-large-only">
+                <h5 class="nav-title">
+                  {{ $store.getters.bucketName }}
+                </h5>
+              </div>
             </div>
             <div class="col s2 m2 l2 hide-on-med-and-down">
               <div class="right">
@@ -161,35 +168,49 @@
 
     <AppDropdown />
     <footer class="stats-footer" v-if="$store.getters.loggedIn && ($store.getters.id !== '' || $store.getters.count > 0)">
-      <div class="row black-text">
-        <div class="col s6 m4 l4 left">
-          <small v-if="$store.getters.isSaving === false">Last saved: {{ formatDate($store.getters.lastSavedAt) ?? "Never saved"}}</small>
+      <div class="stats-grid">
+        <!-- Top Left: Last Update -->
+        <div class="stats-item">
+          <small v-if="$store.getters.isSaving === false">
+            <strong>Last saved:</strong> {{ formatDate($store.getters.lastSavedAt) ?? "Never saved"}}
+          </small>
           <small v-if="$store.getters.isSaving === true">
-            <span class="material-symbols-outlined animate-rotation">
+            <span class="material-symbols-outlined animate-rotation" style="font-size: 16px; vertical-align: middle;">
               autorenew
-              </span>
-            <span style="bottom: 8px;position: relative;">Saving...</span>
+            </span>
+            <span>Saving...</span>
           </small>
         </div>
-        <div class="col s4 m3 l3 left">
-          <small>{{ $store.getters.count }}/{{ $store.getters.limit }} characters</small>
+        
+        <!-- Top Right: Character Counter -->
+        <div class="stats-item">
+          <small><strong>Characters:</strong> {{ $store.getters.count }}/{{ $store.getters.limit }}</small>
         </div>
-        <div class="col s2 m2 l2 right">
-          <small v-if="$store.getters.autoSaveEnabled" style="cursor:pointer;">
-            <span class="material-symbols-outlined" style="font-size: large;">
+        
+        <!-- Bottom Left: Auto-save Status -->
+        <div class="stats-item">
+          <small v-if="$store.getters.autoSaveEnabled">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">
               check
             </span>
-            <span>
-              Auto-save enabled
-            </span>
+            <span>Auto-save enabled</span>
           </small>
-          <small v-if="!$store.getters.autoSaveEnabled" style="cursor:pointer;">
-            <span class="material-symbols-outlined" style="font-size:large;">
+          <small v-if="!$store.getters.autoSaveEnabled">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">
               block
             </span>
-            <span>
-              Auto-save disabled
-            </span>
+            <span>Auto-save disabled</span>
+          </small>
+        </div>
+        
+        <!-- Bottom Right: Current Bucket -->
+        <div class="stats-item">
+          <small v-if="$store.getters.bucketName">
+            <i class="material-icons" style="font-size: 16px; vertical-align: middle;">folder</i>
+            <span>{{ $store.getters.bucketName }}</span>
+          </small>
+          <small v-else>
+            <span style="opacity: 0.6;">No bucket selected</span>
           </small>
         </div>
       </div>
@@ -286,6 +307,12 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.bucket-icon {
+  font-size: 28px !important;
+  vertical-align: middle;
+  margin-right: 8px;
 }
 
 /* Navbar icons - ensure they're white */
