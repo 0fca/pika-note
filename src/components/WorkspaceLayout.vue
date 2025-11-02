@@ -22,9 +22,6 @@
       class="mobile-drawer hide-on-large-only"
       :class="{ 'drawer-open': isDrawerOpen }"
       :style="{ transform: drawerTransform }"
-      @touchstart="handleDrawerTouchStart"
-      @touchmove="handleDrawerTouchMove"
-      @touchend="handleDrawerTouchEnd"
     >
       <div class="drawer-content">
         <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
@@ -292,11 +289,13 @@ export default {
       this.bucketId = this.$store.getters.bucketUuid;
     }
     this.noteService = new NoteService();
-    this.loadNotes();
     this.noteService.getBuckets()
       .then(buckets => {
         this.onBucketsReceived(buckets);
+        this.loaded = true;
+        this.loading = false;
       });
+      this.loadNotes();
     
     // Enable teleport after mount and check if target exists
     // Use a small delay to ensure the parent App component's sidenav is fully mounted
@@ -306,12 +305,21 @@ export default {
         // Check if teleport target exists
         const target = document.querySelector('.mobile-notes-section');
         this.hasTeleportTarget = target !== null;
+        
+        // Setup hamburger button listener
+        this.setupHamburgerListener();
       }, 50);
     });
   },
   beforeUnmount() {
     // Clean up when component is destroyed
     this.hasTeleportTarget = false;
+    
+    // Remove hamburger button listener
+    const hamburger = document.querySelector('.sidenav-trigger');
+    if (hamburger) {
+      hamburger.removeEventListener('click', this.handleHamburgerClick);
+    }
   },
   data: function () {
     return {
@@ -571,6 +579,23 @@ export default {
       
       // Re-enable body scroll
       document.body.style.overflow = '';
+    },
+    setupHamburgerListener() {
+      const hamburger = document.querySelector('.sidenav-trigger');
+      if (hamburger) {
+        hamburger.addEventListener('click', this.handleHamburgerClick);
+      }
+    },
+    handleHamburgerClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Toggle drawer state
+      if (this.isDrawerOpen) {
+        this.closeDrawer();
+      } else {
+        this.openDrawer();
+      }
     }
   }
 }
@@ -818,24 +843,27 @@ export default {
   top: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #0a4492;
-  width: 48px;
-  height: 48px;
+  background-color: rgba(10, 68, 146, 0.95);
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   z-index: 1500;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 12px;
+  backdrop-filter: blur(10px);
 }
 
 .spinner-circle {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  box-sizing: border-box;
 }
 
 @keyframes spin {
@@ -866,8 +894,13 @@ export default {
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .mobile-loading-toast {
-    background-color: #1565c0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background-color: rgba(21, 101, 192, 0.95);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  
+  .spinner-circle {
+    border-color: rgba(255, 255, 255, 0.2);
+    border-top-color: white;
   }
   
   .mobile-drawer {
