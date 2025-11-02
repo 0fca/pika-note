@@ -1,7 +1,8 @@
 <template>
   <div>
-    <!-- Edge Swipe Zone for Mobile Drawer -->
+    <!-- Edge Swipe Zone for Mobile Drawer - Only active when drawer is closed -->
     <div 
+      v-if="!isDrawerOpen"
       class="edge-swipe-zone hide-on-large-only"
       @touchstart="handleEdgeSwipeStart"
       @touchmove="handleEdgeSwipeMove"
@@ -95,6 +96,19 @@
     <transition name="toast">
       <div v-if="(!loaded || isDrawerOpening) && this.$store.getters.loggedIn" class="mobile-loading-toast hide-on-large-only">
         <div class="spinner-circle"></div>
+      </div>
+    </transition>
+
+    <!-- Bucket Selection Prompt Toast -->
+    <transition name="toast">
+      <div v-if="showBucketPrompt && this.$store.getters.loggedIn" class="bucket-prompt-toast hide-on-large-only">
+        <div class="bucket-prompt-content">
+          <i class="material-icons">folder_open</i>
+          <span>Select a bucket from the drawer menu</span>
+          <button @click="dismissBucketPrompt" class="dismiss-btn">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
       </div>
     </transition>
     
@@ -344,7 +358,8 @@ export default {
       drawerTouchStartY: 0,
       drawerCurrentX: 0,
       swipeStartX: 0,
-      swipeStartY: 0
+      swipeStartY: 0,
+      showBucketPrompt: false
     }
   },
   methods: {
@@ -426,6 +441,22 @@ export default {
                 id: bucketsPayload.payload[i].bucketId,
                 text: bucketsPayload.payload[i].bucketName
               });
+            }
+            
+            // After buckets are loaded, check if we have a selected bucket
+            const storedBucketUuid = localStorage.getItem('bucketUuid');
+            const storedBucketName = localStorage.getItem('bucketName');
+            
+            if (storedBucketUuid && storedBucketName) {
+              // Update store with current bucket
+              this.$store.commit({
+                type: 'updateCurrentBucket', 
+                bucketName: storedBucketName, 
+                bucketUuid: storedBucketUuid
+              });
+            } else {
+              // No bucket selected - show prompt toast
+              this.showBucketPromptToast();
             }
           }
         });
@@ -596,6 +627,16 @@ export default {
       } else {
         this.openDrawer();
       }
+    },
+    showBucketPromptToast() {
+      // Show prompt for 5 seconds
+      this.showBucketPrompt = true;
+      setTimeout(() => {
+        this.showBucketPrompt = false;
+      }, 5000);
+    },
+    dismissBucketPrompt() {
+      this.showBucketPrompt = false;
     }
   }
 }
@@ -802,6 +843,9 @@ export default {
 .drawer-content {
   padding: var(--spacing-md) 0;
   min-height: 100%;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .drawer-overlay {
@@ -870,6 +914,61 @@ export default {
   to { transform: rotate(360deg); }
 }
 
+/* Bucket Prompt Toast */
+.bucket-prompt-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(245, 124, 0, 0.95);
+  max-width: 90%;
+  border-radius: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1500;
+  backdrop-filter: blur(10px);
+}
+
+.bucket-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  color: white;
+}
+
+.bucket-prompt-content i.material-icons {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.bucket-prompt-content span {
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.dismiss-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.dismiss-btn:hover {
+  opacity: 1;
+}
+
+.dismiss-btn i {
+  font-size: 20px;
+}
+
 /* Toast transition */
 .toast-enter-active, .toast-leave-active {
   transition: opacity 0.3s, transform 0.3s;
@@ -901,6 +1000,11 @@ export default {
   .spinner-circle {
     border-color: rgba(255, 255, 255, 0.2);
     border-top-color: white;
+  }
+  
+  .bucket-prompt-toast {
+    background-color: rgba(255, 152, 0, 0.95);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
   
   .mobile-drawer {

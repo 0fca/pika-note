@@ -1,6 +1,6 @@
 <template>
   <div class="container center">
-    <div class="card about-card" v-once>
+    <div class="card about-card">
       <div class="card-content">
         <span class="card-title about-title">Pika Note v. {{version}}</span>
         <span class="card-action" style="border-top: none;">
@@ -8,6 +8,7 @@
         </span>
       </div>
     </div>
+    <div><img src="@/assets/pika_note.png" alt="Pika Note Illustration" style="margin-top: var(--spacing-xl); max-width: 400px; width: 100%;"/></div>
   </div>
 </template>
 
