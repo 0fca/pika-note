@@ -1,12 +1,108 @@
 <template>
   <div>
+    <!-- Edge Swipe Zone for Mobile Drawer -->
+    <div 
+      class="edge-swipe-zone hide-on-large-only"
+      @touchstart="handleEdgeSwipeStart"
+      @touchmove="handleEdgeSwipeMove"
+      @touchend="handleEdgeSwipeEnd"
+    ></div>
+
+    <!-- Mobile Drawer Overlay -->
+    <transition name="drawer-overlay">
+      <div 
+        v-if="isDrawerOpen" 
+        class="drawer-overlay hide-on-large-only"
+        @click="closeDrawer"
+      ></div>
+    </transition>
+
+    <!-- Mobile Drawer -->
+    <div 
+      class="mobile-drawer hide-on-large-only"
+      :class="{ 'drawer-open': isDrawerOpen }"
+      :style="{ transform: drawerTransform }"
+      @touchstart="handleDrawerTouchStart"
+      @touchmove="handleDrawerTouchMove"
+      @touchend="handleDrawerTouchEnd"
+    >
+      <div class="drawer-content">
+        <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
+          <Select 
+            dropdownText="Choose bucket" 
+            :entries="buckets" 
+            :onchange="onBucketSelectChange" 
+            v-if="this.$store.getters.loggedIn === true"
+          />
+        </div>
+        
+        <div class="mobile-notes-controls">
+          <OrderSwitch @order-change="reloadOnOrderChange"/>
+        </div>
+        
+        <div class="mobile-notes-container">
+          <Preloader 
+            message="Loading notes..." 
+            v-if="!loaded && this.$store.getters.loggedIn"
+          />
+          <Error v-if="error"/>
+          <Info 
+            v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
+            message="Choose a bucket above"
+          />
+          
+          <!-- Create New Note Card -->
+          <div 
+            v-if="this.$store.getters.loggedIn && bucketId !== ''" 
+            class="card create-note-card z-depth-0"
+            @click="createNewNoteAndCloseNav"
+          >
+            <div class="card-content">
+              <i class="material-icons create-icon">add_circle_outline</i>
+              <span class="create-text">Create New Note</span>
+            </div>
+          </div>
+          
+          <div v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
+            <Note 
+              v-for="note in notes"
+              :key="note.id"
+              :id="note.id"
+              :name="note.humanName"
+              :date="note.timestamp"
+              @click="loadNoteIntoEditorAndCloseNav(note)"
+            />
+          </div>
+          
+          <Info 
+            v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
+            message="Click above to create your first note"
+          />
+          
+          <!-- Loading indicator for infinite scroll -->
+          <div v-if="isLoadingMore" class="loading-more">
+            <div class="progress">
+              <div class="indeterminate"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Login message when not logged in - shown above everything -->
     <div v-if="this.$store.getters.loggedIn === false" class="login-message-container">
       <Info message="Please log in to view or create notes" />
     </div>
+
+    <!-- Loading Toast for Mobile -->
+    <transition name="toast">
+      <div v-if="(!loaded || isDrawerOpening) && this.$store.getters.loggedIn" class="mobile-loading-toast hide-on-large-only">
+        <div class="spinner-circle"></div>
+      </div>
+    </transition>
     
     <div class="workspace-layout">
-    <!-- Teleport notes to sidenav for mobile/tablet - only render if target exists -->
+    <!-- Keep old teleport for backward compatibility if needed -->
     <Teleport to=".mobile-notes-section" v-if="isMounted && hasTeleportTarget">
       <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
         <Select 
@@ -155,7 +251,6 @@ import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
-import M from 'materialize-css';
 
 const pageSize = 15;
 
@@ -232,7 +327,16 @@ export default {
       hasMoreNotes: true,
       currentPage: 0,
       isMounted: false,
-      hasTeleportTarget: false
+      hasTeleportTarget: false,
+      isDrawerOpening: false,
+      isDrawerOpen: false,
+      drawerTransform: 'translateX(-100%)',
+      isDraggingDrawer: false,
+      drawerTouchStartX: 0,
+      drawerTouchStartY: 0,
+      drawerCurrentX: 0,
+      swipeStartX: 0,
+      swipeStartY: 0
     }
   },
   methods: {
@@ -349,21 +453,15 @@ export default {
     },
     createNewNoteAndCloseNav() {
       this.createNewNote();
-      this.closeSidenav();
+      this.closeDrawer();
     },
     loadNoteIntoEditorAndCloseNav(note) {
       this.loadNoteIntoEditor(note);
-      this.closeSidenav();
+      this.closeDrawer();
     },
     closeSidenav() {
-      // Close sidenav on mobile after selecting a note
-      const sidenav = document.getElementById('slide-out');
-      if (sidenav) {
-        const instance = M.Sidenav.getInstance(sidenav);
-        if (instance) {
-          instance.close();
-        }
-      }
+      // Backward compatibility - close custom drawer
+      this.closeDrawer();
     },
     onNoteSaved() {
       // Reload the notes list after successful save/update
@@ -372,6 +470,107 @@ export default {
       this.hasMoreNotes = true;
       this.loaded = false;
       this.loadNotes();
+    },
+    handleEdgeSwipeStart(e) {
+      // Only track swipes that start within 30px of the left edge
+      if (e.touches[0].clientX <= 30) {
+        this.swipeStartX = e.touches[0].clientX;
+        this.swipeStartY = e.touches[0].clientY;
+        this.isDraggingDrawer = true;
+      } else {
+        this.swipeStartX = -1;
+      }
+    },
+    handleEdgeSwipeMove(e) {
+      if (this.swipeStartX === -1 || this.swipeStartX > 30 || !this.isDraggingDrawer) return;
+      
+      e.preventDefault();
+      const currentX = e.touches[0].clientX;
+      const deltaX = currentX - this.swipeStartX;
+      
+      // Only allow positive movement (opening)
+      if (deltaX > 0) {
+        const drawerWidth = 300; // Match CSS
+        const progress = Math.min(deltaX / drawerWidth, 1);
+        this.drawerTransform = `translateX(${-100 + (progress * 100)}%)`;
+      }
+    },
+    handleEdgeSwipeEnd(e) {
+      if (this.swipeStartX === -1 || this.swipeStartX > 30) return;
+
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - this.swipeStartX;
+      const deltaY = Math.abs(endY - this.swipeStartY);
+
+      // Open drawer if swiped more than 100px horizontally and less than 50px vertically
+      if (deltaX > 100 && deltaY < 50) {
+        this.openDrawer();
+      } else {
+        // Reset transform if swipe wasn't sufficient
+        this.drawerTransform = 'translateX(-100%)';
+      }
+
+      // Reset
+      this.swipeStartX = -1;
+      this.swipeStartY = -1;
+      this.isDraggingDrawer = false;
+    },
+    handleDrawerTouchStart(e) {
+      if (!this.isDrawerOpen) return;
+      this.drawerTouchStartX = e.touches[0].clientX;
+      this.drawerTouchStartY = e.touches[0].clientY;
+      this.drawerCurrentX = e.touches[0].clientX;
+      this.isDraggingDrawer = true;
+    },
+    handleDrawerTouchMove(e) {
+      if (!this.isDraggingDrawer || !this.isDrawerOpen) return;
+      
+      this.drawerCurrentX = e.touches[0].clientX;
+      const deltaX = this.drawerCurrentX - this.drawerTouchStartX;
+      
+      // Only allow negative movement (closing)
+      if (deltaX < 0) {
+        const drawerWidth = 300;
+        const progress = Math.max(deltaX / drawerWidth, -1);
+        this.drawerTransform = `translateX(${progress * 100}%)`;
+      }
+    },
+    handleDrawerTouchEnd(e) {
+      if (!this.isDraggingDrawer || !this.isDrawerOpen) return;
+      
+      const endX = e.changedTouches[0].clientX;
+      const deltaX = endX - this.drawerTouchStartX;
+      
+      // Close if swiped more than 100px to the left
+      if (deltaX < -100) {
+        this.closeDrawer();
+      } else {
+        // Reset to open position
+        this.drawerTransform = 'translateX(0)';
+      }
+      
+      this.isDraggingDrawer = false;
+    },
+    openDrawer() {
+      this.isDrawerOpening = true;
+      this.isDrawerOpen = true;
+      this.drawerTransform = 'translateX(0)';
+      
+      // Hide loading after animation
+      setTimeout(() => {
+        this.isDrawerOpening = false;
+      }, 300);
+      
+      // Prevent body scroll when drawer is open
+      document.body.style.overflow = 'hidden';
+    },
+    closeDrawer() {
+      this.isDrawerOpen = false;
+      this.drawerTransform = 'translateX(-100%)';
+      
+      // Re-enable body scroll
+      document.body.style.overflow = '';
     }
   }
 }
@@ -514,9 +713,8 @@ export default {
 
 .mobile-notes-container {
   padding: 0 8px;
-  padding-bottom: 80px; /* Extra padding to prevent stats footer from covering last note */
-  max-height: 50vh;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .mobile-notes-container .create-note-card {
@@ -552,6 +750,133 @@ export default {
 @media (max-width: 600px) {
   .editor-main {
     padding: var(--spacing-sm);
+  }
+}
+
+/* Mobile Drawer */
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 300px;
+  max-width: 85vw;
+  height: 100vh;
+  background-color: var(--color-background);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.mobile-drawer.drawer-open {
+  transform: translateX(0);
+}
+
+.drawer-content {
+  padding: var(--spacing-md) 0;
+  min-height: 100%;
+}
+
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.drawer-overlay-enter-active,
+.drawer-overlay-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.drawer-overlay-enter-from,
+.drawer-overlay-leave-to {
+  opacity: 0;
+}
+
+/* Edge Swipe Zone for Mobile */
+.edge-swipe-zone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 100vh;
+  z-index: 999;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+/* Mobile Loading Toast */
+.mobile-loading-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #0a4492;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner-circle {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toast transition */
+.toast-enter-active, .toast-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.toast-enter-from, .toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+/* Hide on large screens */
+.hide-on-large-only {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .hide-on-large-only {
+    display: none !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .mobile-loading-toast {
+    background-color: #1565c0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .mobile-drawer {
+    background-color: #1e1e1e;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+  }
+  
+  .drawer-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
   }
 }
 </style>

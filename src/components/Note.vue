@@ -52,13 +52,37 @@ export default {
 
 .card-content {
   color: var(--color-text) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px !important;
 }
 
 .card-title {
   color: var(--color-heading) !important;
+  margin: 0 !important;
+  line-height: 1.3;
+}
+
+.right {
+  align-self: flex-start;
+  font-size: 0.9em;
+  color: var(--color-text-secondary, #666);
+  margin-top: 4px;
 }
 
 .grey-text {
   color: var(--color-text) !important;
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 768px) {
+  .card-content {
+    padding: 12px !important;
+  }
+  
+  .right {
+    font-size: 0.85em;
+  }
 }
 </style>
