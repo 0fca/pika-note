@@ -1,12 +1,119 @@
 <template>
   <div>
+    <!-- Edge Swipe Zone for Mobile Drawer - Only active when drawer is closed -->
+    <div 
+      v-if="!isDrawerOpen"
+      class="edge-swipe-zone hide-on-large-only"
+      @touchstart="handleEdgeSwipeStart"
+      @touchmove="handleEdgeSwipeMove"
+      @touchend="handleEdgeSwipeEnd"
+    ></div>
+
+    <!-- Mobile Drawer Overlay -->
+    <transition name="drawer-overlay">
+      <div 
+        v-if="isDrawerOpen" 
+        class="drawer-overlay hide-on-large-only"
+        @click="closeDrawer"
+      ></div>
+    </transition>
+
+    <!-- Mobile Drawer -->
+    <div 
+      class="mobile-drawer hide-on-large-only"
+      :class="{ 'drawer-open': isDrawerOpen }"
+      :style="{ transform: drawerTransform }"
+    >
+      <div class="drawer-content">
+        <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
+          <Select 
+            dropdownText="Choose bucket" 
+            :entries="buckets" 
+            :onchange="onBucketSelectChange" 
+            v-if="this.$store.getters.loggedIn === true"
+          />
+        </div>
+        
+        <div class="mobile-notes-controls">
+          <OrderSwitch @order-change="reloadOnOrderChange"/>
+        </div>
+        
+        <div class="mobile-notes-container">
+          <Preloader 
+            message="Loading notes..." 
+            v-if="!loaded && this.$store.getters.loggedIn"
+          />
+          <Error v-if="error"/>
+          <Info 
+            v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
+            message="Choose a bucket above"
+          />
+          
+          <!-- Create New Note Card -->
+          <div 
+            v-if="this.$store.getters.loggedIn && bucketId !== ''" 
+            class="card create-note-card z-depth-0"
+            @click="createNewNoteAndCloseNav"
+          >
+            <div class="card-content">
+              <i class="material-icons create-icon">add_circle_outline</i>
+              <span class="create-text">Create New Note</span>
+            </div>
+          </div>
+          
+          <div v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
+            <Note 
+              v-for="note in notes"
+              :key="note.id"
+              :id="note.id"
+              :name="note.humanName"
+              :date="note.timestamp"
+              @click="loadNoteIntoEditorAndCloseNav(note)"
+            />
+          </div>
+          
+          <Info 
+            v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
+            message="Click above to create your first note"
+          />
+          
+          <!-- Loading indicator for infinite scroll -->
+          <div v-if="isLoadingMore" class="loading-more">
+            <div class="progress">
+              <div class="indeterminate"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Login message when not logged in - shown above everything -->
     <div v-if="this.$store.getters.loggedIn === false" class="login-message-container">
       <Info message="Please log in to view or create notes" />
     </div>
+
+    <!-- Loading Toast for Mobile -->
+    <transition name="toast">
+      <div v-if="(!loaded || isDrawerOpening) && this.$store.getters.loggedIn" class="mobile-loading-toast hide-on-large-only">
+        <div class="spinner-circle"></div>
+      </div>
+    </transition>
+
+    <!-- Bucket Selection Prompt Toast -->
+    <transition name="toast">
+      <div v-if="showBucketPrompt && this.$store.getters.loggedIn" class="bucket-prompt-toast hide-on-large-only">
+        <div class="bucket-prompt-content">
+          <i class="material-icons">folder_open</i>
+          <span>Select a bucket from the drawer menu</span>
+          <button @click="dismissBucketPrompt" class="dismiss-btn">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+      </div>
+    </transition>
     
     <div class="workspace-layout">
-    <!-- Teleport all sidenav content to mobile sidenav - only render if target exists -->
+    <!-- Keep old teleport for backward compatibility if needed -->
     <Teleport to=".mobile-notes-section" v-if="isMounted && hasTeleportTarget">
       <div class="mobile-sidenav-content">
         <!-- Login/Logout buttons -->
@@ -229,7 +336,6 @@ import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
-import M from 'materialize-css';
 
 const pageSize = 15;
 
@@ -271,11 +377,13 @@ export default {
       this.bucketId = this.$store.getters.bucketUuid;
     }
     this.noteService = new NoteService();
-    this.loadNotes();
     this.noteService.getBuckets()
       .then(buckets => {
         this.onBucketsReceived(buckets);
+        this.loaded = true;
+        this.loading = false;
       });
+      this.loadNotes();
     
     // Enable teleport after mount and check if target exists
     // Use a small delay to ensure the parent App component's sidenav is fully mounted
@@ -285,12 +393,21 @@ export default {
         // Check if teleport target exists
         const target = document.querySelector('.mobile-notes-section');
         this.hasTeleportTarget = target !== null;
+        
+        // Setup hamburger button listener
+        this.setupHamburgerListener();
       }, 50);
     });
   },
   beforeUnmount() {
     // Clean up when component is destroyed
     this.hasTeleportTarget = false;
+    
+    // Remove hamburger button listener
+    const hamburger = document.querySelector('.sidenav-trigger');
+    if (hamburger) {
+      hamburger.removeEventListener('click', this.handleHamburgerClick);
+    }
   },
   data: function () {
     return {
@@ -307,6 +424,16 @@ export default {
       currentPage: 0,
       isMounted: false,
       hasTeleportTarget: false,
+      isDrawerOpening: false,
+      isDrawerOpen: false,
+      drawerTransform: 'translateX(-100%)',
+      isDraggingDrawer: false,
+      drawerTouchStartX: 0,
+      drawerTouchStartY: 0,
+      drawerCurrentX: 0,
+      swipeStartX: 0,
+      swipeStartY: 0,
+      showBucketPrompt: false
       appsMenuOpen: false
     }
   },
@@ -390,6 +517,22 @@ export default {
                 text: bucketsPayload.payload[i].bucketName
               });
             }
+            
+            // After buckets are loaded, check if we have a selected bucket
+            const storedBucketUuid = localStorage.getItem('bucketUuid');
+            const storedBucketName = localStorage.getItem('bucketName');
+            
+            if (storedBucketUuid && storedBucketName) {
+              // Update store with current bucket
+              this.$store.commit({
+                type: 'updateCurrentBucket', 
+                bucketName: storedBucketName, 
+                bucketUuid: storedBucketUuid
+              });
+            } else {
+              // No bucket selected - show prompt toast
+              this.showBucketPromptToast();
+            }
           }
         });
     },
@@ -424,21 +567,15 @@ export default {
     },
     createNewNoteAndCloseNav() {
       this.createNewNote();
-      this.closeSidenav();
+      this.closeDrawer();
     },
     loadNoteIntoEditorAndCloseNav(note) {
       this.loadNoteIntoEditor(note);
-      this.closeSidenav();
+      this.closeDrawer();
     },
     closeSidenav() {
-      // Close sidenav on mobile after selecting a note
-      const sidenav = document.getElementById('slide-out');
-      if (sidenav) {
-        const instance = M.Sidenav.getInstance(sidenav);
-        if (instance) {
-          instance.close();
-        }
-      }
+      // Backward compatibility - close custom drawer
+      this.closeDrawer();
     },
     toggleAppsMenu() {
       this.appsMenuOpen = !this.appsMenuOpen;
@@ -450,6 +587,134 @@ export default {
       this.hasMoreNotes = true;
       this.loaded = false;
       this.loadNotes();
+    },
+    handleEdgeSwipeStart(e) {
+      // Only track swipes that start within 30px of the left edge
+      if (e.touches[0].clientX <= 30) {
+        this.swipeStartX = e.touches[0].clientX;
+        this.swipeStartY = e.touches[0].clientY;
+        this.isDraggingDrawer = true;
+      } else {
+        this.swipeStartX = -1;
+      }
+    },
+    handleEdgeSwipeMove(e) {
+      if (this.swipeStartX === -1 || this.swipeStartX > 30 || !this.isDraggingDrawer) return;
+      
+      e.preventDefault();
+      const currentX = e.touches[0].clientX;
+      const deltaX = currentX - this.swipeStartX;
+      
+      // Only allow positive movement (opening)
+      if (deltaX > 0) {
+        const drawerWidth = 300; // Match CSS
+        const progress = Math.min(deltaX / drawerWidth, 1);
+        this.drawerTransform = `translateX(${-100 + (progress * 100)}%)`;
+      }
+    },
+    handleEdgeSwipeEnd(e) {
+      if (this.swipeStartX === -1 || this.swipeStartX > 30) return;
+
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - this.swipeStartX;
+      const deltaY = Math.abs(endY - this.swipeStartY);
+
+      // Open drawer if swiped more than 100px horizontally and less than 50px vertically
+      if (deltaX > 100 && deltaY < 50) {
+        this.openDrawer();
+      } else {
+        // Reset transform if swipe wasn't sufficient
+        this.drawerTransform = 'translateX(-100%)';
+      }
+
+      // Reset
+      this.swipeStartX = -1;
+      this.swipeStartY = -1;
+      this.isDraggingDrawer = false;
+    },
+    handleDrawerTouchStart(e) {
+      if (!this.isDrawerOpen) return;
+      this.drawerTouchStartX = e.touches[0].clientX;
+      this.drawerTouchStartY = e.touches[0].clientY;
+      this.drawerCurrentX = e.touches[0].clientX;
+      this.isDraggingDrawer = true;
+    },
+    handleDrawerTouchMove(e) {
+      if (!this.isDraggingDrawer || !this.isDrawerOpen) return;
+      
+      this.drawerCurrentX = e.touches[0].clientX;
+      const deltaX = this.drawerCurrentX - this.drawerTouchStartX;
+      
+      // Only allow negative movement (closing)
+      if (deltaX < 0) {
+        const drawerWidth = 300;
+        const progress = Math.max(deltaX / drawerWidth, -1);
+        this.drawerTransform = `translateX(${progress * 100}%)`;
+      }
+    },
+    handleDrawerTouchEnd(e) {
+      if (!this.isDraggingDrawer || !this.isDrawerOpen) return;
+      
+      const endX = e.changedTouches[0].clientX;
+      const deltaX = endX - this.drawerTouchStartX;
+      
+      // Close if swiped more than 100px to the left
+      if (deltaX < -100) {
+        this.closeDrawer();
+      } else {
+        // Reset to open position
+        this.drawerTransform = 'translateX(0)';
+      }
+      
+      this.isDraggingDrawer = false;
+    },
+    openDrawer() {
+      this.isDrawerOpening = true;
+      this.isDrawerOpen = true;
+      this.drawerTransform = 'translateX(0)';
+      
+      // Hide loading after animation
+      setTimeout(() => {
+        this.isDrawerOpening = false;
+      }, 300);
+      
+      // Prevent body scroll when drawer is open
+      document.body.style.overflow = 'hidden';
+    },
+    closeDrawer() {
+      this.isDrawerOpen = false;
+      this.drawerTransform = 'translateX(-100%)';
+      
+      // Re-enable body scroll
+      document.body.style.overflow = '';
+    },
+    setupHamburgerListener() {
+      const hamburger = document.querySelector('.sidenav-trigger');
+      if (hamburger) {
+        hamburger.addEventListener('click', this.handleHamburgerClick);
+      }
+    },
+    handleHamburgerClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Toggle drawer state
+      if (this.isDrawerOpen) {
+        this.closeDrawer();
+      } else {
+        this.openDrawer();
+      }
+    },
+    showBucketPromptToast() {
+      // Show prompt for 5 seconds
+      this.showBucketPrompt = true;
+      setTimeout(() => {
+        this.showBucketPrompt = false;
+      }, 5000);
+    },
+    dismissBucketPrompt() {
+      this.showBucketPrompt = false;
     }
   }
 }
@@ -682,9 +947,8 @@ export default {
 
 .mobile-notes-list {
   padding: 0 8px;
-  padding-bottom: 80px; /* Extra padding to prevent stats footer from covering last note */
   overflow-y: auto;
-  flex: 1;
+  overflow-x: hidden;
 }
 
 .mobile-notes-list .create-note-card {
@@ -720,6 +984,204 @@ export default {
 @media (max-width: 600px) {
   .editor-main {
     padding: var(--spacing-sm);
+  }
+}
+
+/* Mobile Drawer */
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 300px;
+  max-width: 85vw;
+  height: 100vh;
+  background-color: var(--color-background);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.mobile-drawer.drawer-open {
+  transform: translateX(0);
+}
+
+.drawer-content {
+  padding: var(--spacing-md) 0;
+  min-height: 100%;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.drawer-overlay-enter-active,
+.drawer-overlay-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.drawer-overlay-enter-from,
+.drawer-overlay-leave-to {
+  opacity: 0;
+}
+
+/* Edge Swipe Zone for Mobile */
+.edge-swipe-zone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 100vh;
+  z-index: 999;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+/* Mobile Loading Toast */
+.mobile-loading-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(10, 68, 146, 0.95);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.spinner-circle {
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  box-sizing: border-box;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Bucket Prompt Toast */
+.bucket-prompt-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(245, 124, 0, 0.95);
+  max-width: 90%;
+  border-radius: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1500;
+  backdrop-filter: blur(10px);
+}
+
+.bucket-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  color: white;
+}
+
+.bucket-prompt-content i.material-icons {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.bucket-prompt-content span {
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.dismiss-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.dismiss-btn:hover {
+  opacity: 1;
+}
+
+.dismiss-btn i {
+  font-size: 20px;
+}
+
+/* Toast transition */
+.toast-enter-active, .toast-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.toast-enter-from, .toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+/* Hide on large screens */
+.hide-on-large-only {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .hide-on-large-only {
+    display: none !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .mobile-loading-toast {
+    background-color: rgba(21, 101, 192, 0.95);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  
+  .spinner-circle {
+    border-color: rgba(255, 255, 255, 0.2);
+    border-top-color: white;
+  }
+  
+  .bucket-prompt-toast {
+    background-color: rgba(255, 152, 0, 0.95);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+  
+  .mobile-drawer {
+    background-color: #1e1e1e;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+  }
+  
+  .drawer-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
   }
 }
 </style>
