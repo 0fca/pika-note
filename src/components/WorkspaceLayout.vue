@@ -25,6 +25,53 @@
       :style="{ transform: drawerTransform }"
     >
       <div class="drawer-content">
+        <!-- Login/Logout Button -->
+        <!-- Login/Logout Button -->
+        <div class="drawer-auth-section">
+          <form v-if="!this.$store.getters.loggedIn" method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
+            <button class="btn drawer-auth-btn waves-effect waves-light" type="submit">
+              LOG IN
+            </button>
+          </form>
+          <form v-else method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
+            <button class="btn drawer-auth-btn waves-effect waves-light" type="submit">
+              LOG OUT
+            </button>
+          </form>
+        </div>        <!-- Applications Section -->
+        <div class="drawer-apps-section">
+          <div class="drawer-section-title">Applications</div>
+          <div class="drawer-apps-list">
+            <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
+              <span class="material-symbols-outlined">cloud</span>
+              <span>Pika Cloudfront</span>
+            </a>
+            <a class="drawer-app-item" href="https://core.lukas-bownik.net/" title="Pika Core">
+              <span class="material-symbols-outlined">storage</span>
+              <span>Pika Core</span>
+            </a>
+            <a class="drawer-app-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
+              <span class="material-symbols-outlined">chat</span>
+              <span>Pika Chat</span>
+            </a>
+            <a class="drawer-app-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
+              <span class="material-symbols-outlined">vital_signs</span>
+              <span>Pika Status</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="drawer-divider"></div>
+
+        <!-- Version Label -->
+        <div class="drawer-version">
+          Pika Note v. {{ version }}
+        </div>
+
+        <!-- Divider -->
+        <div class="drawer-divider"></div>
+
         <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
           <Select 
             dropdownText="Choose bucket" 
@@ -34,7 +81,7 @@
           />
         </div>
         
-        <div class="mobile-notes-controls">
+        <div class="mobile-notes-controls" v-if="this.$store.getters.loggedIn">
           <OrderSwitch @order-change="reloadOnOrderChange"/>
         </div>
         
@@ -336,6 +383,7 @@ import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
+import packageJson from '/package.json';
 
 const pageSize = 15;
 
@@ -434,7 +482,8 @@ export default {
       swipeStartX: 0,
       swipeStartY: 0,
       showBucketPrompt: false,
-      appsMenuOpen: false
+      appsMenuOpen: false,
+      version: packageJson.version
     }
   },
   methods: {
@@ -1014,6 +1063,95 @@ export default {
   pointer-events: auto;
   position: relative;
   z-index: 1;
+}
+
+/* Drawer Auth Section */
+.drawer-auth-section {
+  padding: var(--spacing-md);
+}
+
+.drawer-auth-btn {
+  width: 100%;
+  background-color: var(--color-primary) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  height: 48px;
+  border-radius: 8px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.drawer-auth-btn:hover {
+  background-color: #083463 !important;
+}
+
+.drawer-auth-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+/* Drawer Applications Section */
+.drawer-apps-section {
+  padding: var(--spacing-md);
+}
+
+.drawer-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-sm);
+  padding: 0 var(--spacing-xs);
+}
+
+.drawer-apps-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.drawer-app-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  font-weight: var(--font-weight-medium);
+}
+
+.drawer-app-item:hover {
+  background-color: rgba(10, 68, 146, 0.1);
+  color: var(--color-primary);
+}
+
+.drawer-app-item .material-symbols-outlined {
+  color: var(--color-primary);
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.drawer-app-item span:last-child {
+  flex: 1;
+}
+
+/* Drawer Divider */
+.drawer-divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--spacing-md) var(--spacing-md);
+}
+
+/* Drawer Version */
+.drawer-version {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-soft);
+  font-weight: var(--font-weight-medium);
 }
 
 .drawer-overlay {
