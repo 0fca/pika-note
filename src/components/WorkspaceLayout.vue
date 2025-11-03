@@ -6,64 +6,138 @@
     </div>
     
     <div class="workspace-layout">
-    <!-- Teleport notes to sidenav for mobile/tablet - only render if target exists -->
+    <!-- Teleport all sidenav content to mobile sidenav - only render if target exists -->
     <Teleport to=".mobile-notes-section" v-if="isMounted && hasTeleportTarget">
-      <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
-        <Select 
-          dropdownText="Choose bucket" 
-          :entries="buckets" 
-          :onchange="onBucketSelectChange" 
-          v-if="this.$store.getters.loggedIn === true"
-        />
-      </div>
-      
-      <div class="mobile-notes-controls">
-        <OrderSwitch @order-change="reloadOnOrderChange"/>
-      </div>
-      
-      <div class="mobile-notes-container">
-        <Preloader 
-          message="Loading notes..." 
-          v-if="!loaded && this.$store.getters.loggedIn"
-        />
-        <Error v-if="error"/>
-        <Info 
-          v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
-          message="Choose a bucket above"
-        />
+      <div class="mobile-sidenav-content">
+        <!-- Login/Logout buttons -->
+        <div class="mobile-auth-section" v-if="this.$store.getters.loggedIn === false">
+          <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
+            <button class="btn btn-flat">
+              LOG IN
+            </button>
+          </form>
+        </div>
+        <div class="mobile-auth-section" v-if="this.$store.getters.loggedIn === true">
+          <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
+            <button class="btn btn-flat">
+              LOG OUT
+            </button>
+          </form>
+        </div>
         
-        <!-- Create New Note Card -->
-        <div 
-          v-if="this.$store.getters.loggedIn && bucketId !== ''" 
-          class="card create-note-card z-depth-0"
-          @click="createNewNoteAndCloseNav"
-        >
-          <div class="card-content">
-            <i class="material-icons create-icon">add_circle_outline</i>
-            <span class="create-text">Create New Note</span>
+        <!-- Applications Collapsible Menu -->
+        <div class="mobile-apps-section">
+          <div class="mobile-collapsible">
+            <div class="mobile-collapsible-header" @click="toggleAppsMenu">
+              Applications
+              <i class="material-icons right">{{ appsMenuOpen ? 'expand_less' : 'expand_more' }}</i>
+            </div>
+            <div class="mobile-collapsible-body" v-show="appsMenuOpen">
+              <div class="mobile-apps-list">
+                <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
+                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                    cloud
+                  </span>
+                  Pika Cloudfront
+                </a>
+                <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/" title="Pika Core">
+                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                    storage
+                  </span>
+                  Pika Core
+                </a>
+                <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
+                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                    chat
+                  </span>
+                  Pika Chat
+                </a>
+                <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
+                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
+                    vital_signs
+                  </span>
+                  Pika Status
+                </a>
+              </div>
+            </div>
           </div>
         </div>
         
-        <div v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
-          <Note 
-            v-for="note in notes"
-            :key="note.id"
-            :id="note.id"
-            :name="note.humanName"
-            :date="note.timestamp"
-            @click="loadNoteIntoEditorAndCloseNav(note)"
+        <!-- About Link -->
+        <div class="mobile-about-section">
+          <a class="collection-item navlink app-menu-item" href="/About" title="About Pika Note">
+            <span class="material-icons secondary-content navlink havelock-text">
+              info_outline
+            </span>
+            About
+          </a>
+        </div>
+        
+        <!-- Divider -->
+        <div class="mobile-divider"></div>
+        
+        <!-- Notes Section Header -->
+        <div class="mobile-notes-header" v-if="this.$store.getters.loggedIn">
+          <h6 class="sidenav-section-title">My Notes</h6>
+        </div>
+        
+        <!-- Bucket Select and Order Controls for logged in users -->
+        <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
+          <Select 
+            dropdownText="Choose bucket" 
+            :entries="buckets" 
+            :onchange="onBucketSelectChange" 
           />
         </div>
         
-        <Info 
-          v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
-          message="Click above to create your first note"
-        />
+        <div class="mobile-notes-controls" v-if="this.$store.getters.loggedIn">
+          <OrderSwitch @order-change="reloadOnOrderChange"/>
+        </div>
         
-        <!-- Loading indicator for infinite scroll -->
-        <div v-if="isLoadingMore" class="loading-more">
-          <div class="progress">
-            <div class="indeterminate"></div>
+        <div class="mobile-notes-list">
+          <Preloader 
+            message="Loading notes..." 
+            v-if="!loaded && this.$store.getters.loggedIn"
+          />
+          <Error v-if="error"/>
+          <Info 
+            v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
+            message="Choose a bucket above"
+          />
+          
+          <!-- Create New Note Card -->
+          <div 
+            v-if="this.$store.getters.loggedIn && bucketId !== ''" 
+            class="card create-note-card z-depth-0"
+            @click="createNewNoteAndCloseNav"
+          >
+            <div class="card-content">
+              <i class="material-icons create-icon">add_circle_outline</i>
+              <span class="create-text">Create New Note</span>
+            </div>
+          </div>
+          
+          <div v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
+            <Note 
+              v-for="note in notes"
+              :key="note.id"
+              :id="note.id"
+              :name="note.humanName"
+              :date="note.timestamp"
+              @click="loadNoteIntoEditorAndCloseNav(note)"
+            />
+          </div>
+          
+          <Info 
+            v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
+            message="Click above to create your first note"
+          />
+          
+          <!-- Loading indicator for infinite scroll -->
+          <div v-if="isLoadingMore" class="loading-more">
+            <div class="progress">
+              <div class="indeterminate"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -232,7 +306,8 @@ export default {
       hasMoreNotes: true,
       currentPage: 0,
       isMounted: false,
-      hasTeleportTarget: false
+      hasTeleportTarget: false,
+      appsMenuOpen: false
     }
   },
   methods: {
@@ -364,6 +439,9 @@ export default {
           instance.close();
         }
       }
+    },
+    toggleAppsMenu() {
+      this.appsMenuOpen = !this.appsMenuOpen;
     },
     onNoteSaved() {
       // Reload the notes list after successful save/update
@@ -501,29 +579,119 @@ export default {
   height: 100%;
 }
 
-/* Mobile notes in sidenav */
+/* Mobile sidenav content */
+.mobile-sidenav-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.mobile-auth-section {
+  padding: 16px 32px;
+  flex-shrink: 0;
+}
+
+.mobile-auth-section .btn {
+  width: 100%;
+}
+
+.mobile-apps-section {
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.mobile-collapsible {
+  margin: 0;
+}
+
+.mobile-collapsible-header {
+  padding: 0 32px;
+  height: 48px;
+  line-height: 48px;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-collapsible-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.mobile-collapsible-body {
+  padding: 0;
+}
+
+.mobile-apps-list {
+  padding: 0;
+  margin: 0;
+}
+
+.mobile-apps-list .collection-item {
+  display: block;
+  padding: 16px 32px;
+  margin: 0;
+  border: none;
+}
+
+.mobile-about-section {
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.mobile-about-section .collection-item {
+  display: block;
+  padding: 16px 32px;
+  margin: 0;
+  border: none;
+}
+
+.mobile-divider {
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.12);
+  margin: 8px 0;
+  flex-shrink: 0;
+}
+
+.mobile-notes-header {
+  padding: 16px 32px 8px;
+  flex-shrink: 0;
+}
+
+.sidenav-section-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
 .mobile-bucket-select {
   padding: 0 16px;
   margin-bottom: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 .mobile-notes-controls {
   padding: 0 16px;
   margin-bottom: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
-.mobile-notes-container {
+.mobile-notes-list {
   padding: 0 8px;
   padding-bottom: 80px; /* Extra padding to prevent stats footer from covering last note */
-  max-height: 50vh;
   overflow-y: auto;
+  flex: 1;
 }
 
-.mobile-notes-container .create-note-card {
+.mobile-notes-list .create-note-card {
   margin: var(--spacing-xs) var(--spacing-sm) !important;
 }
 
-.mobile-notes-container .loading-more {
+.mobile-notes-list .loading-more {
   padding: var(--spacing-sm);
 }
 

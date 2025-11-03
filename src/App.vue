@@ -70,88 +70,8 @@
       </div>
     </div>
     <ul id="slide-out" class="sidenav">
-      <!-- Login/Logout at top -->
-      <li v-if="this.$store.getters.loggedIn === false">
-        <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
-          <button class="btn btn-flat">
-            LOG IN
-          </button>
-        </form>
-      </li>
-      <li v-if="this.$store.getters.loggedIn === true">
-        <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
-          <button class="btn btn-flat">
-            LOG OUT
-          </button>
-        </form>
-      </li>
-      
-      <!-- Collapsible Applications menu -->
-      <li>
-        <ul class="collapsible collapsible-accordion">
-          <li>
-            <a class="collapsible-header">
-              Applications
-              <i class="material-icons right">expand_more</i>
-            </a>
-            <div class="collapsible-body">
-              <ul>
-                <li>
-                  <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
-                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                        cloud
-                    </span>
-                    Pika Cloudfront
-                  </a>
-                </li>
-                <li>
-                  <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/" title="Pika Core">
-                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                        storage
-                    </span>
-                    Pika Core
-                  </a>
-                </li>
-                <li>
-                  <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
-                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                        chat
-                    </span>
-                    Pika Chat
-                  </a>
-                </li>
-                <li>
-                  <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
-                    <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                        vital_signs
-                    </span>
-                    Pika Status
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </li>
-        </ul>
-      </li>
-      
-      <li>
-        <a class="collection-item navlink app-menu-item" href="/About" title="About Pika Note">
-          <span class="material-icons secondary-content navlink havelock-text">
-            info_outline
-          </span>
-          About
-        </a>
-      </li>
-      
-      <!-- Divider before notes list -->
-      <li><div class="divider"></div></li>
-      
-      <!-- Notes list for mobile/tablet -->
-      <li class="mobile-notes-section hide-on-large-only" v-if="this.$store.getters.loggedIn">
-        <div class="mobile-notes-header">
-          <h6 class="sidenav-section-title">My Notes</h6>
-        </div>
-      </li>
+      <!-- Mobile content will be teleported here from WorkspaceLayout -->
+      <li class="mobile-notes-section hide-on-large-only"></li>
     </ul>
     <div class="row whitesmoke padding">
       <div class="container">
@@ -316,50 +236,10 @@ nav button.navlink:hover {
 }
 
 /* Sidenav customizations */
-.sidenav .collapsible {
-  border: none;
-  box-shadow: none;
-  margin: 0;
-}
-
-.sidenav .collapsible-header {
-  padding: 0 32px;
-  font-weight: var(--font-weight-semibold);
-  border: none;
-  background-color: transparent;
-}
-
-.sidenav .collapsible-body {
-  padding: 0;
-  border: none;
-  background-color: transparent;
-}
-
-.sidenav .collapsible-body ul {
-  padding: 0;
-  margin: 0;
-}
-
-.sidenav .collapsible-body li {
-  padding: 0;
-}
-
 .mobile-notes-section {
   padding: 0 !important;
-}
-
-.mobile-notes-header {
-  padding: 16px 32px 8px;
-}
-
-.sidenav-section-title {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  margin: 0;
-}
-
-.sidenav .divider {
-  margin: 8px 0;
+  margin: 0 !important;
+  height: 100%;
+  overflow: hidden;
 }
 </style>
