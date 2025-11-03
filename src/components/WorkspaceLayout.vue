@@ -433,7 +433,7 @@ export default {
       drawerCurrentX: 0,
       swipeStartX: 0,
       swipeStartY: 0,
-      showBucketPrompt: false
+      showBucketPrompt: false,
       appsMenuOpen: false
     }
   },
