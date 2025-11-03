@@ -1,7 +1,4 @@
-
-	components: {
-		Note,
-	},<template>
+<template>
     <div id="app-dropdown" class="card dropdown-content hide-on-small-and-down appdropdown right z-depth-1-half" tabindex="0">
         <div class="card-content text-left">
             <span class="card-title grey-text text-darken-4 center">
