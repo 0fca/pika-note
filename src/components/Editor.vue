@@ -77,6 +77,11 @@ export default {
       set(id){
         this.$store.commit({type: 'updateId', id: id});
       }
+    },
+    bucketId: {
+      get(){
+        return this.$store.getters.bucketUuid;
+      }
     }
   },
   watch: {
@@ -115,7 +120,6 @@ export default {
   },
   data() {
     return {
-      bucketId: this.$store.getters.bucketUuid,
       name: this.$store.getters.name,
       editor: null,
       editorDiscoveryMessage: localStorage.getItem('editors_discovery') === null ?? false,

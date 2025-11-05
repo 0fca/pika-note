@@ -194,8 +194,6 @@ export default {
       const bucketUuid = select.value;
       this.bucketId = bucketUuid;
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
-      localStorage.setItem('bucketName', bucketName);
-      localStorage.setItem('bucketUuid', bucketUuid);
       let order = this.$store.getters.order;
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId="+this.bucketId)
         .then(data => {

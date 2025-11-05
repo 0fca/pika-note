@@ -398,9 +398,8 @@ export default {
       const bucketName = select.options[select.selectedIndex].text;
       const bucketUuid = select.value;
       this.bucketId = bucketUuid;
+      // Update store - this will also update localStorage via mutation
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
-      localStorage.setItem('bucketName', bucketName);
-      localStorage.setItem('bucketUuid', bucketUuid);
       
       this.notes = [];
       this.currentPage = 0;

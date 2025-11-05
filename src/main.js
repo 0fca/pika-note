@@ -87,6 +87,9 @@ const store = createStore({
     updateCurrentBucket(state, payload){
       state.bucketUuid = payload.bucketUuid;
       state.bucketName = payload.bucketName;
+      // Update localStorage when bucket changes
+      localStorage.setItem('bucketUuid', payload.bucketUuid);
+      localStorage.setItem('bucketName', payload.bucketName);
     },
     updateLastSavedAt(state, payload){
       state.lastSavedAt = payload.lastSavedAt;
