@@ -174,8 +174,11 @@ export default {
       }
     },
     overlayLoading() {
-      const waitingForData = this.$store.getters.authLoading || (this.$store.getters.loggedIn && (this.$store.getters.bucketsLoading || this.$store.getters.notesLoading));
+      const waitingForData = this.isWaitingForData;
       return waitingForData && !this.$store.getters.loadingError;
+    },
+    isWaitingForData() {
+      return this.$store.getters.authLoading || (this.$store.getters.loggedIn && (this.$store.getters.bucketsLoading || this.$store.getters.notesLoading));
     },
     showLoginPrompt() {
       return !this.overlayLoading && !this.$store.getters.loggedIn && !this.$store.getters.loadingError;
@@ -229,7 +232,7 @@ export default {
       name: this.$store.getters.name,
       loginRedirectCountdown: 5,
       loginRedirectTimer: null,
-      loginUrl: 'https://core.lukas-bownik.net/login'
+      loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login'
     }
   },
   watch: {

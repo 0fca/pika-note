@@ -115,7 +115,7 @@ export default {
 
 .overlay-button {
   margin-top: 6px;
-  background: #0a4492 !important;
+  background: #0a4492;
   border-radius: 10px;
   padding: 0 18px;
 }

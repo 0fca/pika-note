@@ -429,7 +429,7 @@ export default {
     this.noteService.getBuckets()
       .then(buckets => {
         if (!buckets.ok) {
-          throw new Error();
+          throw new Error('Failed to fetch buckets');
         }
         this.$store.commit({type: 'setLoadingError', loadingError: ''});
         this.onBucketsReceived(buckets);
