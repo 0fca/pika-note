@@ -40,7 +40,11 @@ const store = createStore({
       errorLoadingNote: false,
       updateLock: false,
       autoSaveJobId: 0,
-      autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false' // Default true
+      autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false', // Default true
+      authLoading: true,
+      bucketsLoading: false,
+      notesLoading: false,
+      loadingError: ''
     }
   },
   mutations: {
@@ -108,6 +112,18 @@ const store = createStore({
     },
     updateAutoSaveEnabled(state, payload){
       state.autoSaveEnabled = payload.autoSaveEnabled;
+    },
+    setAuthLoading(state, payload){
+      state.authLoading = payload.authLoading;
+    },
+    setBucketsLoading(state, payload){
+      state.bucketsLoading = payload.bucketsLoading;
+    },
+    setNotesLoading(state, payload){
+      state.notesLoading = payload.notesLoading;
+    },
+    setLoadingError(state, payload){
+      state.loadingError = payload.loadingError;
     }
   },
   getters: {
@@ -158,6 +174,18 @@ const store = createStore({
     },
     autoSaveEnabled(state){
       return state.autoSaveEnabled;
+    },
+    authLoading(state){
+      return state.authLoading;
+    },
+    bucketsLoading(state){
+      return state.bucketsLoading;
+    },
+    notesLoading(state){
+      return state.notesLoading;
+    },
+    loadingError(state){
+      return state.loadingError;
     }
   }
 });

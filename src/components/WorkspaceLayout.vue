@@ -384,6 +384,7 @@ import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
 import packageJson from '/package.json';
+import UnauthorizedException from "./exceptions/UnauthorizedException";
 
 const pageSize = 15;
 
@@ -425,11 +426,32 @@ export default {
       this.bucketId = this.$store.getters.bucketUuid;
     }
     this.noteService = new NoteService();
+    this.$store.commit({type: 'setBucketsLoading', bucketsLoading: true});
     this.noteService.getBuckets()
-      .then(buckets => {
-        this.onBucketsReceived(buckets);
+      .then(bucketsResponse => {
+        if (!bucketsResponse.ok) {
+          throw new UnauthorizedException();
+        }
+        return bucketsResponse.json();
+      })
+      .then(bucketsPayload => {
+        this.$store.commit({type: 'setLoadingError', loadingError: ''});
+        this.onBucketsPayloadReceived(bucketsPayload);
         this.loaded = true;
         this.loading = false;
+      })
+      .catch((err) => {
+        const wasLoggedIn = this.$store.getters.loggedIn;
+        if (err instanceof UnauthorizedException || !wasLoggedIn) {
+          this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+          this.$store.commit({type: 'setLoadingError', loadingError: ''});
+        } else if (wasLoggedIn) {
+          this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
+        }
+      })
+      .finally(() => {
+        this.initialBucketsResolved = true;
+        this.$store.commit({type: 'setBucketsLoading', bucketsLoading: false});
       });
       this.loadNotes();
     
@@ -483,19 +505,43 @@ export default {
       swipeStartY: 0,
       showBucketPrompt: false,
       appsMenuOpen: false,
-      version: packageJson.version
+      version: packageJson.version,
+      initialBucketsResolved: false,
+      initialNotesResolved: false
     }
   },
   methods: {
     loadNotes() {
+      this.$store.commit({type: 'setLoadingError', loadingError: ''});
+      this.$store.commit({type: 'setNotesLoading', notesLoading: true});
       const order = this.$store.getters.order;
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&bucketId=" + this.bucketId)
         .then(data => {
+          if (this.$store.getters.loadingError) {
+            this.$store.commit({type: 'setLoadingError', loadingError: ''});
+          }
           this.onDataReceived(data);
+          this.error = false;
         })
-        .catch(() => {
-          this.error = this.bucketId !== "" && this.$store.getters.loggedIn === true;
+        .catch((err) => {
+          const wasLoggedIn = this.$store.getters.loggedIn;
+          if (err instanceof UnauthorizedException || !wasLoggedIn) {
+            this.error = false;
+            this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+            this.$store.commit({type: 'setLoadingError', loadingError: ''});
+          } else {
+            this.error = this.bucketId !== "" && wasLoggedIn === true;
+            if (wasLoggedIn) {
+              this.$store.commit({type: 'setLoadingError', loadingError: 'There was a problem loading your notes.'});
+            }
+          }
           this.loaded = true;
+        })
+        .finally(() => {
+          this.$store.commit({type: 'setNotesLoading', notesLoading: false});
+          if (!this.initialNotesResolved) {
+            this.initialNotesResolved = true;
+          }
         });
     },
     loadMoreNotes() {
@@ -556,34 +602,31 @@ export default {
       this.loaded = true;
       this.actuallyLoaded = this.notes.length;
     },
-    onBucketsReceived: function(buckets) {
-      buckets.json()
-        .then(bucketsPayload => {
-          if(bucketsPayload.success === true){
-            for(let i in bucketsPayload.payload){
-              this.buckets.push({
-                id: bucketsPayload.payload[i].bucketId,
-                text: bucketsPayload.payload[i].bucketName
-              });
-            }
-            
-            // After buckets are loaded, check if we have a selected bucket
-            const storedBucketUuid = localStorage.getItem('bucketUuid');
-            const storedBucketName = localStorage.getItem('bucketName');
-            
-            if (storedBucketUuid && storedBucketName) {
-              // Update store with current bucket
-              this.$store.commit({
-                type: 'updateCurrentBucket', 
-                bucketName: storedBucketName, 
-                bucketUuid: storedBucketUuid
-              });
-            } else {
-              // No bucket selected - show prompt toast
-              this.showBucketPromptToast();
-            }
-          }
-        });
+    onBucketsPayloadReceived: function(bucketsPayload) {
+      if(bucketsPayload.success === true){
+        for(let i in bucketsPayload.payload){
+          this.buckets.push({
+            id: bucketsPayload.payload[i].bucketId,
+            text: bucketsPayload.payload[i].bucketName
+          });
+        }
+        
+        // After buckets are loaded, check if we have a selected bucket
+        const storedBucketUuid = localStorage.getItem('bucketUuid');
+        const storedBucketName = localStorage.getItem('bucketName');
+        
+        if (storedBucketUuid && storedBucketName) {
+          // Update store with current bucket
+          this.$store.commit({
+            type: 'updateCurrentBucket', 
+            bucketName: storedBucketName, 
+            bucketUuid: storedBucketUuid
+          });
+        } else {
+          // No bucket selected - show prompt toast
+          this.showBucketPromptToast();
+        }
+      }
     },
     onBucketSelectChange: function(e){
       const select = e.target;

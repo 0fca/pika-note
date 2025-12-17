@@ -20,7 +20,11 @@ export default class NoteService {
             return response.json();
         }
 
-        throw new UnauthorizedException();
+        if (response.status === 401 || response.status === 403) {
+            throw new UnauthorizedException();
+        }
+
+        throw new Error('Request failed');
     }
 
     async getNote(id) {
@@ -89,13 +93,20 @@ export default class NoteService {
 
     async getBuckets() {
         const url = `${this.baseUrl}/notes/buckets`;
-        return await fetch(url, {
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Origin': this.baseUrl,
                 'Content-Type': 'application/json'
             },
             'credentials': 'include'
-        })
+        });
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403 || response.status === 500) {
+                throw new UnauthorizedException();
+            }
+            throw new Error('Request failed');
+        }
+        return response;
     }
 }
