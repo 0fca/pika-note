@@ -427,12 +427,15 @@ export default {
     this.noteService = new NoteService();
     this.$store.commit({type: 'setBucketsLoading', bucketsLoading: true});
     this.noteService.getBuckets()
-      .then(buckets => {
-        if (!buckets.ok) {
+      .then(bucketsResponse => {
+        if (!bucketsResponse.ok) {
           throw new Error('Failed to fetch buckets');
         }
+        return bucketsResponse.json();
+      })
+      .then(bucketsPayload => {
         this.$store.commit({type: 'setLoadingError', loadingError: ''});
-        this.onBucketsReceived(buckets);
+        this.onBucketsReceived(bucketsPayload);
         this.loaded = true;
         this.loading = false;
       })
@@ -589,34 +592,31 @@ export default {
       this.loaded = true;
       this.actuallyLoaded = this.notes.length;
     },
-    onBucketsReceived: function(buckets) {
-      buckets.json()
-        .then(bucketsPayload => {
-          if(bucketsPayload.success === true){
-            for(let i in bucketsPayload.payload){
-              this.buckets.push({
-                id: bucketsPayload.payload[i].bucketId,
-                text: bucketsPayload.payload[i].bucketName
-              });
-            }
-            
-            // After buckets are loaded, check if we have a selected bucket
-            const storedBucketUuid = localStorage.getItem('bucketUuid');
-            const storedBucketName = localStorage.getItem('bucketName');
-            
-            if (storedBucketUuid && storedBucketName) {
-              // Update store with current bucket
-              this.$store.commit({
-                type: 'updateCurrentBucket', 
-                bucketName: storedBucketName, 
-                bucketUuid: storedBucketUuid
-              });
-            } else {
-              // No bucket selected - show prompt toast
-              this.showBucketPromptToast();
-            }
-          }
-        });
+    onBucketsReceived: function(bucketsPayload) {
+      if(bucketsPayload.success === true){
+        for(let i in bucketsPayload.payload){
+          this.buckets.push({
+            id: bucketsPayload.payload[i].bucketId,
+            text: bucketsPayload.payload[i].bucketName
+          });
+        }
+        
+        // After buckets are loaded, check if we have a selected bucket
+        const storedBucketUuid = localStorage.getItem('bucketUuid');
+        const storedBucketName = localStorage.getItem('bucketName');
+        
+        if (storedBucketUuid && storedBucketName) {
+          // Update store with current bucket
+          this.$store.commit({
+            type: 'updateCurrentBucket', 
+            bucketName: storedBucketName, 
+            bucketUuid: storedBucketUuid
+          });
+        } else {
+          // No bucket selected - show prompt toast
+          this.showBucketPromptToast();
+        }
+      }
     },
     onBucketSelectChange: function(e){
       const select = e.target;

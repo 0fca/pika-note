@@ -66,7 +66,7 @@ export default {
 .overlay-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(11, 21, 46, 0.82);
+  background: var(--color-overlay-backdrop, rgba(11, 21, 46, 0.82));
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
