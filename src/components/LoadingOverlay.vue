@@ -118,11 +118,12 @@ export default {
 
 .overlay-button {
   margin-top: 6px;
-  background: var(--color-primary, #0a4492);
-  color: white;
+  background: var(--color-nav-bg, var(--color-primary, #0a4492));
+  color: var(--color-nav-text, #ffffff);
+  border: 1px solid var(--color-nav-bg, var(--color-primary, #0a4492));
   border-radius: 10px;
   padding: 0 18px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .loader {
@@ -213,7 +214,7 @@ export default {
 }
 
 .overlay-button:hover {
-  background: whitesmoke;
-  color: var(--color-primary, #0a4492);
+  background: var(--color-nav-text, #ffffff);
+  color: var(--color-nav-bg, var(--color-primary, #0a4492));
 }
 </style>
