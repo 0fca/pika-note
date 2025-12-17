@@ -441,10 +441,11 @@ export default {
         this.loading = false;
       })
       .catch((err) => {
-        if (err instanceof UnauthorizedException) {
+        const wasLoggedIn = this.$store.getters.loggedIn;
+        if (err instanceof UnauthorizedException || !wasLoggedIn) {
           this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
           this.$store.commit({type: 'setLoadingError', loadingError: ''});
-        } else {
+        } else if (wasLoggedIn) {
           this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
         }
       })
@@ -523,14 +524,18 @@ export default {
           this.error = false;
         })
         .catch((err) => {
-          this.error = this.bucketId !== "" && this.$store.getters.loggedIn === true;
-          this.loaded = true;
-          if (err instanceof UnauthorizedException || !this.$store.getters.loggedIn) {
+          const wasLoggedIn = this.$store.getters.loggedIn;
+          if (err instanceof UnauthorizedException || !wasLoggedIn) {
+            this.error = false;
             this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
             this.$store.commit({type: 'setLoadingError', loadingError: ''});
-          } else if (this.$store.getters.loggedIn) {
-            this.$store.commit({type: 'setLoadingError', loadingError: 'There was a problem loading your notes.'});
+          } else {
+            this.error = this.bucketId !== "" && wasLoggedIn === true;
+            if (wasLoggedIn) {
+              this.$store.commit({type: 'setLoadingError', loadingError: 'There was a problem loading your notes.'});
+            }
           }
+          this.loaded = true;
         })
         .finally(() => {
           this.$store.commit({type: 'setNotesLoading', notesLoading: false});
