@@ -163,11 +163,11 @@ export default {
   right: 16px;
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
   box-shadow: var(--shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.18));
   width: 280px;
   z-index: 2000;
   padding: 12px 12px 8px;
+  border-radius: 8px;
 }
 
 .app-menu-header {
@@ -175,12 +175,7 @@ export default {
   justify-content: center;
   align-items: center;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
   margin-bottom: 8px;
-}
-
-.app-menu-header img {
-  height: 32px;
 }
 
 .app-menu-items {
