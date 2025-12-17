@@ -194,7 +194,6 @@ export default {
   text-decoration: none;
   transition: background-color var(--transition-fast), color var(--transition-fast);
   border: none;
-  border-bottom: none;
 }
 
 .app-menu-item:hover {
