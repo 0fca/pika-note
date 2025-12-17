@@ -440,9 +440,7 @@ export default {
         this.loading = false;
       })
       .catch(() => {
-        if (!this.$store.getters.loadingError) {
-          this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
-        }
+        this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
       })
       .finally(() => {
         this.initialBucketsResolved = true;
