@@ -425,11 +425,25 @@ export default {
       this.bucketId = this.$store.getters.bucketUuid;
     }
     this.noteService = new NoteService();
+    this.$store.commit({type: 'setBucketsLoading', bucketsLoading: true});
     this.noteService.getBuckets()
       .then(buckets => {
+        if (!buckets.ok) {
+          throw new Error();
+        }
+        this.$store.commit({type: 'setLoadingError', loadingError: ''});
         this.onBucketsReceived(buckets);
         this.loaded = true;
         this.loading = false;
+      })
+      .catch(() => {
+        if (!this.$store.getters.loadingError) {
+          this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
+        }
+      })
+      .finally(() => {
+        this.initialBucketsResolved = true;
+        this.$store.commit({type: 'setBucketsLoading', bucketsLoading: false});
       });
       this.loadNotes();
     
@@ -483,19 +497,38 @@ export default {
       swipeStartY: 0,
       showBucketPrompt: false,
       appsMenuOpen: false,
-      version: packageJson.version
+      version: packageJson.version,
+      initialBucketsResolved: false,
+      initialNotesResolved: false
     }
   },
   methods: {
     loadNotes() {
+      if (!this.initialNotesResolved) {
+        this.$store.commit({type: 'setLoadingError', loadingError: ''});
+        this.$store.commit({type: 'setNotesLoading', notesLoading: true});
+      }
       const order = this.$store.getters.order;
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&bucketId=" + this.bucketId)
         .then(data => {
+          if (this.$store.getters.loadingError) {
+            this.$store.commit({type: 'setLoadingError', loadingError: ''});
+          }
           this.onDataReceived(data);
+          this.error = false;
         })
         .catch(() => {
           this.error = this.bucketId !== "" && this.$store.getters.loggedIn === true;
           this.loaded = true;
+          if (this.$store.getters.loggedIn) {
+            this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load notes.'});
+          }
+        })
+        .finally(() => {
+          if (!this.initialNotesResolved) {
+            this.$store.commit({type: 'setNotesLoading', notesLoading: false});
+            this.initialNotesResolved = true;
+          }
         });
     },
     loadMoreNotes() {

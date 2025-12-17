@@ -140,6 +140,14 @@
         </div>
       </div>
     </footer>
+    <LoadingOverlay
+      :visible="overlayVisible"
+      :needs-login="showLoginPrompt"
+      :message="overlayMessage"
+      :error-message="$store.getters.loadingError"
+      :countdown="loginRedirectCountdown"
+      :login-url="loginUrl"
+    />
   </div>
 </template>
 
@@ -148,11 +156,13 @@ import AppDropdown from '@/components/molecules/AppDropdown';
 import SecurityService from '@/services/securityService';
 import M from 'materialize-css';
 import MobileDetectService from './services/mobileDetectService';
+import LoadingOverlay from './components/LoadingOverlay.vue';
 
 export default {
   name: 'App',
   components: {
-    AppDropdown
+    AppDropdown,
+    LoadingOverlay
   },
   computed: {
     title: {
@@ -162,6 +172,22 @@ export default {
       set(name){
         this.$store.commit({type: 'updateName', name: name})
       }
+    },
+    overlayLoading() {
+      const waitingForData = this.$store.getters.authLoading || (this.$store.getters.loggedIn && (this.$store.getters.bucketsLoading || this.$store.getters.notesLoading));
+      return waitingForData && !this.$store.getters.loadingError;
+    },
+    showLoginPrompt() {
+      return !this.overlayLoading && !this.$store.getters.loggedIn && !this.$store.getters.loadingError;
+    },
+    overlayVisible() {
+      return this.overlayLoading || this.showLoginPrompt || !!this.$store.getters.loadingError;
+    },
+    overlayMessage() {
+      if (this.overlayLoading) {
+        return 'Loading your workspace...';
+      }
+      return '';
     }
   },
   methods: {
@@ -177,13 +203,42 @@ export default {
         return `${da} ${mo} ${ye} ${h}`;
       }
       return null;
+    },
+    startLoginRedirect() {
+      this.clearLoginRedirect();
+      this.loginRedirectCountdown = 5;
+      this.loginRedirectTimer = setInterval(() => {
+        if (this.loginRedirectCountdown <= 1) {
+          window.location.href = this.loginUrl;
+          return;
+        }
+        this.loginRedirectCountdown -= 1;
+      }, 1000);
+    },
+    clearLoginRedirect() {
+      if (this.loginRedirectTimer) {
+        clearInterval(this.loginRedirectTimer);
+        this.loginRedirectTimer = null;
+      }
     }
   },
   data(){
     return {
       loginDiscoveryMessage: localStorage.getItem('login_discovery') === null,
       isTouchScreen: MobileDetectService.isTouchScreen(),
-      name: this.$store.getters.name
+      name: this.$store.getters.name,
+      loginRedirectCountdown: 5,
+      loginRedirectTimer: null,
+      loginUrl: 'https://core.lukas-bownik.net/login'
+    }
+  },
+  watch: {
+    showLoginPrompt(newVal) {
+      if (newVal) {
+        this.startLoginRedirect();
+      } else {
+        this.clearLoginRedirect();
+      }
     }
   },
   mounted: async function() {
@@ -196,15 +251,29 @@ export default {
       }
     }
     const securityService = new SecurityService();
-    const isLoggedIn = await securityService.validateLoggedInState();
-    this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
-    
-    setInterval(async () => {
+    this.$store.commit({type: 'setLoadingError', loadingError: ''});
+    this.$store.commit({type: 'setAuthLoading', authLoading: true});
+    try {
       const isLoggedIn = await securityService.validateLoggedInState();
       this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
-      
+    } catch (error) {
+      this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to verify your session. Please try again.'});
+    } finally {
+      this.$store.commit({type: 'setAuthLoading', authLoading: false});
+    }
+    
+    setInterval(async () => {
+      try {
+        const isLoggedIn = await securityService.validateLoggedInState();
+        this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
+      } catch (error) {
+        // Silent refresh failure - keep current state
+      }
     }, 60000);
   },
+  beforeUnmount() {
+    this.clearLoginRedirect();
+  }
 }
 </script>
 
