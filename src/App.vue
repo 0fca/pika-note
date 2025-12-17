@@ -270,6 +270,7 @@ export default {
         const isLoggedIn = await securityService.validateLoggedInState();
         this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
       } catch (error) {
+        console.error('Auth refresh failed', error);
         // Silent refresh failure - keep current state
       }
     }, 60000);
