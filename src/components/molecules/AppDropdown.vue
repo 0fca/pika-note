@@ -193,6 +193,7 @@ export default {
   color: var(--color-text);
   text-decoration: none;
   transition: background-color var(--transition-fast), color var(--transition-fast);
+  border-bottom: none;
 }
 
 .app-menu-item:hover {
