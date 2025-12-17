@@ -435,7 +435,7 @@ export default {
       })
       .then(bucketsPayload => {
         this.$store.commit({type: 'setLoadingError', loadingError: ''});
-        this.onBucketsReceived(bucketsPayload);
+        this.onBucketsPayloadReceived(bucketsPayload);
         this.loaded = true;
         this.loading = false;
       })
@@ -505,10 +505,8 @@ export default {
   },
   methods: {
     loadNotes() {
-      if (!this.initialNotesResolved) {
-        this.$store.commit({type: 'setLoadingError', loadingError: ''});
-        this.$store.commit({type: 'setNotesLoading', notesLoading: true});
-      }
+      this.$store.commit({type: 'setLoadingError', loadingError: ''});
+      this.$store.commit({type: 'setNotesLoading', notesLoading: true});
       const order = this.$store.getters.order;
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&bucketId=" + this.bucketId)
         .then(data => {
@@ -526,8 +524,8 @@ export default {
           }
         })
         .finally(() => {
+          this.$store.commit({type: 'setNotesLoading', notesLoading: false});
           if (!this.initialNotesResolved) {
-            this.$store.commit({type: 'setNotesLoading', notesLoading: false});
             this.initialNotesResolved = true;
           }
         });
@@ -590,7 +588,7 @@ export default {
       this.loaded = true;
       this.actuallyLoaded = this.notes.length;
     },
-    onBucketsReceived: function(bucketsPayload) {
+    onBucketsPayloadReceived: function(bucketsPayload) {
       if(bucketsPayload.success === true){
         for(let i in bucketsPayload.payload){
           this.buckets.push({

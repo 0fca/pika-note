@@ -178,6 +178,7 @@ export default {
       return waitingForData && !this.$store.getters.loadingError;
     },
     isWaitingForData() {
+      // Show overlay while authentication, buckets, or notes are loading.
       return this.$store.getters.authLoading || (this.$store.getters.loggedIn && (this.$store.getters.bucketsLoading || this.$store.getters.notesLoading));
     },
     showLoginPrompt() {

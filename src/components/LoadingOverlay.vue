@@ -65,7 +65,10 @@ export default {
 <style scoped>
 .overlay-backdrop {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: var(--color-overlay-backdrop, rgba(11, 21, 46, 0.82));
   backdrop-filter: blur(6px);
   display: flex;
