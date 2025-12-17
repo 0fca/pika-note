@@ -30,8 +30,13 @@
                     </router-link>
                   </li>
                   <li>
-                    <a id="app-drop-link" class='dropdown-trigger navlink white-text' href='#'
-                      data-target='app-dropdown' title="Pika Cloud Apps">
+                    <a
+                      id="app-drop-link"
+                      class="navlink white-text"
+                      href="#"
+                      title="Pika Cloud Apps"
+                      @click.prevent.stop="$refs.appDropdown?.toggleMenu()"
+                    >
                       <i class="large material-icons">apps</i>
                     </a>
                   </li>
@@ -86,7 +91,7 @@
       </div>
     </div>
 
-    <AppDropdown />
+    <AppDropdown ref="appDropdown" />
     <footer class="stats-footer" v-if="$store.getters.loggedIn && ($store.getters.id !== '' || $store.getters.count > 0)">
       <div class="stats-grid">
         <!-- Top Left: Last Update -->
