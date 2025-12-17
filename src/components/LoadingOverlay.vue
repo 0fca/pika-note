@@ -82,15 +82,15 @@ export default {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
-  padding: 32px 28px;
+  padding: 40px 32px;
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
-  max-width: 420px;
+  max-width: 560px;
   width: 100%;
   text-align: center;
 }
 
 .overlay-logo {
-  width: 120px;
+  width: 160px;
   height: auto;
   margin: 0 auto 20px;
   display: block;
@@ -118,9 +118,11 @@ export default {
 
 .overlay-button {
   margin-top: 6px;
-  background: #0a4492;
+  background: var(--color-primary, #0a4492);
+  color: white;
   border-radius: 10px;
   padding: 0 18px;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .loader {
@@ -208,5 +210,10 @@ export default {
 .overlay-fade-enter-from,
 .overlay-fade-leave-to {
   opacity: 0;
+}
+
+.overlay-button:hover {
+  background: whitesmoke;
+  color: var(--color-primary, #0a4492);
 }
 </style>

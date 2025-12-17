@@ -384,6 +384,7 @@ import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
 import packageJson from '/package.json';
+import UnauthorizedException from "./exceptions/UnauthorizedException";
 
 const pageSize = 15;
 
@@ -429,7 +430,7 @@ export default {
     this.noteService.getBuckets()
       .then(bucketsResponse => {
         if (!bucketsResponse.ok) {
-          throw new Error('Failed to fetch buckets');
+          throw new UnauthorizedException();
         }
         return bucketsResponse.json();
       })
@@ -439,8 +440,13 @@ export default {
         this.loaded = true;
         this.loading = false;
       })
-      .catch(() => {
-        this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
+      .catch((err) => {
+        if (err instanceof UnauthorizedException) {
+          this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+          this.$store.commit({type: 'setLoadingError', loadingError: ''});
+        } else {
+          this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load buckets.'});
+        }
       })
       .finally(() => {
         this.initialBucketsResolved = true;
@@ -516,11 +522,14 @@ export default {
           this.onDataReceived(data);
           this.error = false;
         })
-        .catch(() => {
+        .catch((err) => {
           this.error = this.bucketId !== "" && this.$store.getters.loggedIn === true;
           this.loaded = true;
-          if (this.$store.getters.loggedIn) {
-            this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to load notes.'});
+          if (err instanceof UnauthorizedException || !this.$store.getters.loggedIn) {
+            this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+            this.$store.commit({type: 'setLoadingError', loadingError: ''});
+          } else if (this.$store.getters.loggedIn) {
+            this.$store.commit({type: 'setLoadingError', loadingError: 'There was a problem loading your notes.'});
           }
         })
         .finally(() => {

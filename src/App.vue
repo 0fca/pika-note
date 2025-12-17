@@ -233,7 +233,7 @@ export default {
       name: this.$store.getters.name,
       loginRedirectCountdown: 5,
       loginRedirectTimer: null,
-      loginUrl: process.env.VUE_APP_LOGIN_URL || `${window.location.origin}/login`
+      loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login'
     }
   },
   watch: {
@@ -261,7 +261,8 @@ export default {
       const isLoggedIn = await securityService.validateLoggedInState();
       this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
     } catch (error) {
-      this.$store.commit({type: 'setLoadingError', loadingError: 'Unable to verify your session. Please try again.'});
+      this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+      this.$store.commit({type: 'setLoadingError', loadingError: ''});
     } finally {
       this.$store.commit({type: 'setAuthLoading', authLoading: false});
     }
