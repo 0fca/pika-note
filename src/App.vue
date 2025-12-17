@@ -233,7 +233,7 @@ export default {
       name: this.$store.getters.name,
       loginRedirectCountdown: 5,
       loginRedirectTimer: null,
-      loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login'
+      loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login?returnUrl=https://note.lukas-bownik.net/'
     }
   },
   watch: {
