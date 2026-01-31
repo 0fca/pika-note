@@ -85,7 +85,7 @@
           <OrderSwitch @order-change="reloadOnOrderChange"/>
         </div>
         
-        <div class="mobile-notes-container">
+        <div class="mobile-notes-container" @scroll="handleMobileScroll" ref="mobileNotesContainer">
           <Preloader 
             message="Loading notes..." 
             v-if="!loaded && this.$store.getters.loggedIn"
@@ -125,11 +125,10 @@
           />
           
           <!-- Loading indicator for infinite scroll -->
-          <div v-if="isLoadingMore" class="loading-more">
-            <div class="progress">
-              <div class="indeterminate"></div>
-            </div>
-          </div>
+          <Preloader 
+            message="Loading more notes..." 
+            v-if="isLoadingMore"
+          />
         </div>
       </div>
     </div>
@@ -288,11 +287,10 @@
           />
           
           <!-- Loading indicator for infinite scroll -->
-          <div v-if="isLoadingMore" class="loading-more">
-            <div class="progress">
-              <div class="indeterminate"></div>
-            </div>
-          </div>
+          <Preloader 
+            message="Loading more notes..." 
+            v-if="isLoadingMore"
+          />
         </div>
       </div>
     </Teleport>
@@ -355,11 +353,10 @@
         />
         
         <!-- Loading indicator for infinite scroll -->
-        <div v-if="isLoadingMore" class="loading-more">
-          <div class="progress">
-            <div class="indeterminate"></div>
-          </div>
-        </div>
+        <Preloader 
+          message="Loading more notes..." 
+          v-if="isLoadingMore"
+        />
       </div>
     </aside>
 
@@ -570,6 +567,17 @@ export default {
         });
     },
     handleScroll(event) {
+      const container = event.target;
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+      
+      // Load more when scrolled to 80% of the container
+      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+        this.loadMoreNotes();
+      }
+    },
+    handleMobileScroll(event) {
       const container = event.target;
       const scrollTop = container.scrollTop;
       const scrollHeight = container.scrollHeight;
@@ -870,10 +878,6 @@ export default {
   padding-bottom: 80px; /* Extra padding to prevent stats footer from covering last note */
 }
 
-.loading-more {
-  padding: var(--spacing-md);
-}
-
 .fab-wrapper {
   position: absolute;
   bottom: var(--spacing-lg);
@@ -1046,10 +1050,6 @@ export default {
   margin: var(--spacing-xs) var(--spacing-sm) !important;
 }
 
-.mobile-notes-list .loading-more {
-  padding: var(--spacing-sm);
-}
-
 /* Responsive */
 @media (max-width: 992px) {
   .workspace-layout {
@@ -1194,6 +1194,16 @@ export default {
   font-size: var(--font-size-sm);
   color: var(--color-text-soft);
   font-weight: var(--font-weight-medium);
+}
+
+/* Mobile Notes Container */
+.mobile-notes-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-sm);
+  /* Calculate height: 100vh minus drawer header sections */
+  max-height: calc(100vh - 400px);
 }
 
 .drawer-overlay {
