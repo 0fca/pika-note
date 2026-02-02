@@ -125,10 +125,7 @@
           />
           
           <!-- Loading indicator for infinite scroll -->
-          <Preloader 
-            message="Loading more notes..." 
-            v-if="isLoadingMore"
-          />
+          <InfiniteScrollLoader v-if="showInfiniteLoader" />
         </div>
       </div>
     </div>
@@ -287,10 +284,7 @@
           />
           
           <!-- Loading indicator for infinite scroll -->
-          <Preloader 
-            message="Loading more notes..." 
-            v-if="isLoadingMore"
-          />
+          <InfiniteScrollLoader v-if="showInfiniteLoader" />
         </div>
       </div>
     </Teleport>
@@ -353,10 +347,7 @@
         />
         
         <!-- Loading indicator for infinite scroll -->
-        <Preloader 
-          message="Loading more notes..." 
-          v-if="isLoadingMore"
-        />
+        <InfiniteScrollLoader v-if="showInfiniteLoader" />
       </div>
     </aside>
 
@@ -380,6 +371,7 @@ import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
+import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
 import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
 
@@ -394,7 +386,8 @@ export default {
     Preloader,
     Select,
     Info,
-    OrderSwitch
+    OrderSwitch,
+    InfiniteScrollLoader
   },
   computed: {
     order: {
@@ -470,6 +463,11 @@ export default {
     // Clean up when component is destroyed
     this.hasTeleportTarget = false;
     
+    // Clear infinite loader timer
+    if (this.infiniteLoaderTimer) {
+      clearTimeout(this.infiniteLoaderTimer);
+    }
+    
     // Remove hamburger button listener
     const hamburger = document.querySelector('.sidenav-trigger');
     if (hamburger) {
@@ -487,6 +485,8 @@ export default {
       error: false,
       actuallyLoaded: 0,
       isLoadingMore: false,
+      showInfiniteLoader: false,
+      infiniteLoaderTimer: null,
       hasMoreNotes: true,
       currentPage: 0,
       isMounted: false,
@@ -545,6 +545,14 @@ export default {
       if (this.isLoadingMore || !this.hasMoreNotes) return;
       
       this.isLoadingMore = true;
+      
+      // Show loader only if loading takes longer than 300ms
+      this.infiniteLoaderTimer = setTimeout(() => {
+        if (this.isLoadingMore) {
+          this.showInfiniteLoader = true;
+        }
+      }, 300);
+      
       this.currentPage++;
       
       const order = this.$store.getters.order;
@@ -559,11 +567,15 @@ export default {
           } else {
             this.hasMoreNotes = false;
           }
-          this.isLoadingMore = false;
         })
         .catch(() => {
           this.isLoadingMore = false;
           this.hasMoreNotes = false;
+        })
+        .finally(() => {
+          clearTimeout(this.infiniteLoaderTimer);
+          this.showInfiniteLoader = false;
+          this.isLoadingMore = false;
         });
     },
     handleScroll(event) {

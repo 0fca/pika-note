@@ -1,5 +1,16 @@
 <template>
   <div class="editor sticky-section" v-on:keydown.ctrl.s.prevent="save">
+    <!-- Note Loading Overlay -->
+    <transition name="note-loading-fade">
+      <div v-if="isLoadingNote" class="note-loading-overlay">
+        <div class="note-loading-spinner">
+          <div class="spinner-pearl"></div>
+          <div class="spinner-pearl"></div>
+          <div class="spinner-pearl"></div>
+        </div>
+      </div>
+    </transition>
+    
     <!-- Title Input for All Notes -->
     <div class="title-input-section">
       <div class="input-field">
@@ -122,7 +133,8 @@ export default {
       autoSaveDebounceTimer: null,
       autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false', // Default true
       hasUnsavedChanges: false,
-      isProgrammaticTitleUpdate: false
+      isProgrammaticTitleUpdate: false,
+      isLoadingNote: false
     }
   },
   beforeRouteEnter(to, from, next){
@@ -229,6 +241,7 @@ export default {
     },
     loadNote(noteId) {
       if (noteId && this.editor) {
+        this.isLoadingNote = true;
         this.noteService.getNote(noteId)
           .then(n => {
             const content = JSON.parse(n.content);
@@ -245,6 +258,8 @@ export default {
             console.log("Error while loading note");
             this.$store.commit({type: "updateIfError", error: true});
             M.toast({html: 'Error loading note'});
+          }).finally(() => {
+            this.isLoadingNote = false;
           });
       }
     },
@@ -406,6 +421,65 @@ export default {
 </script>
 
 <style scoped>
+/* Note Loading Overlay */
+.note-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 10px;
+}
+
+.note-loading-spinner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spinner-pearl {
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  animation: pearl-bounce 1.4s ease-in-out infinite;
+}
+
+.spinner-pearl:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.spinner-pearl:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes pearl-bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.note-loading-fade-enter-active,
+.note-loading-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.note-loading-fade-enter-from,
+.note-loading-fade-leave-to {
+  opacity: 0;
+}
+
 .title-input-section {
   margin-bottom: var(--spacing-lg);
 }
@@ -437,5 +511,17 @@ export default {
   border-radius: 10px;
   height: fit-content;
   min-height: 50vh;
+  position: relative;
+}
+
+/* Dark mode support for note loading */
+@media (prefers-color-scheme: dark) {
+  .note-loading-overlay {
+    background-color: rgba(30, 30, 30, 0.9);
+  }
+  
+  .spinner-pearl {
+    background-color: #1565C0;
+  }
 }
 </style>
