@@ -3,11 +3,7 @@
     <!-- Note Loading Overlay -->
     <transition name="note-loading-fade">
       <div v-if="isLoadingNote" class="note-loading-overlay">
-        <div class="note-loading-spinner">
-          <div class="spinner-pearl"></div>
-          <div class="spinner-pearl"></div>
-          <div class="spinner-pearl"></div>
-        </div>
+        <Preloader message="Loading note..." />
       </div>
     </transition>
     
@@ -70,9 +66,12 @@
 import M from 'materialize-css';
 import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
+import Preloader from "@/components/Preloader";
 
 export default {
-  components: {},
+  components: {
+    Preloader
+  },
   emits: ['note-saved'],
   computed: {
     id: {
@@ -428,46 +427,13 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
   border-radius: 10px;
-}
-
-.note-loading-spinner {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.spinner-pearl {
-  width: 12px;
-  height: 12px;
-  background-color: var(--color-primary);
-  border-radius: 50%;
-  animation: pearl-bounce 1.4s ease-in-out infinite;
-}
-
-.spinner-pearl:nth-child(1) {
-  animation-delay: -0.32s;
-}
-
-.spinner-pearl:nth-child(2) {
-  animation-delay: -0.16s;
-}
-
-@keyframes pearl-bounce {
-  0%, 80%, 100% {
-    transform: scale(0);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 
 .note-loading-fade-enter-active,
@@ -517,11 +483,7 @@ export default {
 /* Dark mode support for note loading */
 @media (prefers-color-scheme: dark) {
   .note-loading-overlay {
-    background-color: rgba(30, 30, 30, 0.9);
-  }
-  
-  .spinner-pearl {
-    background-color: #1565C0;
+    background-color: rgba(30, 30, 30, 0.95);
   }
 }
 </style>

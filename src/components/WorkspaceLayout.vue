@@ -88,7 +88,7 @@
         <div class="mobile-notes-container" @scroll="handleMobileScroll" ref="mobileNotesContainer">
           <Preloader 
             message="Loading notes..." 
-            v-if="!loaded && this.$store.getters.loggedIn"
+            v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
           />
           <Error v-if="error"/>
           <Info 
@@ -134,13 +134,6 @@
     <div v-if="this.$store.getters.loggedIn === false" class="login-message-container">
       <Info message="Please log in to view or create notes" />
     </div>
-
-    <!-- Loading Toast for Mobile -->
-    <transition name="toast">
-      <div v-if="(!loaded || isDrawerOpening) && this.$store.getters.loggedIn" class="mobile-loading-toast hide-on-large-only">
-        <div class="spinner-circle"></div>
-      </div>
-    </transition>
 
     <!-- Bucket Selection Prompt Toast -->
     <transition name="toast">
@@ -247,7 +240,7 @@
         <div class="mobile-notes-list">
           <Preloader 
             message="Loading notes..." 
-            v-if="!loaded && this.$store.getters.loggedIn"
+            v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
           />
           <Error v-if="error"/>
           <Info 
@@ -310,7 +303,7 @@
       <div class="notes-list-container" @scroll="handleScroll" ref="notesContainer">
         <Preloader 
           message="Loading notes..." 
-          v-if="!loaded && this.$store.getters.loggedIn"
+          v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
         />
         <Error v-if="error"/>
         <Info 
@@ -491,7 +484,6 @@ export default {
       currentPage: 0,
       isMounted: false,
       hasTeleportTarget: false,
-      isDrawerOpening: false,
       isDrawerOpen: false,
       drawerTransform: 'translateX(-100%)',
       isDraggingDrawer: false,
@@ -781,14 +773,8 @@ export default {
       this.isDraggingDrawer = false;
     },
     openDrawer() {
-      this.isDrawerOpening = true;
       this.isDrawerOpen = true;
       this.drawerTransform = 'translateX(0)';
-      
-      // Hide loading after animation
-      setTimeout(() => {
-        this.isDrawerOpening = false;
-      }, 300);
       
       // Prevent body scroll when drawer is open
       document.body.style.overflow = 'hidden';
@@ -1251,39 +1237,6 @@ export default {
   pointer-events: auto;
 }
 
-/* Mobile Loading Toast */
-.mobile-loading-toast {
-  position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(10, 68, 146, 0.95);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  z-index: 1500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  backdrop-filter: blur(10px);
-}
-
-.spinner-circle {
-  width: 100%;
-  height: 100%;
-  border: 3px solid rgba(255, 255, 255, 0.25);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  box-sizing: border-box;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* Bucket Prompt Toast */
 .bucket-prompt-toast {
   position: fixed;
@@ -1362,16 +1315,6 @@ export default {
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .mobile-loading-toast {
-    background-color: rgba(21, 101, 192, 0.95);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  }
-  
-  .spinner-circle {
-    border-color: rgba(255, 255, 255, 0.2);
-    border-top-color: white;
-  }
-  
   .bucket-prompt-toast {
     background-color: rgba(255, 152, 0, 0.95);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
