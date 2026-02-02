@@ -49,12 +49,6 @@
         </ul>
       </div>
     </div>
-    <div id="tap-target" class="tap-target floating-btn-orange white-text" data-target="create_floating_btn" v-if="this.editorDiscoveryMessage === true">
-      <div class="tap-target-content">
-        <h5>Editor Context Actions</h5>
-        <p>This floating button hides a context menu which allows you to either reset the editor's content or save your note. Tap anywhere to dismiss.</p>
-      </div>
-    </div>
     <div class="row background">
       <div id="editor" @focus="onEditorFocus"></div>
     </div>
@@ -122,7 +116,6 @@ export default {
     return {
       name: this.$store.getters.name,
       editor: null,
-      editorDiscoveryMessage: localStorage.getItem('editors_discovery') === null ?? false,
       noteService: null,
       noteTitle: '',
       showStatsFooter: false,
@@ -152,13 +145,6 @@ export default {
   },
   mounted() {
     M.AutoInit();
-    if(localStorage.getItem('editors_discovery') === null){
-      const instance = M.TapTarget.getInstance(document.getElementById('tap-target'));
-      if(instance !== undefined){
-        instance.open();
-        localStorage.setItem('editors_discovery', '1');
-      }
-    }
     
     // Initialize autoSaveEnabled from localStorage and sync with store
     const savedAutoSave = localStorage.getItem('autoSaveEnabled');
