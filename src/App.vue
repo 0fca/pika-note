@@ -66,22 +66,13 @@
         </div>
       </nav>
     </div>
-    <div id="login_discovery" class="tap-target feature-discovery white-text show-on-medium-and-up" data-target="login"
-      v-if="this.loginDiscoveryMessage === true">
-      <div class="tap-target-content">
-        <h5>Federated Identity</h5>
-        <p>Pika Note is federated with Pika Core with single identity. Tap this button to proceed to login page. Tap
-          anywhere to dismiss.</p>
-      </div>
-    </div>
-    <div id="login_discovery" class="tap-target feature-discovery white-text show-on-small-only" data-target="hamburger"
-      v-if="this.loginDiscoveryMessage === true && isTouchScreen">
-      <div class="tap-target-content">
-        <h5>Federated Identity</h5>
-        <p>Pika Note is federated with Pika Core with single identity. Tap here to open sidenav and then LOG IN to
-          proceed to login page. Tap anywhere to dismiss.</p>
-      </div>
-    </div>
+    <!-- Feature Discovery Component -->
+    <FeatureDiscovery
+      v-if="showFeatureDiscovery"
+      :discoveries="featureDiscoveries"
+      @complete="onDiscoveryComplete"
+      @dismiss="onDiscoveryDismiss"
+    />
     <ul id="slide-out" class="sidenav">
       <!-- Mobile content will be teleported here from WorkspaceLayout -->
       <li class="mobile-notes-section hide-on-large-only"></li>
@@ -155,12 +146,14 @@ import SecurityService from '@/services/securityService';
 import M from 'materialize-css';
 import MobileDetectService from './services/mobileDetectService';
 import LoadingOverlay from './components/LoadingOverlay.vue';
+import FeatureDiscovery from './components/FeatureDiscovery.vue';
 
 export default {
   name: 'App',
   components: {
     AppDropdown,
-    LoadingOverlay
+    LoadingOverlay,
+    FeatureDiscovery
   },
   computed: {
     title: {
@@ -190,6 +183,18 @@ export default {
         return 'Loading your workspace...';
       }
       return '';
+    },
+    workspaceLoaded() {
+      // Workspace is loaded when we're logged in and not loading
+      return this.$store.getters.loggedIn && 
+             !this.$store.getters.authLoading && 
+             !this.$store.getters.bucketsLoading && 
+             !this.$store.getters.notesLoading &&
+             !this.$store.getters.loadingError;
+    },
+    showFeatureDiscovery() {
+      // Show feature discovery when workspace is loaded and there are discoveries to show
+      return this.workspaceLoaded && this.hasUnseenDiscoveries;
     }
   },
   methods: {
@@ -222,16 +227,46 @@ export default {
         clearInterval(this.loginRedirectTimer);
         this.loginRedirectTimer = null;
       }
+    },
+    onDiscoveryComplete() {
+      this.hasUnseenDiscoveries = false;
+    },
+    onDiscoveryDismiss() {
+      this.hasUnseenDiscoveries = false;
+    },
+    checkForUnseenDiscoveries() {
+      // Check if any discoveries haven't been seen
+      this.hasUnseenDiscoveries = this.featureDiscoveries.some(
+        d => !localStorage.getItem(d.id)
+      );
     }
   },
   data(){
     return {
-      loginDiscoveryMessage: localStorage.getItem('login_discovery') === null,
       isTouchScreen: MobileDetectService.isTouchScreen(),
       name: this.$store.getters.name,
       loginRedirectCountdown: 5,
       loginRedirectTimer: null,
-      loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login'
+      loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login',
+      hasUnseenDiscoveries: false,
+      featureDiscoveries: [
+        {
+          id: 'login_discovery',
+          targetSelector: this.isTouchScreen ? '#hamburger' : '#login',
+          title: 'Federated Identity',
+          description: this.isTouchScreen 
+            ? 'Pika Note is federated with Pika Core with single identity. Tap here to open the drawer menu and then LOG IN to proceed to the login page.'
+            : 'Pika Note is federated with Pika Core with single identity. Click this button to proceed to the login page.',
+          position: 'bottom'
+        },
+        {
+          id: 'editor_discovery',
+          targetSelector: '#create_floating_btn',
+          title: 'Editor Tools',
+          description: 'Use this floating action button to save your notes, toggle auto-save, and clear content. Click to expand the menu.',
+          position: 'left'
+        }
+      ]
     }
   },
   watch: {
@@ -241,17 +276,22 @@ export default {
       } else {
         this.clearLoginRedirect();
       }
+    },
+    workspaceLoaded(newVal) {
+      // When workspace is loaded, check for unseen discoveries
+      if (newVal) {
+        this.$nextTick(() => {
+          this.checkForUnseenDiscoveries();
+        });
+      }
     }
   },
   mounted: async function() {
     M.AutoInit();
-    if(localStorage.getItem('login_discovery') === null){
-      const instance = M.TapTarget.getInstance(document.getElementById('login_discovery'));
-      if(instance !== undefined){
-        instance.open();
-        localStorage.setItem('login_discovery', '1');
-      }
-    }
+    
+    // Check for unseen discoveries on mount
+    this.checkForUnseenDiscoveries();
+    
     const securityService = new SecurityService();
     this.$store.commit({type: 'setLoadingError', loadingError: ''});
     this.$store.commit({type: 'setAuthLoading', authLoading: true});
