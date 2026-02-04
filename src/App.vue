@@ -87,9 +87,7 @@
       <li class="mobile-notes-section hide-on-large-only"></li>
     </ul>
     <div class="row whitesmoke padding">
-      <div class="container">
-        <router-view></router-view>
-      </div>
+      <router-view></router-view>
     </div>
 
     <footer class="stats-footer" v-if="$store.getters.loggedIn && ($store.getters.id !== '' || $store.getters.count > 0)">
