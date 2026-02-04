@@ -31,6 +31,41 @@
           <span>Pika Cloudfront</span>
         </a>
         <a
+          href="https://core.lukas-bownik.net/"
+          class="app-menu-item"
+          title="Pika Core"
+          role="menuitem"
+        >
+         <svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="20"
+  height="20"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <!-- Top server tray -->
+  <rect x="3" y="3" width="18" height="5" rx="1" ry="1"></rect>
+  <line x1="7" y1="5.5" x2="7" y2="5.5"></line>
+  <line x1="11" y1="5.5" x2="11" y2="5.5"></line>
+
+  <!-- Middle server tray -->
+  <rect x="3" y="9.5" width="18" height="5" rx="1" ry="1"></rect>
+  <line x1="7" y1="12" x2="7" y2="12"></line>
+  <line x1="11" y1="12" x2="11" y2="12"></line>
+
+  <!-- Bottom server tray -->
+  <rect x="3" y="16" width="18" height="5" rx="1" ry="1"></rect>
+  <line x1="7" y1="18.5" x2="7" y2="18.5"></line>
+  <line x1="11" y1="18.5" x2="11" y2="18.5"></line>
+</svg>
+
+          <span>Pika Core</span>
+        </a>
+        <a
           href="https://chat.lukas-bownik.net/"
           class="app-menu-item"
           title="Pika Chat"
@@ -50,31 +85,6 @@
             ></path>
           </svg>
           <span>Pika Chat</span>
-        </a>
-        <a
-          href="https://note.lukas-bownik.net/"
-          class="app-menu-item"
-          title="Pika Note"
-          role="menuitem"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-            ></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-          <span>Pika Note</span>
         </a>
         <a
           href="https://cloud.lukas-bownik.net/status"
@@ -188,11 +198,10 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
   color: #333;
   text-decoration: none;
   transition: background-color 0.2s ease;
-  border: none;
+  border: none !important;
 }
 
 .app-menu-item:hover {
