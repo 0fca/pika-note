@@ -7,29 +7,26 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
-  "dependencies": {
-    "core-js": "^3.6.5",
-    "materialize-css": "^1.0.0",
-    "tiptap-extensions": "^1.32.4",
-    "vue": "^2.6.11",
-    "vue-ui-preloader": "^1.1.0",
-    "vuex-persistedstate": "^3.1.0",
-    "jwt-decode": "^4.0.0",
-    "materialize-css": "^1.0.0",
-    "medium-editor": "^5.23.3"
-  },
-  "devDependencies": {
-    "@babel/eslint-parser": "^7.28.6",
-    "@vue/cli-plugin-babel": "~5.0.0",
-    "@vue/cli-plugin-eslint": "~5.0.0",
-    "@vue/cli-service": "~5.0.0",
-    "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.0.0",
-    "tiptap": "^1.29.5",
-    "vue-router": "^3.4.3",
-    "vue-template-compiler": "^2.6.11",
-    "vuex": "^3.5.1"
-  },
+ "dependencies": {
+        "core-js": "^3.29.0",
+        "jwt-decode": "^4.0.0",
+        "materialize-css": "^1.0.0",
+        "medium-editor": "^5.23.3",
+        "vue": "^3.5.13",
+        "vuex-persistedstate": "^4.1.0"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.23.6",
+        "@babel/eslint-parser": "^7.23.3",
+        "@vue/cli-plugin-babel": "^5.0.8",
+        "@vue/cli-plugin-eslint": "^5.0.8",
+        "@vue/cli-service": "^5.0.8",
+        "@vue/compiler-sfc": "^3.3.11",
+        "eslint": "^7.20.0",
+        "eslint-plugin-vue": "^7.20.0",
+        "vue-router": "^4.2.5",
+        "vuex": "^4.1.0"
+    },
   "eslintConfig": {
     "root": true,
     "env": {
