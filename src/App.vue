@@ -195,6 +195,27 @@ export default {
     showFeatureDiscovery() {
       // Show feature discovery when workspace is loaded and there are discoveries to show
       return this.workspaceLoaded && this.hasUnseenDiscoveries;
+    },
+    featureDiscoveries() {
+      // Computed property to access component instance properties
+      return [
+        {
+          id: 'login_discovery',
+          targetSelector: this.isTouchScreen ? '#hamburger' : '#login',
+          title: 'Federated Identity',
+          description: this.isTouchScreen 
+            ? 'Pika Note is federated with Pika Core with single identity. Tap here to open the drawer menu and then LOG IN to proceed to the login page.'
+            : 'Pika Note is federated with Pika Core with single identity. Click this button to proceed to the login page.',
+          position: 'bottom'
+        },
+        {
+          id: 'editor_discovery',
+          targetSelector: '#create_floating_btn',
+          title: 'Editor Tools',
+          description: 'Use this floating action button to save your notes, toggle auto-save, and clear content. Click to expand the menu.',
+          position: 'left'
+        }
+      ];
     }
   },
   methods: {
@@ -248,25 +269,7 @@ export default {
       loginRedirectCountdown: 5,
       loginRedirectTimer: null,
       loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login',
-      hasUnseenDiscoveries: false,
-      featureDiscoveries: [
-        {
-          id: 'login_discovery',
-          targetSelector: this.isTouchScreen ? '#hamburger' : '#login',
-          title: 'Federated Identity',
-          description: this.isTouchScreen 
-            ? 'Pika Note is federated with Pika Core with single identity. Tap here to open the drawer menu and then LOG IN to proceed to the login page.'
-            : 'Pika Note is federated with Pika Core with single identity. Click this button to proceed to the login page.',
-          position: 'bottom'
-        },
-        {
-          id: 'editor_discovery',
-          targetSelector: '#create_floating_btn',
-          title: 'Editor Tools',
-          description: 'Use this floating action button to save your notes, toggle auto-save, and clear content. Click to expand the menu.',
-          position: 'left'
-        }
-      ]
+      hasUnseenDiscoveries: false
     }
   },
   watch: {

@@ -214,10 +214,11 @@ export default {
     if (this.currentDiscovery) {
       this.updateTargetRect();
       
-      // Update target rect periodically in case the element moves
+      // Update target rect periodically in case the element moves or appears
+      // Using 250ms interval to balance responsiveness with CPU usage
       this.updateRectInterval = setInterval(() => {
         this.updateTargetRect();
-      }, 100);
+      }, 250);
       
       // Update on window resize
       window.addEventListener('resize', this.handleResize);
