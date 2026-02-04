@@ -27,7 +27,8 @@
               v-bind:key="index"
               v-bind:id="note.id"
               v-bind:name="note.humanName"
-              v-bind:date="note.timestamp">
+              v-bind:date="note.timestamp"
+              @note-deleted="handleNoteDeleted">
         </Note>
       </transition-group>
       <Info v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" message="This bucket appears to be empty"/>
@@ -205,6 +206,11 @@ export default {
           this.error = true;
           this.loaded = true;
         });
+    },
+    handleNoteDeleted: function(noteId) {
+      // Remove the note from the list
+      this.notes = this.notes.filter(note => note.id !== noteId);
+      this.actuallyLoaded = this.notes.length;
     }
   }
 }

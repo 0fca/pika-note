@@ -77,7 +77,7 @@
       <!-- Mobile content will be teleported here from WorkspaceLayout -->
       <li class="mobile-notes-section hide-on-large-only"></li>
     </ul>
-    <div class="row whitesmoke padding">
+    <div class="row whitesmoke">
       <router-view></router-view>
     </div>
 
