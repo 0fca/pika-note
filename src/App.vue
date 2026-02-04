@@ -29,7 +29,7 @@
                         <i class="material-icons">info_outline</i>
                     </router-link>
                   </li>
-                  <li style="position: relative;">
+                  <li class="dropdown-container">
                     <a
                       id="app-drop-link"
                       class="navlink white-text"
@@ -348,5 +348,10 @@ nav button.navlink:hover {
   margin: 0 !important;
   height: 100%;
   overflow: hidden;
+}
+
+/* App dropdown positioning container */
+nav ul li.dropdown-container {
+  position: relative;
 }
 </style>
