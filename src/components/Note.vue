@@ -33,6 +33,15 @@
 import NoteService from '@/services/noteService';
 import MobileDetectService from '@/services/mobileDetectService';
 
+// Swipe gesture constants
+const MIN_SWIPE_DISTANCE = 10;
+const DELETE_THRESHOLD = 100;
+const MAX_SWIPE_OFFSET = 150;
+const SWIPE_RESET_DELAY = 300;
+
+// Shared note service instance
+let noteService = null;
+
 export default {
   name: "Note",
   props: [
@@ -47,9 +56,14 @@ export default {
       startX: 0,
       startY: 0,
       isSwiping: false,
-      noteService: new NoteService(),
       isTouchScreen: MobileDetectService.isTouchScreen()
     };
+  },
+  created() {
+    // Create shared service instance once
+    if (!noteService) {
+      noteService = new NoteService();
+    }
   },
   methods: {
     handleClick() {
@@ -86,7 +100,7 @@ export default {
     },
     async handleDelete() {
       try {
-        await this.noteService.removeNote(this.id);
+        await noteService.removeNote(this.id);
         // Emit event to parent to remove note from list
         this.$emit('note-deleted', this.id);
       } catch (error) {
@@ -109,17 +123,17 @@ export default {
       const diffY = currentY - this.startY;
       
       // Only allow right swipe
-      if (diffX > 10 && Math.abs(diffY) < Math.abs(diffX)) {
+      if (diffX > MIN_SWIPE_DISTANCE && Math.abs(diffY) < Math.abs(diffX)) {
         this.isSwiping = true;
-        this.swipeOffset = Math.min(diffX, 150); // Cap at 150px
+        this.swipeOffset = Math.min(diffX, MAX_SWIPE_OFFSET);
         event.preventDefault();
       }
     },
     async handleTouchEnd() {
       if (!this.isTouchScreen) return;
       
-      // If swiped more than 100px, delete the note
-      if (this.swipeOffset > 100) {
+      // If swiped more than threshold, delete the note
+      if (this.swipeOffset > DELETE_THRESHOLD) {
         await this.handleDelete();
       }
       
@@ -127,7 +141,7 @@ export default {
       this.swipeOffset = 0;
       setTimeout(() => {
         this.isSwiping = false;
-      }, 300);
+      }, SWIPE_RESET_DELAY);
     }
   }
 }
