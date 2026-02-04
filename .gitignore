@@ -108,6 +108,5 @@ dist
 
 .idea
 
-# SSL certificates and private keys backup files only
+# Exclude only backup certificate files (keep the original committed certificates)
 *.pem.bak
-note-cloud-localhost.pfx
