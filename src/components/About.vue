@@ -1,21 +1,49 @@
 <template>
-  <div class="card white">
-    <div class="card-content grey-text text-darken-1">
-      <span class="card-title">About</span>
-      <p>This application's purpose is to be a simple web notepad. <strong>This is <b>ALPHA</b> build of application, so bugs will occur!</strong></p>
-      <p>This is PikaNote aka Alexis.</p>
-      <p>Below you have hyperlinks to navigate to another systems in PikaCloud or another sites of mine.</p>
+  <div class="container center">
+    <div class="card about-card">
+      <div class="card-content">
+        <span class="card-title about-title">Pika Note v. {{version}}</span>
+        <span class="card-action" style="border-top: none;">
+          <a href="https://blog.lukas-bownik.net/posts/pika-cloud-changelog/#pika-note" class="changelog-link">Changelog</a>
+        </span>
+      </div>
     </div>
-    <div class="card-action">
-      <a class="red-text text-accent-2" href="https://core.lukas-bownik.net/">Pika Core</a>
-      <a class="red-text text-accent-2" href="https://infra.lukas-bownik.net/">Pika Status</a>
-      <a class="red-text text-accent-2" href="https://blog.lukas-bownik.net/">Blog</a>
-    </div>
+    <div><img src="@/assets/pika_note.png" alt="Pika Note Illustration" style="margin-top: var(--spacing-xl); max-width: 400px; width: 100%;"/></div>
   </div>
 </template>
 
 <script>
+import packageJson from '/package.json';
+
 export default {
-  name: "About"
+  name: "About",
+  data(){
+    return {
+      version: packageJson.version
+    }
+  }
 }
 </script>
+
+<style scoped>
+.about-card {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  margin-top: var(--spacing-2xl);
+}
+
+.about-title {
+  color: white !important;
+  font-size: var(--font-size-3xl);
+}
+
+.changelog-link {
+  color: white !important;
+  text-decoration: underline;
+  font-weight: var(--font-weight-medium);
+}
+
+.changelog-link:hover {
+  color: var(--color-accent-soft) !important;
+}
+</style>
