@@ -52,7 +52,7 @@ export default {
     };
   },
   methods: {
-    handleClick(event) {
+    handleClick() {
       // Only trigger persist if not swiping
       if (!this.isSwiping) {
         this.persist(this.id);
@@ -115,7 +115,7 @@ export default {
         event.preventDefault();
       }
     },
-    async handleTouchEnd(event) {
+    async handleTouchEnd() {
       if (!this.isTouchScreen) return;
       
       // If swiped more than 100px, delete the note
