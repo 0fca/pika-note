@@ -107,3 +107,6 @@ dist
 .tern-port
 
 .idea
+
+# Exclude only backup certificate files (keep the original committed certificates)
+*.pem.bak
