@@ -164,7 +164,7 @@ export default {
   align-items: center;
   justify-content: flex-start;
   padding-left: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   z-index: 0;
 }
 
