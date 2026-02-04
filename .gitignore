@@ -107,3 +107,8 @@ dist
 .tern-port
 
 .idea
+
+# SSL certificates and private keys
+*.pem
+*.pem.bak
+*.pfx
