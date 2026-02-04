@@ -173,31 +173,30 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .app-menu-items {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
 
 .app-menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: var(--color-text);
+  padding: 12px 16px;
+  color: #333;
   text-decoration: none;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-  border-bottom: none;
+  transition: background-color 0.2s ease;
+  border: none;
 }
 
 .app-menu-item:hover {
-  background: var(--color-background-mute, rgba(0, 0, 0, 0.04));
-  color: var(--color-primary);
+  background: #f5f5f5;
 }
 
 .app-menu-item svg {
