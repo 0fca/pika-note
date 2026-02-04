@@ -158,47 +158,45 @@ export default {
 
 <style scoped>
 .app-menu-dropdown {
-  position: fixed;
-  top: 72px;
-  right: 16px;
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.18));
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
   width: 280px;
-  z-index: 2000;
-  padding: 12px 12px 8px;
+  background: #fff;
   border-radius: 8px;
+  box-shadow: 0 4px 16px #00000026;
+  z-index: 1000;
+  overflow: hidden;
 }
 
 .app-menu-header {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .app-menu-items {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
 
 .app-menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: var(--color-text);
+  padding: 12px 16px;
+  color: #333;
   text-decoration: none;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-  border-bottom: none;
+  transition: background-color 0.2s ease;
+  border: none;
 }
 
 .app-menu-item:hover {
-  background: var(--color-background-mute, rgba(0, 0, 0, 0.04));
-  color: var(--color-primary);
+  background: #f5f5f5;
 }
 
 .app-menu-item svg {
