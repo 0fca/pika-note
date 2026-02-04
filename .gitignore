@@ -108,7 +108,6 @@ dist
 
 .idea
 
-# SSL certificates and private keys
-*.pem
+# SSL certificates and private keys backup files only
 *.pem.bak
-*.pfx
+note-cloud-localhost.pfx
