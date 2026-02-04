@@ -52,7 +52,7 @@
                   </li>
                   <li v-if="this.$store.getters.loggedIn === true">
                     <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
-                      <button class="btn-flat btn-nav navlink white-text left" style="height: inherit;">
+                      <button id="login" class="btn-flat btn-nav navlink white-text left" style="height: inherit;">
                         <i class="material-icons rotate" style="position:relative; height:inherit;">
                           exit_to_app
                         </i>
