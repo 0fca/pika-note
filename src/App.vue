@@ -29,7 +29,7 @@
                         <i class="material-icons">info_outline</i>
                     </router-link>
                   </li>
-                  <li>
+                  <li style="position: relative;">
                     <a
                       id="app-drop-link"
                       class="navlink white-text"
@@ -39,6 +39,7 @@
                     >
                       <i class="large material-icons">apps</i>
                     </a>
+                    <AppDropdown ref="appDropdown" />
                   </li>
                   <li v-if="this.$store.getters.loggedIn === false">
                     <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
@@ -91,7 +92,6 @@
       </div>
     </div>
 
-    <AppDropdown ref="appDropdown" />
     <footer class="stats-footer" v-if="$store.getters.loggedIn && ($store.getters.id !== '' || $store.getters.count > 0)">
       <div class="stats-grid">
         <!-- Top Left: Last Update -->

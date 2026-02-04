@@ -165,7 +165,7 @@ export default {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 16px #00000026;
-  z-index: 1000;
+  z-index: 1001;
   overflow: hidden;
 }
 
