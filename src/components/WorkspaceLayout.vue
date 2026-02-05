@@ -116,6 +116,7 @@
               :name="note.humanName"
               :date="note.timestamp"
               @click="loadNoteIntoEditorAndCloseNav(note)"
+              @note-deleted="handleNoteDeleted"
             />
           </div>
           
@@ -268,6 +269,7 @@
               :name="note.humanName"
               :date="note.timestamp"
               @click="loadNoteIntoEditorAndCloseNav(note)"
+              @note-deleted="handleNoteDeleted"
             />
           </div>
           
@@ -331,6 +333,7 @@
             :name="note.humanName"
             :date="note.timestamp"
             @click="loadNoteIntoEditor(note)"
+            @note-deleted="handleNoteDeleted"
           />
         </transition-group>
         
@@ -812,6 +815,11 @@ export default {
     },
     dismissBucketPrompt() {
       this.showBucketPrompt = false;
+    },
+    handleNoteDeleted(noteId) {
+      // Remove the note from the list
+      this.notes = this.notes.filter(note => note.id !== noteId);
+      this.actuallyLoaded = this.notes.length;
     }
   }
 }

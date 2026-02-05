@@ -172,9 +172,10 @@ export default {
   top: calc(100% + 8px);
   right: 0;
   width: 280px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px #00000026;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   z-index: 1001;
   overflow: hidden;
 }
@@ -184,8 +185,8 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 12px;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--color-card-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .app-menu-items {
@@ -198,14 +199,30 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #333;
+  padding: 12px 16px;
+  color: var(--color-text);
   text-decoration: none;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
   border: none !important;
 }
 
 .app-menu-item:hover {
-  background: #f5f5f5;
+  background: var(--color-background-mute);
+  color: #6ba3ff !important;
+}
+
+/* Light mode hover - slightly darker */
+@media (prefers-color-scheme: light) {
+  .app-menu-item:hover {
+    background: var(--color-background-mute);
+  }
+}
+
+/* Dark mode hover - slightly lighter */
+@media (prefers-color-scheme: dark) {
+  .app-menu-item:hover {
+    background: var(--color-background-soft);
+  }
 }
 
 .app-menu-item svg {
