@@ -4,13 +4,22 @@ export default class SecurityService {
     }
 
     async validateLoggedInState() {
-        const response = await fetch(`${this.baseUrl}/Security/Check`, {
+        const url = `${this.baseUrl}/Security/Check`;
+        const options = {
             method: 'GET',
             headers: {
                 'Origin': this.baseUrl,
             },
             credentials: 'include'
-        });
+        };
+
+        const response = await fetch(url, options);
+
+        if (response.status === 401) {
+            const retryResponse = await fetch(url, options);
+            return retryResponse.ok;
+        }
+
         return response.ok;
     }
 }
