@@ -316,7 +316,7 @@ export default {
         console.error('Auth refresh failed', error);
         // Silent refresh failure - keep current state
       }
-    }, 60000);
+    }, 8000);
   },
   beforeUnmount() {
     this.clearLoginRedirect();
