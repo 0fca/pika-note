@@ -83,6 +83,9 @@
         
         <div class="mobile-notes-controls" v-if="this.$store.getters.loggedIn">
           <OrderSwitch @order-change="reloadOnOrderChange"/>
+          <button class="btn btn-flat search-btn" @click="openSearch">
+            <i class="material-icons">search</i>
+          </button>
         </div>
         
         <div class="mobile-notes-container" @scroll="handleMobileScroll" ref="mobileNotesContainer">
@@ -236,6 +239,9 @@
         
         <div class="mobile-notes-controls" v-if="this.$store.getters.loggedIn">
           <OrderSwitch @order-change="reloadOnOrderChange"/>
+          <button class="btn btn-flat search-btn" @click="openSearch">
+            <i class="material-icons">search</i>
+          </button>
         </div>
         
         <div class="mobile-notes-list">
@@ -298,6 +304,9 @@
           </div>
           <div class="list-controls">
             <OrderSwitch @order-change="reloadOnOrderChange"/>
+            <button class="btn btn-flat search-btn" @click="openSearch">
+              <i class="material-icons">search</i>
+            </button>
           </div>
         </div>
       </div>
@@ -355,6 +364,12 @@
       />
     </main>
   </div>
+  <SearchOverlay
+    :visible="showSearchOverlay"
+    :bucketId="bucketId"
+    @close="closeSearch"
+    @note-selected="onSearchNoteSelected"
+  />
   </div>
 </template>
 
@@ -367,7 +382,9 @@ import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
+import SearchOverlay from './molecules/SearchOverlay.vue';
 import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
+import M from 'materialize-css';
 import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
 
@@ -383,6 +400,7 @@ export default {
     Select,
     Info,
     OrderSwitch,
+    SearchOverlay,
     InfiniteScrollLoader
   },
   computed: {
@@ -499,7 +517,8 @@ export default {
       appsMenuOpen: false,
       version: packageJson.version,
       initialBucketsResolved: false,
-      initialNotesResolved: false
+      initialNotesResolved: false,
+      showSearchOverlay: false
     }
   },
   methods: {
@@ -817,9 +836,33 @@ export default {
       this.showBucketPrompt = false;
     },
     handleNoteDeleted(noteId) {
-      // Remove the note from the list
+      // Immediately remove from UI
       this.notes = this.notes.filter(note => note.id !== noteId);
       this.actuallyLoaded = this.notes.length;
+      // Fire delete request in background
+      this.noteService.removeNote(noteId)
+        .then(response => {
+          if (response.ok) {
+            M.toast({ html: 'Note deleted successfully', displayLength: 2000 });
+          } else {
+            M.toast({ html: 'Failed to delete note', displayLength: 3000 });
+            this.loadNotes();
+          }
+        })
+        .catch(() => {
+          M.toast({ html: 'Error deleting note', displayLength: 3000 });
+          this.loadNotes();
+        });
+    },
+    openSearch() {
+      this.showSearchOverlay = true;
+    },
+    closeSearch() {
+      this.showSearchOverlay = false;
+    },
+    onSearchNoteSelected(note) {
+      this.loadNoteIntoEditor(note);
+      this.closeDrawer();
     }
   }
 }
@@ -874,6 +917,26 @@ export default {
   display: flex;
   gap: var(--spacing-sm);
   justify-content: space-between;
+  align-items: center;
+}
+
+.search-btn {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  min-width: 36px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-btn:hover {
+  background-color: var(--color-primary-soft) !important;
+}
+
+.mobile-notes-controls {
+  display: flex;
+  gap: var(--spacing-sm);
   align-items: center;
 }
 

@@ -91,6 +91,13 @@ export default class NoteService {
         });
     }
 
+    async searchNotes(bucketId, query, maxResults = 20) {
+        const params = new URLSearchParams({ bucketId, query, maxResults: maxResults.toString() });
+        const url = `/notes/search?${params}`;
+        const rawJson = await this.readData(url);
+        return rawJson.payload;
+    }
+
     async getBuckets() {
         const url = `${this.baseUrl}/notes/buckets`;
         const response = await fetch(url, {

@@ -10,18 +10,19 @@
             <div class="col s8 m6 l8">
               <NoteCountDropdown @count-changed="reloadOnCountChange" v-bind:loadedCount="getActuallyLoaded"></NoteCountDropdown>
             </div>
-            <div class="col s4 m4 l2">
+            <div class="col s4 m4 l2" style="display: flex; gap: 4px; align-items: center;">
               <OrderSwitch @order-change="reloadOnOrderChange"/>
+              <button class="btn btn-flat" style="background-color: var(--color-primary) !important; color: white !important; min-width: 36px; padding: 0 8px;" @click="showSearchOverlay = true">
+                <i class="material-icons">search</i>
+              </button>
             </div>
             </div>
           </div>
       </div>
     </div>
     <div class="row" id="notes">
-      <Preloader message="Now, it is all rolling, please wait!" v-if="!loaded && this.$store.getters.loggedIn"/>
       <Error v-if="error"/>
-      <Info v-if="bucketId === '' && this.$store.getters.loggedIn === true" message="You should use a dropdown above to choose a bucket"/>
-      <Info v-if="this.$store.getters.loggedIn === false" message="To view or create notes you have to log in first. To do so, click a button in the right upper corner."/>
+      <Info v-if="bucketId === '' && this.$store.getters.loggedIn === true" message="You should use a dropdown on the left to choose a bucket"/>
       <transition-group name="slide-fade" appear v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
         <Note v-for="(note, index) in notes"
               v-bind:key="index"
@@ -33,6 +34,12 @@
       </transition-group>
       <Info v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" message="This bucket appears to be empty"/>
     </div>
+    <SearchOverlay
+      :visible="showSearchOverlay"
+      :bucketId="bucketId"
+      @close="showSearchOverlay = false"
+      @note-selected="onSearchNoteSelected"
+    />
     <div class="fixed-action-btn" v-if="this.$store.getters.loggedIn === true">
       <router-link to="editor">
         <a class="btn-floating btn-large floating-btn-orange"><i class="material-icons">add</i></a>
@@ -51,6 +58,7 @@ import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import NoteCountDropdown from './molecules/NoteCountDropdown.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
+import SearchOverlay from './molecules/SearchOverlay.vue';
 
 let count = localStorage.count ?? 10;
 
@@ -63,7 +71,8 @@ export default {
     Select,
     Info,
     NoteCountDropdown,
-    OrderSwitch
+    OrderSwitch,
+    SearchOverlay
   },
   computed: {
     order: {
@@ -129,7 +138,8 @@ export default {
       overallCount: localStorage.overallCount,
       loaded: false,
       error: false,
-      actuallyLoaded: 0
+      actuallyLoaded: 0,
+      showSearchOverlay: false
     }
   },
   methods: {
@@ -208,9 +218,26 @@ export default {
         });
     },
     handleNoteDeleted: function(noteId) {
-      // Remove the note from the list
+      // Immediately remove from UI
       this.notes = this.notes.filter(note => note.id !== noteId);
       this.actuallyLoaded = this.notes.length;
+      // Fire delete in background
+      this.noteService.removeNote(noteId)
+        .then(response => {
+          if (response.ok) {
+            M.toast({ html: 'Note deleted successfully', displayLength: 2000 });
+          } else {
+            M.toast({ html: 'Failed to delete note', displayLength: 3000 });
+          }
+        })
+        .catch(() => {
+          M.toast({ html: 'Error deleting note', displayLength: 3000 });
+        });
+    },
+    onSearchNoteSelected: function(note) {
+      this.$store.commit({type: 'updateId', id: note.id});
+      this.$store.commit({type: 'updateName', name: note.humanName});
+      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
     }
   }
 }

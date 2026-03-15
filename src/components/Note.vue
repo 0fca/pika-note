@@ -99,13 +99,7 @@ export default {
       return `${da} ${mo} ${ye} ${h}`;
     },
     async handleDelete() {
-      try {
-        await noteService.removeNote(this.id);
-        // Emit event to parent to remove note from list
-        this.$emit('note-deleted', this.id);
-      } catch (error) {
-        console.error('Failed to delete note:', error);
-      }
+      this.$emit('note-deleted', this.id);
     },
     handleTouchStart(event) {
       if (!this.isTouchScreen) return;
