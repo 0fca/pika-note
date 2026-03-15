@@ -248,8 +248,9 @@ export default {
             this.editor.setContent(content.content, 0);
             this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
             this.$store.commit({type: "updateIfError", error: false});
+            this.$store.commit({type: 'updateName', name: n.humanName});
             this.isProgrammaticTitleUpdate = true;
-            this.noteTitle = this.$store.getters.name;
+            this.noteTitle = n.humanName;
             this.isProgrammaticTitleUpdate = false;
             // Reset unsaved changes flag when loading a note
             this.hasUnsavedChanges = false;
@@ -314,6 +315,10 @@ export default {
                 this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
                 // Reset unsaved changes flag
                 this.hasUnsavedChanges = false;
+                // Update URL to reflect the new note id
+                if (this.$route.params.id !== id) {
+                  this.$router.replace('/editor/' + id);
+                }
                 // Emit event to parent to reload notes list
                 this.$emit('note-saved');
               });

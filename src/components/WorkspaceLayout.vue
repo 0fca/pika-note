@@ -459,6 +459,12 @@ export default {
       });
       this.loadNotes();
     
+    // Load note from route param if present
+    const routeId = this.$route.params.id;
+    if (routeId) {
+      this.$store.commit({type: 'updateId', id: routeId});
+    }
+    
     // Enable teleport after mount and check if target exists
     // Use a small delay to ensure the parent App component's sidenav is fully mounted
     this.$nextTick(() => {
@@ -680,8 +686,9 @@ export default {
       this.$store.commit({type: 'updateName', name: note.humanName});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       
-      // Trigger editor to load the note
-      // The Editor component will handle loading via mounted/watch
+      if (this.$route.params.id !== note.id) {
+        this.$router.push('/editor/' + note.id);
+      }
     },
     createNewNote() {
       this.$store.commit({type: 'updateId', id: ''});
@@ -689,6 +696,9 @@ export default {
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
       this.$store.commit({type: 'setCharactersCount', count: 0});
+      if (this.$route.path !== '/') {
+        this.$router.push('/');
+      }
     },
     createNewNoteAndCloseNav() {
       this.createNewNote();

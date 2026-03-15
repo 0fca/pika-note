@@ -4,15 +4,14 @@ import App from './App'
 import About from './components/About'
 import WorkspaceLayout from "@/components/WorkspaceLayout"
 import Callback from "@/components/Callback"
-import NoteRedirectHandler from '@/components/NoteRedirectHandler'
 import { createStore } from 'vuex'
 
 
 const routes = [
   { path: '/', name: 'index', component: WorkspaceLayout },
+  { path: '/editor/:id', name: 'editor', component: WorkspaceLayout },
   { path: '/about', component: About },
-  { path: '/callback', name: 'callback', component: Callback },
-  { path: '/note_redirect_handler', name: 'note_redirect_handler', component: NoteRedirectHandler }
+  { path: '/callback', name: 'callback', component: Callback }
 ]
 
 const history =  createWebHistory()
