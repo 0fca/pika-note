@@ -269,7 +269,8 @@ export default {
       loginRedirectCountdown: 5,
       loginRedirectTimer: null,
       loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login',
-      hasUnseenDiscoveries: false
+      hasUnseenDiscoveries: false,
+      hadPrevious401: false
     }
   },
   watch: {
@@ -300,18 +301,30 @@ export default {
     this.$store.commit({type: 'setAuthLoading', authLoading: true});
     try {
       const isLoggedIn = await securityService.validateLoggedInState();
-      this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
+      if (isLoggedIn) {
+        this.$store.commit({type: 'updateLoggedInState', loggedIn: true});
+        this.$store.commit({type: 'setAuthLoading', authLoading: false});
+      } else {
+        this.hadPrevious401 = true;
+      }
     } catch (error) {
-      this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+      this.hadPrevious401 = true;
       this.$store.commit({type: 'setLoadingError', loadingError: ''});
-    } finally {
-      this.$store.commit({type: 'setAuthLoading', authLoading: false});
     }
     
     setInterval(async () => {
       try {
         const isLoggedIn = await securityService.validateLoggedInState();
-        this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
+        if (isLoggedIn) {
+          this.hadPrevious401 = false;
+          this.$store.commit({type: 'updateLoggedInState', loggedIn: true});
+          this.$store.commit({type: 'setAuthLoading', authLoading: false});
+        } else if (this.hadPrevious401) {
+          this.$store.commit({type: 'updateLoggedInState', loggedIn: false});
+          this.$store.commit({type: 'setAuthLoading', authLoading: false});
+        } else {
+          this.hadPrevious401 = true;
+        }
       } catch (error) {
         console.error('Auth refresh failed', error);
         // Silent refresh failure - keep current state
