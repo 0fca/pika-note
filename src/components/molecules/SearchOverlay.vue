@@ -8,16 +8,34 @@
             ref="searchInput"
             type="text"
             v-model="query"
-            placeholder="Search notes by name..."
+            :placeholder="useAiSearch ? 'Ask AI about your notes...' : 'Search notes by name...'"
             class="search-input"
             @input="onInput"
             @keydown.esc="close"
+            @keydown.enter="onEnterKey"
           />
+          <label class="ai-toggle" :title="useAiSearch ? 'Switch to keyword search' : 'Switch to AI search'">
+            <input type="checkbox" v-model="useAiSearch" @change="onAiToggle" />
+            <span class="ai-toggle-label">AI</span>
+          </label>
           <button v-if="query" class="clear-btn" @click="clearQuery">
             <i class="material-icons">close</i>
           </button>
         </div>
         <div class="search-results">
+          <template v-if="useAiSearch">
+            <div v-if="aiStreaming" class="ai-response">
+              <div class="ai-response-text">{{ aiResponseText }}<span class="ai-cursor">|</span></div>
+            </div>
+            <div v-else-if="aiResponseText && !aiStreaming" class="ai-response">
+              <div class="ai-response-text">{{ aiResponseText }}</div>
+            </div>
+            <div v-else-if="!query" class="search-status">
+              <i class="material-icons">psychology</i>
+              <span>Type a question and press Enter to search with AI</span>
+            </div>
+          </template>
+          <template v-else>
           <div v-if="loading" class="search-status">
             <div class="search-spinner"></div>
             <span>Searching...</span>
@@ -39,6 +57,7 @@
             <div class="result-name">{{ note.humanName }}</div>
             <div class="result-date">{{ formatDate(note.timestamp) }}</div>
           </div>
+          </template>
         </div>
       </div>
     </div>
@@ -47,6 +66,7 @@
 
 <script>
 import NoteService from "@/services/noteService";
+import ChatRelayService from "@/services/chatRelayService";
 
 export default {
   name: 'SearchOverlay',
@@ -68,7 +88,11 @@ export default {
       loading: false,
       searched: false,
       debounceTimer: null,
-      noteService: new NoteService()
+      noteService: new NoteService(),
+      useAiSearch: false,
+      aiStreaming: false,
+      aiResponseText: '',
+      chatRelayService: new ChatRelayService()
     }
   },
   watch: {
@@ -81,11 +105,14 @@ export default {
         this.query = '';
         this.results = [];
         this.searched = false;
+        this.aiResponseText = '';
+        this.aiStreaming = false;
       }
     }
   },
   methods: {
     onInput() {
+      if (this.useAiSearch) return;
       clearTimeout(this.debounceTimer);
       if (!this.query.trim()) {
         this.results = [];
@@ -95,6 +122,43 @@ export default {
       this.debounceTimer = setTimeout(() => {
         this.search();
       }, 300);
+    },
+    onEnterKey() {
+      if (this.useAiSearch && this.query.trim()) {
+        this.performAiSearch();
+      }
+    },
+    onAiToggle() {
+      this.results = [];
+      this.searched = false;
+      this.aiResponseText = '';
+      this.aiStreaming = false;
+    },
+    async performAiSearch() {
+      if (!this.query.trim()) return;
+      this.aiStreaming = true;
+      this.aiResponseText = '';
+
+      const model = process.env.VUE_APP_CHAT_MODEL || 'llama3.2';
+      const prompt = `Search notes for: ${this.query}`;
+
+      await this.chatRelayService.sendMessageAndStream(
+        model,
+        prompt,
+        { tool: 'search' },
+        (event, data) => {
+          if (event === 'message' || event === 'datamessage') {
+            this.aiResponseText += data;
+          }
+        },
+        () => {
+          this.aiStreaming = false;
+        },
+        (err) => {
+          this.aiResponseText = `Error: ${err.message}`;
+          this.aiStreaming = false;
+        }
+      );
     },
     async search() {
       if (!this.query.trim() || !this.bucketId) return;
@@ -113,6 +177,8 @@ export default {
       this.query = '';
       this.results = [];
       this.searched = false;
+      this.aiResponseText = '';
+      this.aiStreaming = false;
       this.$refs.searchInput?.focus();
     },
     close() {
@@ -208,6 +274,54 @@ export default {
 
 .clear-btn:hover {
   background: var(--color-background-soft, #f0f0f0);
+}
+
+.ai-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #888);
+  transition: background 0.15s, color 0.15s;
+}
+
+.ai-toggle:has(input:checked) {
+  background: var(--color-primary, #0a4492);
+  color: #fff;
+}
+
+.ai-toggle input {
+  display: none;
+}
+
+.ai-toggle-label {
+  pointer-events: none;
+}
+
+.ai-response {
+  padding: 16px;
+}
+
+.ai-response-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text, #333);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-cursor {
+  animation: blink 0.8s step-end infinite;
+  color: var(--color-primary, #0a4492);
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
 }
 
 .search-results {

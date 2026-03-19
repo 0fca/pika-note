@@ -1,5 +1,6 @@
 import MlService from "@/services/mlService";
 import UnauthorizedException from "../components/exceptions/UnauthorizedException";
+import { authFetch } from "@/services/fetchClient";
 
 export default class NoteService {
     constructor() {
@@ -8,7 +9,7 @@ export default class NoteService {
 
     async readData(url = '', method = 'GET') {
         url = this.baseUrl + url;
-        const response = await fetch(url, {
+        const response = await authFetch(url, {
                 method: method,
                 headers: {
                     'Origin': this.baseUrl,
@@ -42,7 +43,7 @@ export default class NoteService {
                 throw new Error('Mind your language!')
             }
         }
-        return await fetch(url, {
+        return await authFetch(url, {
             method: 'PUT',
             headers: {
                 'Origin': this.baseUrl,
@@ -65,7 +66,7 @@ export default class NoteService {
                 throw new Error('Mind your language!')
             }
         }
-        return await fetch(url, {
+        return await authFetch(url, {
             method: 'POST',
             headers: {
                 'Origin': this.baseUrl,
@@ -81,7 +82,7 @@ export default class NoteService {
 
     async removeNote(id) {
         const url = `${this.baseUrl}/notes/${id}`;
-        return await fetch(url, {
+        return await authFetch(url, {
             method: 'DELETE',
             headers: {
                 'Origin': this.baseUrl,
@@ -100,7 +101,7 @@ export default class NoteService {
 
     async getBuckets() {
         const url = `${this.baseUrl}/notes/buckets`;
-        const response = await fetch(url, {
+        const response = await authFetch(url, {
             method: 'GET',
             headers: {
                 'Origin': this.baseUrl,
