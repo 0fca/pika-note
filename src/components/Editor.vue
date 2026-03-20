@@ -22,9 +22,9 @@
     </div>
     
     <div class="row">
-      <div class="fixed-action-btn" @mouseenter="fabOpen = true" @mouseleave="fabOpen = false">
+      <div class="fixed-action-btn">
         <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click="fabOpen = !fabOpen">
-          <span class="large material-symbols-outlined">mode_edit</span>
+          <span class="material-symbols-outlined fab-icon">mode_edit</span>
         </a>
         <ul :class="{ 'fab-open': fabOpen }">
           <li>
@@ -503,6 +503,11 @@ export default {
   z-index: 1;
 }
 
+.fab-icon {
+  color: whitesmoke !important;
+  font-size: 24px;
+}
+
 .fixed-action-btn ul {
   list-style: none;
   margin: 0;
@@ -535,5 +540,6 @@ export default {
   border: none;
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  color: whitesmoke;
 }
 </style>
