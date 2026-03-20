@@ -14,7 +14,7 @@
             @keydown.esc="close"
             @keydown.enter="onEnterKey"
           />
-          <label class="ai-toggle" :title="useAiSearch ? 'Switch to keyword search' : 'Switch to AI search'">
+          <label class="ai-toggle" :title="useAiSearch ? 'Switch to keyword search' : 'Switch to AI search (BETA)'">
             <input type="checkbox" v-model="useAiSearch" @change="onAiToggle" />
             <span class="ai-toggle-label">AI</span>
           </label>
@@ -31,8 +31,8 @@
               <div class="ai-response-text">{{ aiResponseText }}</div>
             </div>
             <div v-else-if="!query" class="search-status">
-              <i class="material-icons">psychology</i>
-              <span>Type a question and press Enter to search with AI</span>
+              <i class="material-symbols-outlined">psychology</i>
+              <span>Type a question and press Enter to search with AI (BETA)</span>
             </div>
           </template>
           <template v-else>
@@ -45,7 +45,7 @@
             <span>No notes found</span>
           </div>
           <div v-else-if="!query" class="search-status">
-            <i class="material-icons">lightbulb</i>
+            <i class="material-icons">lightbulb_outline</i>
             <span>Type to search across all notes in this bucket</span>
           </div>
           <div
