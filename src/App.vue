@@ -151,7 +151,7 @@ import FeatureDiscovery from './components/FeatureDiscovery.vue';
 export default {
   name: 'App',
   components: {
-    AppDropdown,
+    AppMenuDropdown,
     LoadingOverlay,
     FeatureDiscovery
   },
