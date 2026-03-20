@@ -30,6 +30,9 @@ export default {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-base);
   transition: all var(--transition-fast);
+  width: 100%;
+  height: 50px;
+  box-sizing: border-box;
 }
 
 .custom-select:focus {

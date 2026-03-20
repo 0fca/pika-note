@@ -22,33 +22,33 @@
     </div>
     
     <div class="row">
-      <div class="fixed-action-btn">
-        <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click="fabOpen = !fabOpen">
+      <div class="fixed-action-btn" ref="fab">
+        <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click.stop="fabOpen = !fabOpen">
           <span class="material-symbols-outlined fab-icon">mode_edit</span>
         </a>
         <ul :class="{ 'fab-open': fabOpen }">
           <li>
-            <button @click="save" class="btn-floating floating-btn-orange toolbar-icon">
-              <span class="material-symbols-outlined">
+            <button @click.stop="save" class="btn-floating floating-btn-orange toolbar-icon">
+              <span class="material-symbols-outlined fab-icon">
                 save
               </span>
             </button>
           </li>
           <li>
             <button 
-              @click="toggleAutoSave" 
+              @click.stop="toggleAutoSave" 
               class="btn-floating toolbar-icon"
               :class="autoSaveEnabled ? 'floating-btn-orange' : 'grey'"
               :title="autoSaveEnabled ? 'Auto-save: ON' : 'Auto-save: OFF'"
             >
-              <span class="material-symbols-outlined">
+              <span class="material-symbols-outlined fab-icon">
                 {{ autoSaveEnabled ? 'sync' : 'sync_disabled' }}
               </span>
             </button>
           </li>
           <li>
-            <button @click="clearAll" class="btn-floating floating-btn-orange toolbar-icon">
-              <span class="material-symbols-outlined">
+            <button @click.stop="clearAll" class="btn-floating floating-btn-orange toolbar-icon">
+              <span class="material-symbols-outlined fab-icon">
                 clear_all
               </span>
             </button>
@@ -146,6 +146,7 @@ export default {
     })
   },
   unmounted() {
+    document.removeEventListener('click', this.handleClickOutsideFab);
     this.$store.commit({type: 'updateContent', content: ""});
     this.$store.commit(({type: 'updateName', name: ""}));
     this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
@@ -156,6 +157,7 @@ export default {
     localStorage.removeItem('content');
   },
   mounted() {
+    document.addEventListener('click', this.handleClickOutsideFab);
     // Initialize autoSaveEnabled from localStorage and sync with store
     const savedAutoSave = localStorage.getItem('autoSaveEnabled');
     this.autoSaveEnabled = savedAutoSave !== 'false'; // Default true
@@ -222,6 +224,11 @@ export default {
     }
   },
   methods: {
+    handleClickOutsideFab(event) {
+      if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
+        this.fabOpen = false;
+      }
+    },
     onTitleFocus() {
       // When user focuses title input for new note, we don't show stats yet
       this.showStatsFooter = false;
@@ -514,20 +521,21 @@ export default {
   padding: 0;
   position: absolute;
   bottom: 64px;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
   display: flex;
   flex-direction: column-reverse;
+  align-items: center;
   gap: 12px;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(10px);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .fixed-action-btn ul.fab-open {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .fixed-action-btn ul li button {
