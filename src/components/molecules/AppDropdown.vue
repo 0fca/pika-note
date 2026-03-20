@@ -66,9 +66,9 @@
           <span>Pika Core</span>
         </a>
         <a
-          href="https://chat.lukas-bownik.net/"
+          href="https://ai.lukas-bownik.net/"
           class="app-menu-item"
-          title="Pika Chat"
+          title="Pika AI Assistant"
           role="menuitem"
         >
           <svg
@@ -84,7 +84,7 @@
               d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
             ></path>
           </svg>
-          <span>Pika Chat</span>
+          <span>Pika AI Assistant</span>
         </a>
         <a
           href="https://cloud.lukas-bownik.net/status"

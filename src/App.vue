@@ -35,11 +35,11 @@
                       class="navlink white-text"
                       href="#"
                       title="Pika Cloud Apps"
-                      @click.prevent.stop="$refs.appDropdown?.toggleMenu()"
+                      @click.prevent.stop="$refs.appMenuDropdown?.toggleMenu()"
                     >
                       <i class="large material-icons">apps</i>
                     </a>
-                    <AppDropdown ref="appDropdown" />
+                    <AppMenuDropdown ref="appMenuDropdown" />
                   </li>
                   <li v-if="this.$store.getters.loggedIn === false">
                     <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
@@ -141,7 +141,7 @@
 </template>
 
 <script>
-import AppDropdown from '@/components/molecules/AppDropdown';
+import AppMenuDropdown from '@/components/AppMenuDropdown';
 import SecurityService from '@/services/securityService';
 import M from 'materialize-css';
 import MobileDetectService from './services/mobileDetectService';

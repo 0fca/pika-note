@@ -50,11 +50,15 @@
               <span class="material-symbols-outlined">storage</span>
               <span>Pika Core</span>
             </a>
-            <a class="drawer-app-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
-              <span class="material-symbols-outlined">chat</span>
-              <span>Pika Chat</span>
+            <a class="drawer-app-item" href="https://ai.lukas-bownik.net/" title="Pika AI Assistant">
+              <span class="material-symbols-outlined">psychology</span>
+              <span>Pika AI Assistant</span>
             </a>
-            <a class="drawer-app-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
+            <a class="drawer-app-item" href="https://note.lukas-bownik.net/" title="Pika Note">
+              <span class="material-symbols-outlined">description</span>
+              <span>Pika Note</span>
+            </a>
+            <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/status" title="Pika Status">
               <span class="material-symbols-outlined">vital_signs</span>
               <span>Pika Status</span>
             </a>
