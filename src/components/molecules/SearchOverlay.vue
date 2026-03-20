@@ -3,7 +3,7 @@
     <div v-if="visible" class="search-overlay-backdrop" @click.self="close">
       <div class="search-overlay-panel">
         <div class="search-input-wrapper">
-          <i class="material-icons search-icon">search</i>
+          <span class="material-symbols-outlined search-icon">search</span>
           <input
             ref="searchInput"
             type="text"
@@ -19,7 +19,7 @@
             <span class="ai-toggle-label">AI</span>
           </label>
           <button v-if="query" class="clear-btn" @click="clearQuery">
-            <i class="material-icons">close</i>
+            <span class="material-symbols-outlined">close</span>
           </button>
         </div>
         <div class="search-results">
@@ -41,11 +41,11 @@
             <span>Searching...</span>
           </div>
           <div v-else-if="query && results.length === 0 && searched" class="search-status">
-            <i class="material-icons">search_off</i>
+            <span class="material-symbols-outlined">search_off</span>
             <span>No notes found</span>
           </div>
           <div v-else-if="!query" class="search-status">
-            <i class="material-icons">lightbulb_outline</i>
+            <span class="material-symbols-outlined">lightbulb</span>
             <span>Type to search across all notes in this bucket</span>
           </div>
           <div

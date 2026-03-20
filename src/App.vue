@@ -3,64 +3,61 @@
     <div class="navbar-fixed">
       <nav class="z-depth-0">
         <div class="nav-wrapper whitesmoke">
-          <div class="row">
-            <div id="hamburger" class="col s2 m2 l2">
-              <router-link to="/" class="left">
-                <img src="./assets/pikacloud_note.svg" height="50px" style="margin-top: 5px;" alt="Pika Note"
-                  class="brand-logo only-large-scr" />
+          <div class="nav-flex">
+            <div class="nav-left">
+              <!-- Desktop: logo -->
+              <router-link to="/" class="nav-brand hide-on-med-and-down">
+                <img src="./assets/pikacloud_note.svg" height="40px" alt="Pika Note" />
               </router-link>
-              <a href="#" data-target="slide-out" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+              <!-- Mobile: hamburger -->
+              <button id="hamburger" class="nav-hamburger hide-on-large-only" @click.prevent.stop="toggleDrawer">
+                <span class="material-symbols-outlined">menu</span>
+              </button>
             </div>
-            <div class="col s8 m8 l8 center">
+            <div class="nav-center">
               <div v-if="$store.getters.id !== '' && $store.getters.name">
                 <h5 class="nav-title">{{ $store.getters.name }}</h5>
               </div>
-              <div v-else-if="$store.getters.bucketName && $store.getters.loggedIn" class="hide-on-large-only">
+              <div v-else-if="$store.getters.bucketName && $store.getters.loggedIn">
                 <h5 class="nav-title">
                   {{ $store.getters.bucketName }}
                 </h5>
               </div>
             </div>
-            <div class="col s2 m2 l2 hide-on-med-and-down">
-              <div class="right">
-                <ul class="right hide-on-med-and-down">
-                  <li>
-                    <router-link to="/About" class="navlink">
-                        <i class="material-icons">info_outline</i>
-                    </router-link>
-                  </li>
-                  <li class="dropdown-container">
-                    <a
-                      id="app-drop-link"
-                      class="navlink white-text"
-                      href="#"
-                      title="Pika Cloud Apps"
-                      @click.prevent.stop="$refs.appMenuDropdown?.toggleMenu()"
-                    >
-                      <i class="large material-icons">apps</i>
-                    </a>
-                    <AppMenuDropdown ref="appMenuDropdown" />
-                  </li>
-                  <li v-if="this.$store.getters.loggedIn === false">
-                    <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
-                      <button id="login" class="btn-flat btn-nav navlink white-text left" style="height: inherit;">
-                        <i class="material-icons" style="position:relative; height:inherit;">
-                          exit_to_app
-                        </i>
-                      </button>
-                    </form>
-                  </li>
-                  <li v-if="this.$store.getters.loggedIn === true">
-                    <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
-                      <button id="login" class="btn-flat btn-nav navlink white-text left" style="height: inherit;">
-                        <i class="material-icons rotate" style="position:relative; height:inherit;">
-                          exit_to_app
-                        </i>
-                      </button>
-                    </form>
-                  </li>
-                </ul>
-              </div>
+            <div class="nav-right">
+              <ul class="nav-actions hide-on-med-and-down">
+                <li>
+                  <router-link to="/About" class="navlink">
+                    <span class="material-symbols-outlined">info</span>
+                  </router-link>
+                </li>
+                <li class="dropdown-container">
+                  <a
+                    id="app-drop-link"
+                    class="navlink"
+                    href="#"
+                    title="Pika Cloud Apps"
+                    @click.prevent.stop="$refs.appMenuDropdown?.toggleMenu()"
+                  >
+                    <span class="material-symbols-outlined">apps</span>
+                  </a>
+                  <AppMenuDropdown ref="appMenuDropdown" />
+                </li>
+                <li v-if="this.$store.getters.loggedIn === false">
+                  <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
+                    <button id="login" class="btn-flat navlink" style="height: inherit; border: none; background: none; cursor: pointer;">
+                      <span class="material-symbols-outlined">exit_to_app</span>
+                    </button>
+                  </form>
+                </li>
+                <li v-if="this.$store.getters.loggedIn === true">
+                  <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
+                    <button id="login" class="btn-flat navlink" style="height: inherit; border: none; background: none; cursor: pointer;">
+                      <span class="material-symbols-outlined rotate">exit_to_app</span>
+                    </button>
+                  </form>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
@@ -73,10 +70,6 @@
       @complete="onDiscoveryComplete"
       @dismiss="onDiscoveryDismiss"
     />
-    <ul id="slide-out" class="sidenav">
-      <!-- Mobile content will be teleported here from WorkspaceLayout -->
-      <li class="mobile-notes-section hide-on-large-only"></li>
-    </ul>
     <div class="row whitesmoke">
       <router-view></router-view>
     </div>
@@ -120,7 +113,7 @@
         <!-- Bottom Right: Current Bucket -->
         <div class="stats-item">
           <small v-if="$store.getters.bucketName">
-            <i class="material-icons" style="font-size: 16px; vertical-align: middle;">folder</i>
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">folder</span>
             <span>{{ $store.getters.bucketName }}</span>
           </small>
           <small v-else>
@@ -129,12 +122,12 @@
         </div>
       </div>
     </footer>
+    <ToastContainer />
     <LoadingOverlay
       :visible="overlayVisible"
       :needs-login="showLoginPrompt"
       :message="overlayMessage"
       :error-message="$store.getters.loadingError"
-      :countdown="loginRedirectCountdown"
       :login-url="loginUrl"
     />
   </div>
@@ -143,17 +136,18 @@
 <script>
 import AppMenuDropdown from '@/components/AppMenuDropdown';
 import SecurityService from '@/services/securityService';
-import M from 'materialize-css';
 import MobileDetectService from './services/mobileDetectService';
 import LoadingOverlay from './components/LoadingOverlay.vue';
 import FeatureDiscovery from './components/FeatureDiscovery.vue';
+import ToastContainer from './components/ToastContainer.vue';
 
 export default {
   name: 'App',
   components: {
     AppMenuDropdown,
     LoadingOverlay,
-    FeatureDiscovery
+    FeatureDiscovery,
+    ToastContainer
   },
   computed: {
     title: {
@@ -219,6 +213,9 @@ export default {
     }
   },
   methods: {
+    toggleDrawer() {
+      this.$store.commit({type: 'setDrawerOpen', drawerOpen: !this.$store.getters.drawerOpen});
+    },
     formatDate(date){
       const locale = navigator.language.split("-")[0];
 
@@ -232,23 +229,7 @@ export default {
       }
       return null;
     },
-    startLoginRedirect() {
-      this.clearLoginRedirect();
-      this.loginRedirectCountdown = 5;
-      this.loginRedirectTimer = setInterval(() => {
-        if (this.loginRedirectCountdown <= 1) {
-          window.location.href = this.loginUrl;
-          return;
-        }
-        this.loginRedirectCountdown -= 1;
-      }, 1000);
-    },
-    clearLoginRedirect() {
-      if (this.loginRedirectTimer) {
-        clearInterval(this.loginRedirectTimer);
-        this.loginRedirectTimer = null;
-      }
-    },
+
     onDiscoveryComplete() {
       this.hasUnseenDiscoveries = false;
     },
@@ -266,20 +247,11 @@ export default {
     return {
       isTouchScreen: MobileDetectService.isTouchScreen(),
       name: this.$store.getters.name,
-      loginRedirectCountdown: 5,
-      loginRedirectTimer: null,
       loginUrl: process.env.VUE_APP_LOGIN_URL || 'https://core.lukas-bownik.net/login',
       hasUnseenDiscoveries: false
     }
   },
   watch: {
-    showLoginPrompt(newVal) {
-      if (newVal) {
-        this.startLoginRedirect();
-      } else {
-        this.clearLoginRedirect();
-      }
-    },
     workspaceLoaded(newVal) {
       // When workspace is loaded, check for unseen discoveries
       if (newVal) {
@@ -290,8 +262,6 @@ export default {
     }
   },
   mounted: async function() {
-    M.AutoInit();
-    
     // Check for unseen discoveries on mount
     this.checkForUnseenDiscoveries();
     
@@ -319,7 +289,6 @@ export default {
     }, 8000);
   },
   beforeUnmount() {
-    this.clearLoginRedirect();
   }
 }
 </script>
@@ -327,8 +296,6 @@ export default {
 <style>
 /* Import order matters - base styles first, then framework, then custom */
 @import './assets/normalize.css';
-@import './assets/materialize.css';
-@import './assets/material-icons.css';
 @import './assets/main.css';
 @import './assets/beagle.css';
 </style>
@@ -350,49 +317,116 @@ export default {
   text-overflow: ellipsis;
 }
 
-.bucket-icon {
-  font-size: 28px !important;
-  vertical-align: middle;
-  margin-right: 8px;
-}
-
-/* Navbar icons - ensure they're white */
-nav .material-icons {
+/* Navbar icons */
+nav .material-symbols-outlined {
   color: white !important;
 }
 
-nav .btn-nav .material-icons {
-  color: white !important;
+/* Nav flexbox layout */
+.nav-flex {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 16px;
 }
 
-/* Navbar hover effects for all buttons and links */
-nav .navlink:hover {
-  background-color: var(--color-nav-hover) !important;
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-nav .navlink:hover .material-icons {
-  color: var(--color-primary) !important;
+.nav-brand {
+  display: flex;
+  align-items: center;
 }
 
-nav button.navlink {
+.nav-hamburger {
+  background: none;
   border: none;
-  background-color: transparent;
+  color: var(--color-nav-text);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
 }
 
-nav button.navlink:hover {
-  background-color: var(--color-nav-hover) !important;
+.nav-hamburger:hover {
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Sidenav customizations */
-.mobile-notes-section {
-  padding: 0 !important;
-  margin: 0 !important;
-  height: 100%;
-  overflow: hidden;
+.nav-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.nav-actions {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+}
+
+.nav-actions li {
+  display: flex;
+  align-items: center;
+}
+
+.nav-actions li a,
+.nav-actions li button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+
+.navlink {
+  color: var(--color-nav-text) !important;
+  transition: background-color var(--transition-fast);
+}
+
+.navlink:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* App dropdown positioning container */
-nav ul li.dropdown-container {
+.nav-actions li.dropdown-container {
   position: relative;
+}
+
+/* Responsive hide utilities */
+.hide-on-med-and-down {
+  display: flex;
+}
+
+.hide-on-large-only {
+  display: flex;
+}
+
+@media (max-width: 992px) {
+  .hide-on-med-and-down {
+    display: none !important;
+  }
+}
+
+@media (min-width: 993px) {
+  .hide-on-large-only {
+    display: none !important;
+  }
 }
 </style>

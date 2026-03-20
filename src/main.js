@@ -43,7 +43,8 @@ const store = createStore({
       authLoading: true,
       bucketsLoading: false,
       notesLoading: false,
-      loadingError: ''
+      loadingError: '',
+      drawerOpen: false
     }
   },
   mutations: {
@@ -123,6 +124,9 @@ const store = createStore({
     },
     setLoadingError(state, payload){
       state.loadingError = payload.loadingError;
+    },
+    setDrawerOpen(state, payload){
+      state.drawerOpen = payload.drawerOpen;
     }
   },
   getters: {
@@ -185,6 +189,9 @@ const store = createStore({
     },
     loadingError(state){
       return state.loadingError;
+    },
+    drawerOpen(state){
+      return state.drawerOpen;
     }
   }
 });

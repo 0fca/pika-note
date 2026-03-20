@@ -23,13 +23,13 @@
           
           <div class="popup-actions">
             <button 
-              class="btn-flat discovery-btn dismiss-btn" 
+              class="btn-action discovery-btn dismiss-btn" 
               @click="handleDismiss"
             >
               Dismiss All
             </button>
             <button 
-              class="btn discovery-btn next-btn" 
+              class="btn-action discovery-btn next-btn" 
               @click="handleNext"
             >
               {{ isLastDiscovery ? 'Got it!' : 'Next' }}
@@ -326,27 +326,27 @@ export default {
 .discovery-btn {
   font-size: 14px;
   text-transform: none;
-  border-radius: 4px;
-  padding: 0 16px;
   height: 36px;
   line-height: 36px;
 }
 
 .dismiss-btn {
+  background: transparent;
   color: #666;
 }
 
 .dismiss-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
+  color: #666 !important;
 }
 
 .next-btn {
   background-color: #1976d2;
-  color: white;
 }
 
 .next-btn:hover {
   background-color: #1565c0;
+  color: white !important;
 }
 
 .popup-progress {

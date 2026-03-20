@@ -1,21 +1,20 @@
 <template>
-    <div>
-    <a class='dropdown-trigger btn btn-flat havelock white-text' style="font-size:x-small" href='#' data-target='count_drop' id="count_drop_a" v-on:click="onClickText">Loaded {{ loadedCount}} {{ loadedCount > 1 || loadedCount === 0 ? 'notes' : 'note' }}</a>
-
-    <ul id='count_drop' class='dropdown-content'>
-        <li v-on:click="onOptionChoice">10</li>
-        <li v-on:click="onOptionChoice">15</li>
-        <li v-on:click="onOptionChoice">20</li>
-        <li v-on:click="onOptionChoice">25</li>
-        <li v-on:click="onOptionChoice">50</li>
-        <li v-on:click="onOptionChoice">100</li>
-    </ul>
+    <div class="note-count-dropdown" v-click-outside="closeDropdown">
+      <a class="btn btn-flat havelock white-text" style="font-size:x-small" href="#" @click.prevent="toggleDropdown">
+        Loaded {{ loadedCount }} {{ loadedCount > 1 || loadedCount === 0 ? 'notes' : 'note' }}
+      </a>
+      <ul v-if="open" class="count-dropdown-content">
+        <li
+          v-for="opt in options"
+          :key="opt"
+          :class="{ 'selected-option': opt === currentCount }"
+          @click="onOptionChoice(opt)"
+        >{{ opt }}</li>
+      </ul>
     </div>
 </template>
 
 <script>
-import M from 'materialize-css';
-
 export default {
     name: 'NoteCountDropdown',
     props: [
@@ -24,46 +23,74 @@ export default {
     emits: [
         'countChanged'
     ],
-    mounted: function() {
-      const elems = document.getElementById("count_drop_a");
-      M.Dropdown.init(elems, { 
-        alignment: 'right', 
-        coverTrigger: false, 
-        onCloseStart: this.onDropdownCloseStart,
-        onOpenStart: this.selectCurrentIndex,
-        onCloseEnd: this.unselectAll
-      });
+    data() {
+      return {
+        open: false,
+        options: [10, 15, 20, 25, 50, 100]
+      };
+    },
+    computed: {
+      currentCount() {
+        return this.$store.getters.noteCount;
+      }
+    },
+    directives: {
+      'click-outside': {
+        mounted(el, binding) {
+          el._clickOutside = (e) => {
+            if (!el.contains(e.target)) binding.value();
+          };
+          document.addEventListener('click', el._clickOutside);
+        },
+        unmounted(el) {
+          document.removeEventListener('click', el._clickOutside);
+        }
+      }
     },
     methods: {
-        onOptionChoice(e){
-            const count = Number.parseInt(e.target.innerText);
-            this.$store.commit({type: 'updateNoteCount', noteCount: count});
+        toggleDropdown() {
+          this.open = !this.open;
+        },
+        closeDropdown() {
+          this.open = false;
+        },
+        onOptionChoice(count) {
+            this.$store.commit({ type: 'updateNoteCount', noteCount: count });
             this.$emit('countChanged');
-        },
-        selectCurrentIndex(){
-            const elems = document.getElementById("count_drop").children;   
-            for(let i = 0; i < elems.length; i++){
-                if(elems[i].innerText == this.$store.getters.noteCount){
-                    const li = elems[i];
-                    li.setAttribute('class', 'selected-option');
-                }
-            }
-        },
-        unselectAll(){
-            const countDrop = document.getElementById("count_drop")
-            if(countDrop !== undefined && countDrop !== null){
-                const elems = countDrop.children;   
-                for(let i = 0; i < elems.length; i++){
-                    const li = elems[i];
-                    li.removeAttribute('class');
-                }
-            }
+            this.open = false;
         }
     }
 }
 </script>
 
-<style>
+<style scoped>
+.note-count-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.count-dropdown-content {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  min-width: 80px;
+  background: var(--color-background, #fff);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  list-style: none;
+  padding: 4px 0;
+  z-index: 100;
+}
+.count-dropdown-content li {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text, #333);
+}
+.count-dropdown-content li:hover {
+  background-color: var(--color-primary-light, #e3f2fd);
+}
 .selected-option {
   background-color: var(--color-primary) !important;
   color: white !important;

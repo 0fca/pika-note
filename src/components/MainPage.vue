@@ -12,8 +12,8 @@
             </div>
             <div class="col s4 m4 l2" style="display: flex; gap: 4px; align-items: center;">
               <OrderSwitch @order-change="reloadOnOrderChange"/>
-              <button class="btn btn-flat" style="background-color: var(--color-primary) !important; color: white !important; min-width: 36px; padding: 0 8px;" @click="showSearchOverlay = true">
-                <i class="material-icons">search</i>
+              <button class="btn overlay-button" style="background-color: var(--color-primary) !important; color: white !important; min-width: 36px; padding: 0 8px;" @click="showSearchOverlay = true">
+                <span class="material-symbols-outlined">search</span>
               </button>
             </div>
             </div>
@@ -42,7 +42,7 @@
     />
     <div class="fixed-action-btn" v-if="this.$store.getters.loggedIn === true">
       <router-link to="editor">
-        <a class="btn-floating btn-large floating-btn-orange"><i class="material-icons">add</i></a>
+        <a class="btn-floating btn-large floating-btn-orange"><span class="material-symbols-outlined">add</span></a>
       </router-link>
     </div>
   </div>
@@ -50,7 +50,6 @@
 
 <script>
 import Note from '@/components/Note';
-import M from 'materialize-css';
 import Preloader from "@/components/Preloader";
 import Error from "@/components/Error";
 import Info from "@/components/Info";
@@ -59,6 +58,7 @@ import Select from './molecules/Select.vue';
 import NoteCountDropdown from './molecules/NoteCountDropdown.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
 import SearchOverlay from './molecules/SearchOverlay.vue';
+import { toastService } from '@/services/toastService';
 
 let count = localStorage.count ?? 10;
 
@@ -124,9 +124,7 @@ export default {
       .then(buckets => {
         this.onBucketsReceived(buckets);
       });
-    let elems = document.querySelectorAll('select');
     this.$store.commit({type: 'updateId', id: ''});
-    M.FormSelect.init(elems, null);
   },
 
   data: function () {
@@ -225,13 +223,13 @@ export default {
       this.noteService.removeNote(noteId)
         .then(response => {
           if (response.ok) {
-            M.toast({ html: 'Note deleted successfully', displayLength: 2000 });
+            toastService.success('Note deleted successfully');
           } else {
-            M.toast({ html: 'Failed to delete note', displayLength: 3000 });
+            toastService.error('Failed to delete note');
           }
         })
         .catch(() => {
-          M.toast({ html: 'Error deleting note', displayLength: 3000 });
+          toastService.error('Error deleting note');
         });
     },
     onSearchNoteSelected: function(note) {

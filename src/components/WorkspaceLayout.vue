@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- Edge Swipe Zone for Mobile Drawer - Only active when drawer is closed -->
+    <!-- Edge Swipe Zone - mobile only, active when drawer is closed -->
     <div 
       v-if="!isDrawerOpen"
       class="edge-swipe-zone hide-on-large-only"
@@ -9,7 +9,7 @@
       @touchend="handleEdgeSwipeEnd"
     ></div>
 
-    <!-- Mobile Drawer Overlay -->
+    <!-- Drawer Overlay - mobile only -->
     <transition name="drawer-overlay">
       <div 
         v-if="isDrawerOpen" 
@@ -20,25 +20,29 @@
 
     <!-- Mobile Drawer -->
     <div 
-      class="mobile-drawer hide-on-large-only"
+      class="sidemenu-drawer hide-on-large-only"
       :class="{ 'drawer-open': isDrawerOpen }"
       :style="{ transform: drawerTransform }"
+      @touchstart="handleDrawerTouchStart"
+      @touchmove="handleDrawerTouchMove"
+      @touchend="handleDrawerTouchEnd"
     >
       <div class="drawer-content">
         <!-- Login/Logout Button -->
-        <!-- Login/Logout Button -->
         <div class="drawer-auth-section">
           <form v-if="!this.$store.getters.loggedIn" method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
-            <button class="btn drawer-auth-btn waves-effect waves-light" type="submit">
+            <button class="btn-action drawer-auth-btn" type="submit">
               LOG IN
             </button>
           </form>
           <form v-else method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
-            <button class="btn drawer-auth-btn waves-effect waves-light" type="submit">
+            <button class="btn-action drawer-auth-btn" type="submit">
               LOG OUT
             </button>
           </form>
-        </div>        <!-- Applications Section -->
+        </div>
+
+        <!-- Applications Section -->
         <div class="drawer-apps-section">
           <div class="drawer-section-title">Applications</div>
           <div class="drawer-apps-list">
@@ -51,12 +55,8 @@
               <span>Pika Core</span>
             </a>
             <a class="drawer-app-item" href="https://ai.lukas-bownik.net/" title="Pika AI Assistant">
-              <span class="material-symbols-outlined">psychology</span>
+              <span class="material-symbols-outlined">chat</span>
               <span>Pika AI Assistant</span>
-            </a>
-            <a class="drawer-app-item" href="https://note.lukas-bownik.net/" title="Pika Note">
-              <span class="material-symbols-outlined">description</span>
-              <span>Pika Note</span>
             </a>
             <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/status" title="Pika Status">
               <span class="material-symbols-outlined">vital_signs</span>
@@ -65,7 +65,6 @@
           </div>
         </div>
 
-        <!-- Divider -->
         <div class="drawer-divider"></div>
 
         <!-- Version Label -->
@@ -73,10 +72,10 @@
           Pika Note v. {{ version }}
         </div>
 
-        <!-- Divider -->
         <div class="drawer-divider"></div>
 
-        <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
+        <!-- Bucket Select -->
+        <div class="drawer-bucket-select" v-if="this.$store.getters.loggedIn">
           <Select 
             dropdownText="Choose bucket" 
             :entries="buckets" 
@@ -85,14 +84,16 @@
           />
         </div>
         
-        <div class="mobile-notes-controls" v-if="this.$store.getters.loggedIn">
+        <!-- Notes Controls -->
+        <div class="drawer-notes-controls" v-if="this.$store.getters.loggedIn">
           <OrderSwitch @order-change="reloadOnOrderChange"/>
-          <button class="btn btn-flat search-btn" @click="openSearch">
-            <i class="material-icons">search</i>
+          <button class="btn-action search-btn" @click="openSearch">
+            <span class="material-symbols-outlined">search</span>
           </button>
         </div>
         
-        <div class="mobile-notes-container" @scroll="handleMobileScroll" ref="mobileNotesContainer">
+        <!-- Notes List with Infinite Scroll -->
+        <div class="drawer-notes-container" @scroll="handleScroll" ref="mobileNotesContainer">
           <Preloader 
             message="Loading notes..." 
             v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
@@ -110,7 +111,7 @@
             @click="createNewNoteAndCloseNav"
           >
             <div class="card-content">
-              <i class="material-icons create-icon">add_circle_outline</i>
+              <span class="material-symbols-outlined create-icon">add_circle</span>
               <span class="create-text">Create New Note</span>
             </div>
           </div>
@@ -132,172 +133,28 @@
             message="Click above to create your first note"
           />
           
-          <!-- Loading indicator for infinite scroll -->
           <InfiniteScrollLoader v-if="showInfiniteLoader" />
         </div>
       </div>
     </div>
 
-    <!-- Login message when not logged in - shown above everything -->
-    <div v-if="this.$store.getters.loggedIn === false" class="login-message-container">
-      <Info message="Please log in to view or create notes" />
-    </div>
-
     <!-- Bucket Selection Prompt Toast -->
     <transition name="toast">
-      <div v-if="showBucketPrompt && this.$store.getters.loggedIn" class="bucket-prompt-toast hide-on-large-only">
+      <div v-if="showBucketPrompt && this.$store.getters.loggedIn" class="bucket-prompt-toast">
         <div class="bucket-prompt-content">
-          <i class="material-icons">folder_open</i>
-          <span>Select a bucket from the drawer menu</span>
+          <span class="material-symbols-outlined">folder_open</span>
+          <span>Open the menu and select a bucket</span>
           <button @click="dismissBucketPrompt" class="dismiss-btn">
-            <i class="material-icons">close</i>
+            <span class="material-symbols-outlined">close</span>
           </button>
         </div>
       </div>
     </transition>
     
     <div class="workspace-layout">
-    <!-- Keep old teleport for backward compatibility if needed -->
-    <Teleport to=".mobile-notes-section" v-if="isMounted && hasTeleportTarget">
-      <div class="mobile-sidenav-content">
-        <!-- Login/Logout buttons -->
-        <div class="mobile-auth-section" v-if="this.$store.getters.loggedIn === false">
-          <form method="post" action="https://noteapi.lukas-bownik.net/Security/LocalLogin">
-            <button class="btn btn-flat">
-              LOG IN
-            </button>
-          </form>
-        </div>
-        <div class="mobile-auth-section" v-if="this.$store.getters.loggedIn === true">
-          <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
-            <button class="btn btn-flat">
-              LOG OUT
-            </button>
-          </form>
-        </div>
-        
-        <!-- Applications Collapsible Menu -->
-        <div class="mobile-apps-section">
-          <div class="mobile-collapsible">
-            <div class="mobile-collapsible-header" @click="toggleAppsMenu">
-              Applications
-              <i class="material-icons right">{{ appsMenuOpen ? 'expand_less' : 'expand_more' }}</i>
-            </div>
-            <div class="mobile-collapsible-body" v-show="appsMenuOpen">
-              <div class="mobile-apps-list">
-                <a class="collection-item navlink app-menu-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
-                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                    cloud
-                  </span>
-                  Pika Cloudfront
-                </a>
-                <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/" title="Pika Core">
-                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                    storage
-                  </span>
-                  Pika Core
-                </a>
-                <a class="collection-item navlink app-menu-item" href="https://chat.lukas-bownik.net/" title="Pika Chat">
-                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                    chat
-                  </span>
-                  Pika Chat
-                </a>
-                <a class="collection-item navlink app-menu-item" href="https://core.lukas-bownik.net/status" title="Pika Status">
-                  <span class="material-symbols-outlined secondary-content navlink havelock-text">
-                    vital_signs
-                  </span>
-                  Pika Status
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- About Link -->
-        <div class="mobile-about-section">
-          <a class="collection-item navlink app-menu-item" href="/About" title="About Pika Note">
-            <span class="material-icons secondary-content navlink havelock-text">
-              info_outline
-            </span>
-            About
-          </a>
-        </div>
-        
-        <!-- Divider -->
-        <div class="mobile-divider"></div>
-        
-        <!-- Notes Section Header -->
-        <div class="mobile-notes-header" v-if="this.$store.getters.loggedIn">
-          <h6 class="sidenav-section-title">My Notes</h6>
-        </div>
-        
-        <!-- Bucket Select and Order Controls for logged in users -->
-        <div class="mobile-bucket-select" v-if="this.$store.getters.loggedIn">
-          <Select 
-            dropdownText="Choose bucket" 
-            :entries="buckets" 
-            :onchange="onBucketSelectChange" 
-          />
-        </div>
-        
-        <div class="mobile-notes-controls" v-if="this.$store.getters.loggedIn">
-          <OrderSwitch @order-change="reloadOnOrderChange"/>
-          <button class="btn btn-flat search-btn" @click="openSearch">
-            <i class="material-icons">search</i>
-          </button>
-        </div>
-        
-        <div class="mobile-notes-list">
-          <Preloader 
-            message="Loading notes..." 
-            v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
-          />
-          <Error v-if="error"/>
-          <Info 
-            v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
-            message="Choose a bucket above"
-          />
-          
-          <!-- Create New Note Card -->
-          <div 
-            v-if="this.$store.getters.loggedIn && bucketId !== ''" 
-            class="card create-note-card z-depth-0"
-            @click="createNewNoteAndCloseNav"
-          >
-            <div class="card-content">
-              <i class="material-icons create-icon">add_circle_outline</i>
-              <span class="create-text">Create New Note</span>
-            </div>
-          </div>
-          
-          <div v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
-            <Note 
-              v-for="note in notes"
-              :key="note.id"
-              :id="note.id"
-              :name="note.humanName"
-              :date="note.timestamp"
-              @click="loadNoteIntoEditorAndCloseNav(note)"
-              @note-deleted="handleNoteDeleted"
-            />
-          </div>
-          
-          <Info 
-            v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
-            message="Click above to create your first note"
-          />
-          
-          <!-- Loading indicator for infinite scroll -->
-          <InfiniteScrollLoader v-if="showInfiniteLoader" />
-        </div>
-      </div>
-    </Teleport>
-    
-    <!-- Left Sidebar: Notes List -->
-    <aside class="notes-sidebar hide-on-med-and-down">
-      <div class="sidebar-header">
-        <div class="filter-controls">
+      <!-- Desktop Sidebar - always visible on large screens -->
+      <aside class="notes-sidebar hide-on-med-and-down">
+        <div class="sidebar-header">
           <div class="bucket-select-wrapper">
             <Select 
               dropdownText="Choose bucket" 
@@ -308,72 +165,70 @@
           </div>
           <div class="list-controls">
             <OrderSwitch @order-change="reloadOnOrderChange"/>
-            <button class="btn btn-flat search-btn" @click="openSearch">
-              <i class="material-icons">search</i>
+            <button class="btn-action search-btn" @click="openSearch">
+              <span class="material-symbols-outlined">search</span>
             </button>
           </div>
         </div>
-      </div>
 
-      <div class="notes-list-container" @scroll="handleScroll" ref="notesContainer">
-        <Preloader 
-          message="Loading notes..." 
-          v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
-        />
-        <Error v-if="error"/>
-        <Info 
-          v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
-          message="Choose a bucket above to view notes"
-        />
-        
-        <!-- Create New Note Card -->
-        <div 
-          v-if="this.$store.getters.loggedIn && bucketId !== ''" 
-          class="card create-note-card z-depth-0"
-          @click="createNewNote"
-        >
-          <div class="card-content">
-            <i class="material-icons create-icon">add_circle_outline</i>
-            <span class="create-text">Create New Note</span>
-          </div>
-        </div>
-        
-        <transition-group name="slide-fade" appear v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
-          <Note 
-            v-for="note in notes"
-            :key="note.id"
-            :id="note.id"
-            :name="note.humanName"
-            :date="note.timestamp"
-            @click="loadNoteIntoEditor(note)"
-            @note-deleted="handleNoteDeleted"
+        <div class="notes-list-container" @scroll="handleScroll" ref="notesContainer">
+          <Preloader 
+            message="Loading notes..." 
+            v-if="!loaded && this.$store.getters.loggedIn && !this.$store.getters.notesLoading"
           />
-        </transition-group>
-        
-        <Info 
-          v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
-          message="Click above to create your first note"
-        />
-        
-        <!-- Loading indicator for infinite scroll -->
-        <InfiniteScrollLoader v-if="showInfiniteLoader" />
-      </div>
-    </aside>
+          <Error v-if="error"/>
+          <Info 
+            v-if="bucketId === '' && this.$store.getters.loggedIn === true" 
+            message="Choose a bucket above to view notes"
+          />
+          
+          <div 
+            v-if="this.$store.getters.loggedIn && bucketId !== ''" 
+            class="card create-note-card z-depth-0"
+            @click="createNewNote"
+          >
+            <div class="card-content">
+              <span class="material-symbols-outlined create-icon">add_circle</span>
+              <span class="create-text">Create New Note</span>
+            </div>
+          </div>
+          
+          <transition-group name="slide-fade" appear v-if="this.$store.getters.loggedIn && notes.length > 0 && !error">
+            <Note 
+              v-for="note in notes"
+              :key="note.id"
+              :id="note.id"
+              :name="note.humanName"
+              :date="note.timestamp"
+              @click="loadNoteIntoEditor(note)"
+              @note-deleted="handleNoteDeleted"
+            />
+          </transition-group>
+          
+          <Info 
+            v-if="notes.length == 0 && loaded && !error && loggedIn && this.bucketId !== ''" 
+            message="Click above to create your first note"
+          />
+          
+          <InfiniteScrollLoader v-if="showInfiniteLoader" />
+        </div>
+      </aside>
 
-    <!-- Right Side: Editor -->
-    <main class="editor-main">
-      <Editor 
-        v-if="this.$store.getters.loggedIn === true" 
-        @note-saved="onNoteSaved"
-      />
-    </main>
-  </div>
-  <SearchOverlay
-    :visible="showSearchOverlay"
-    :bucketId="bucketId"
-    @close="closeSearch"
-    @note-selected="onSearchNoteSelected"
-  />
+      <!-- Editor Area -->
+      <main class="editor-main">
+        <Editor 
+          v-if="this.$store.getters.loggedIn === true" 
+          @note-saved="onNoteSaved"
+        />
+      </main>
+    </div>
+
+    <SearchOverlay
+      :visible="showSearchOverlay"
+      :bucketId="bucketId"
+      @close="closeSearch"
+      @note-selected="onSearchNoteSelected"
+    />
   </div>
 </template>
 
@@ -388,7 +243,7 @@ import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
 import SearchOverlay from './molecules/SearchOverlay.vue';
 import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
-import M from 'materialize-css';
+import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
 
@@ -469,33 +324,15 @@ export default {
       this.$store.commit({type: 'updateId', id: routeId});
     }
     
-    // Enable teleport after mount and check if target exists
-    // Use a small delay to ensure the parent App component's sidenav is fully mounted
+    // Enable drawer functionality after mount
     this.$nextTick(() => {
-      setTimeout(() => {
-        this.isMounted = true;
-        // Check if teleport target exists
-        const target = document.querySelector('.mobile-notes-section');
-        this.hasTeleportTarget = target !== null;
-        
-        // Setup hamburger button listener
-        this.setupHamburgerListener();
-      }, 50);
+      this.isMounted = true;
     });
   },
   beforeUnmount() {
-    // Clean up when component is destroyed
-    this.hasTeleportTarget = false;
-    
     // Clear infinite loader timer
     if (this.infiniteLoaderTimer) {
       clearTimeout(this.infiniteLoaderTimer);
-    }
-    
-    // Remove hamburger button listener
-    const hamburger = document.querySelector('.sidenav-trigger');
-    if (hamburger) {
-      hamburger.removeEventListener('click', this.handleHamburgerClick);
     }
   },
   data: function () {
@@ -514,7 +351,6 @@ export default {
       hasMoreNotes: true,
       currentPage: 0,
       isMounted: false,
-      hasTeleportTarget: false,
       isDrawerOpen: false,
       drawerTransform: 'translateX(-100%)',
       isDraggingDrawer: false,
@@ -529,6 +365,15 @@ export default {
       initialBucketsResolved: false,
       initialNotesResolved: false,
       showSearchOverlay: false
+    }
+  },
+  watch: {
+    '$store.getters.drawerOpen'(newVal) {
+      if (newVal && !this.isDrawerOpen) {
+        this.openDrawer();
+      } else if (!newVal && this.isDrawerOpen) {
+        this.closeDrawer();
+      }
     }
   },
   methods: {
@@ -608,18 +453,6 @@ export default {
       const scrollHeight = container.scrollHeight;
       const clientHeight = container.clientHeight;
       
-      // Load more when scrolled to 80% of the container
-      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
-        this.loadMoreNotes();
-      }
-    },
-    handleMobileScroll(event) {
-      const container = event.target;
-      const scrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight;
-      const clientHeight = container.clientHeight;
-      
-      // Load more when scrolled to 80% of the container
       if (scrollTop + clientHeight >= scrollHeight * 0.8) {
         this.loadMoreNotes();
       }
@@ -811,36 +644,24 @@ export default {
     openDrawer() {
       this.isDrawerOpen = true;
       this.drawerTransform = 'translateX(0)';
-      
-      // Prevent body scroll when drawer is open
       document.body.style.overflow = 'hidden';
+      
+      // Sync store state
+      if (!this.$store.getters.drawerOpen) {
+        this.$store.commit({type: 'setDrawerOpen', drawerOpen: true});
+      }
     },
     closeDrawer() {
       this.isDrawerOpen = false;
       this.drawerTransform = 'translateX(-100%)';
-      
-      // Re-enable body scroll
       document.body.style.overflow = '';
-    },
-    setupHamburgerListener() {
-      const hamburger = document.querySelector('.sidenav-trigger');
-      if (hamburger) {
-        hamburger.addEventListener('click', this.handleHamburgerClick);
-      }
-    },
-    handleHamburgerClick(e) {
-      e.preventDefault();
-      e.stopPropagation();
       
-      // Toggle drawer state
-      if (this.isDrawerOpen) {
-        this.closeDrawer();
-      } else {
-        this.openDrawer();
+      // Sync store state
+      if (this.$store.getters.drawerOpen) {
+        this.$store.commit({type: 'setDrawerOpen', drawerOpen: false});
       }
     },
     showBucketPromptToast() {
-      // Show prompt for 5 seconds
       this.showBucketPrompt = true;
       setTimeout(() => {
         this.showBucketPrompt = false;
@@ -857,14 +678,14 @@ export default {
       this.noteService.removeNote(noteId)
         .then(response => {
           if (response.ok) {
-            M.toast({ html: 'Note deleted successfully', displayLength: 2000 });
+            toastService.success('Note deleted successfully');
           } else {
-            M.toast({ html: 'Failed to delete note', displayLength: 3000 });
+            toastService.error('Failed to delete note');
             this.loadNotes();
           }
         })
         .catch(() => {
-          M.toast({ html: 'Error deleting note', displayLength: 3000 });
+          toastService.error('Error deleting note');
           this.loadNotes();
         });
     },
@@ -883,31 +704,54 @@ export default {
 </script>
 
 <style scoped>
-/* Login message container */
-.login-message-container {
-  padding: var(--spacing-md);
-  max-width: 1100px;
-  margin: 0 auto;
+/* ==========================================================================
+   Responsive Hide Utilities
+   ========================================================================== */
+
+.hide-on-med-and-down {
+  display: block;
 }
+
+.hide-on-large-only {
+  display: block;
+}
+
+@media (max-width: 992px) {
+  .hide-on-med-and-down {
+    display: none !important;
+  }
+}
+
+@media (min-width: 993px) {
+  .hide-on-large-only {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Workspace Layout
+   ========================================================================== */
 
 .workspace-layout {
   display: flex;
-  height: calc(100vh - 64px); /* Account for navbar */
+  height: calc(100vh - 64px);
   width: 100%;
   overflow: hidden;
 }
 
-/* Left Sidebar: Notes List */
+/* ==========================================================================
+   Desktop Sidebar (always visible on large screens)
+   ========================================================================== */
+
 .notes-sidebar {
-  width: 350px;
-  min-width: 300px;
-  max-width: 400px;
+  width: 280px;
+  min-width: 250px;
+  max-width: 350px;
   background-color: var(--color-background-soft);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: relative;
 }
 
 .sidebar-header {
@@ -915,9 +759,6 @@ export default {
   background-color: var(--color-background);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
-}
-
-.filter-controls {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -934,80 +775,17 @@ export default {
   align-items: center;
 }
 
-.search-btn {
-  background-color: var(--color-primary) !important;
-  color: white !important;
-  min-width: 36px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.search-btn:hover {
-  background-color: var(--color-primary-soft) !important;
-}
-
-.mobile-notes-controls {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-
 .notes-list-container {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-sm);
-  padding-bottom: 80px; /* Extra padding to prevent stats footer from covering last note */
+  padding-bottom: 80px;
 }
 
-.fab-wrapper {
-  position: absolute;
-  bottom: var(--spacing-lg);
-  right: var(--spacing-lg);
-  z-index: 10;
-}
+/* ==========================================================================
+   Editor Area
+   ========================================================================== */
 
-/* Create New Note Card */
-.create-note-card {
-  cursor: pointer;
-  background-color: var(--color-primary-mute) !important;
-  border: 2px dashed var(--color-primary) !important;
-  margin: var(--spacing-sm) !important;
-  transition: all var(--transition-fast);
-}
-
-.create-note-card:hover {
-  background-color: var(--color-primary-soft) !important;
-  border-color: var(--color-primary-soft) !important;
-  transform: translateY(-1px);
-}
-
-.create-note-card .card-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-lg) !important;
-}
-
-.create-icon {
-  color: var(--color-primary) !important;
-  font-size: 2rem;
-}
-
-.create-note-card:hover .create-icon,
-.create-note-card:hover .create-text {
-  color: white !important;
-}
-
-.create-text {
-  color: var(--color-primary) !important;
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-lg);
-}
-
-/* Right Side: Editor */
 .editor-main {
   flex: 1;
   overflow-y: auto;
@@ -1015,143 +793,10 @@ export default {
   padding: var(--spacing-lg);
 }
 
-.editor-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-/* Mobile sidenav content */
-.mobile-sidenav-content {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-}
-
-.mobile-auth-section {
-  padding: 16px 32px;
-  flex-shrink: 0;
-}
-
-.mobile-auth-section .btn {
-  width: 100%;
-}
-
-.mobile-apps-section {
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.mobile-collapsible {
-  margin: 0;
-}
-
-.mobile-collapsible-header {
-  padding: 0 32px;
-  height: 48px;
-  line-height: 48px;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.mobile-collapsible-header:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.mobile-collapsible-body {
-  padding: 0;
-}
-
-.mobile-apps-list {
-  padding: 0;
-  margin: 0;
-}
-
-.mobile-apps-list .collection-item {
-  display: block;
-  padding: 16px 32px;
-  margin: 0;
-  border: none;
-}
-
-.mobile-about-section {
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.mobile-about-section .collection-item {
-  display: block;
-  padding: 16px 32px;
-  margin: 0;
-  border: none;
-}
-
-.mobile-divider {
-  height: 1px;
-  background-color: rgba(0, 0, 0, 0.12);
-  margin: 8px 0;
-  flex-shrink: 0;
-}
-
-.mobile-notes-header {
-  padding: 16px 32px 8px;
-  flex-shrink: 0;
-}
-
-.sidenav-section-title {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  margin: 0;
-}
-
-.mobile-bucket-select {
-  padding: 0 16px;
-  margin-bottom: var(--spacing-sm);
-  flex-shrink: 0;
-}
-
-.mobile-notes-controls {
-  padding: 0 16px;
-  margin-bottom: var(--spacing-sm);
-  flex-shrink: 0;
-}
-
-.mobile-notes-list {
-  padding: 0 8px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.mobile-notes-list .create-note-card {
-  margin: var(--spacing-xs) var(--spacing-sm) !important;
-}
-
-/* Responsive */
 @media (max-width: 992px) {
-  .workspace-layout {
-    flex-direction: row;
-  }
-  
-  /* Hide the sidebar on mobile/tablet - notes will be in sidenav */
-  .notes-sidebar {
-    display: none;
-  }
-  
   .editor-main {
     width: 100%;
     height: calc(100vh - 64px);
-  }
-  
-  .fab-wrapper {
-    bottom: var(--spacing-md);
-    right: var(--spacing-md);
   }
 }
 
@@ -1161,8 +806,11 @@ export default {
   }
 }
 
-/* Mobile Drawer */
-.mobile-drawer {
+/* ==========================================================================
+   Mobile Drawer
+   ========================================================================== */
+
+.sidemenu-drawer {
   position: fixed;
   top: 0;
   left: 0;
@@ -1170,20 +818,22 @@ export default {
   max-width: 85vw;
   height: 100vh;
   background-color: var(--color-background);
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
   z-index: 1001;
   transform: translateX(-100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.mobile-drawer.drawer-open {
+.sidemenu-drawer.drawer-open {
   transform: translateX(0);
 }
 
 .drawer-content {
-  padding: var(--spacing-md) 0;
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   pointer-events: auto;
   position: relative;
@@ -1193,26 +843,18 @@ export default {
 /* Drawer Auth Section */
 .drawer-auth-section {
   padding: var(--spacing-md);
+  padding-top: calc(var(--spacing-md) + 8px);
 }
 
 .drawer-auth-btn {
   width: 100%;
-  background-color: var(--color-primary) !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
   height: 48px;
-  border-radius: 8px;
-  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.5px;
 }
 
 .drawer-auth-btn:hover {
-  background-color: #083463 !important;
-}
-
-.drawer-auth-btn .material-symbols-outlined {
-  font-size: 20px;
+  background: #083463 !important;
+  color: white !important;
 }
 
 /* Drawer Applications Section */
@@ -1279,15 +921,82 @@ export default {
   font-weight: var(--font-weight-medium);
 }
 
-/* Mobile Notes Container */
-.mobile-notes-container {
+/* Bucket Select in Drawer */
+.drawer-bucket-select {
+  padding: 0 var(--spacing-md);
+}
+
+/* Notes Controls in Drawer */
+.drawer-notes-controls {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* Notes List in Drawer */
+.drawer-notes-container {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--spacing-sm);
-  /* Calculate height: 100vh minus drawer header sections */
-  max-height: calc(100vh - 400px);
 }
+
+/* ==========================================================================
+   Shared Styles (sidebar + drawer)
+   ========================================================================== */
+
+.search-btn {
+  min-width: auto;
+}
+
+.search-btn:hover {
+  background: whitesmoke !important;
+  color: var(--color-primary) !important;
+}
+
+/* Create New Note Card */
+.create-note-card {
+  cursor: pointer;
+  background-color: var(--color-primary-mute) !important;
+  border: 2px dashed var(--color-primary) !important;
+  margin: var(--spacing-sm) !important;
+  transition: all var(--transition-fast);
+}
+
+.create-note-card:hover {
+  background-color: var(--color-primary-soft) !important;
+  border-color: var(--color-primary-soft) !important;
+  transform: translateY(-1px);
+}
+
+.create-note-card .card-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) !important;
+}
+
+.create-icon {
+  color: var(--color-primary) !important;
+  font-size: 2rem;
+}
+
+.create-note-card:hover .create-icon,
+.create-note-card:hover .create-text {
+  color: white !important;
+}
+
+.create-text {
+  color: var(--color-primary) !important;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+}
+
+/* ==========================================================================
+   Drawer Overlay
+   ========================================================================== */
 
 .drawer-overlay {
   position: fixed;
@@ -1310,7 +1019,7 @@ export default {
   opacity: 0;
 }
 
-/* Edge Swipe Zone for Mobile */
+/* Edge Swipe Zone */
 .edge-swipe-zone {
   position: fixed;
   left: 0;
@@ -1322,7 +1031,10 @@ export default {
   pointer-events: auto;
 }
 
-/* Bucket Prompt Toast */
+/* ==========================================================================
+   Bucket Prompt Toast
+   ========================================================================== */
+
 .bucket-prompt-toast {
   position: fixed;
   top: 80px;
@@ -1344,7 +1056,7 @@ export default {
   color: white;
 }
 
-.bucket-prompt-content i.material-icons {
+.bucket-prompt-content .material-symbols-outlined {
   font-size: 24px;
   flex-shrink: 0;
 }
@@ -1373,10 +1085,6 @@ export default {
   opacity: 1;
 }
 
-.dismiss-btn i {
-  font-size: 20px;
-}
-
 /* Toast transition */
 .toast-enter-active, .toast-leave-active {
   transition: opacity 0.3s, transform 0.3s;
@@ -1387,17 +1095,6 @@ export default {
   transform: translateX(-50%) translateY(-10px);
 }
 
-/* Hide on large screens */
-.hide-on-large-only {
-  display: block;
-}
-
-@media (min-width: 1024px) {
-  .hide-on-large-only {
-    display: none !important;
-  }
-}
-
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .bucket-prompt-toast {
@@ -1405,9 +1102,9 @@ export default {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
   
-  .mobile-drawer {
+  .sidemenu-drawer {
     background-color: #1e1e1e;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.5);
   }
   
   .drawer-overlay {

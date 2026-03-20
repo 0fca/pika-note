@@ -190,11 +190,36 @@ nav {
 
 .btn-flat:hover {
   background-color: var(--color-background-mute) !important;
+  border: none;
 }
 
 .btn-nav {
   background: transparent !important;
   box-shadow: none !important;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--color-primary);
+  color: white !important;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  box-shadow: none;
+}
+
+.btn-action:hover {
+  background: whitesmoke;
+  color: var(--color-primary) !important;
 }
 
 /* ==========================================================================
@@ -250,16 +275,6 @@ select {
   background-color: var(--color-background) !important;
   color: var(--color-text) !important;
   border-color: var(--color-border) !important;
-}
-
-/* Materialize Select Dropdown */
-.dropdown-wrapper input.select-dropdown {
-  color: var(--color-text) !important;
-  background-color: var(--color-background) !important;
-}
-
-.caret {
-  fill: var(--color-text) !important;
 }
 
 /* ==========================================================================
@@ -642,6 +657,10 @@ select {
 /* ==========================================================================
    Utilities
    ========================================================================== */
+
+.z-depth-0 {
+  box-shadow: none !important;
+}
 
 .img-fit {
   object-fit: contain;

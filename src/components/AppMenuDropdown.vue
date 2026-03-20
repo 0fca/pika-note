@@ -156,6 +156,18 @@ export default {
   overflow: hidden;
 }
 
+@media (max-width: 992px) {
+  .app-menu-dropdown {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: 0;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  }
+}
+
 .app-menu-header {
   padding: 20px;
   text-align: center;
