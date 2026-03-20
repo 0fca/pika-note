@@ -37,72 +37,85 @@ export default class ChatRelayService {
         }
     }
 
-    async sendMessageAndStream(model, message, options, onChunk, onDone, onError) {
-        const { tool = '', useMemory = false, stream = true } = options || {}
+    processLines(state, onChunk, onDone) {
+        const lines = state.buffer.split('\n')
+        state.buffer = lines.pop() || ''
 
-        try {
-            const sessionId = await this.createChatSession()
-            await this.initializeChatSession(sessionId)
-
-            const response = await fetch(`${chatApiBaseUrl}/v1/ChatRelay/Message`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/x-ndjson',
-                },
-                body: JSON.stringify({ model, message, stream, useMemory, tool }),
-            })
-
-            if (!response.ok) {
-                throw new Error(`Chat relay returned ${response.status}`)
-            }
-
-            const reader = response.body.getReader()
-            const decoder = new TextDecoder()
-            let buffer = ''
-
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-
-                buffer += decoder.decode(value, { stream: true })
-                const lines = buffer.split('\n')
-                buffer = lines.pop() || ''
-
-                for (const line of lines) {
-                    const trimmed = line.trim()
-                    if (!trimmed) continue
-                    try {
-                        const chunk = JSON.parse(trimmed)
-                        if (chunk.event === 'done') {
-                            if (onDone) onDone()
-                            return
-                        }
-                        if (onChunk) onChunk(chunk.event, chunk.data)
-                    } catch {
-                        // skip malformed lines
-                    }
+        for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed) continue
+            try {
+                const chunk = JSON.parse(trimmed)
+                if (chunk.event === 'done') {
+                    state.finished = true
+                    if (onDone) onDone()
+                    return
                 }
+                if (onChunk) onChunk(chunk.event, chunk.data)
+            } catch {
+                // skip malformed lines
             }
-
-            // process any remaining data in buffer
-            if (buffer.trim()) {
-                try {
-                    const chunk = JSON.parse(buffer.trim())
-                    if (chunk.event === 'done') {
-                        if (onDone) onDone()
-                        return
-                    }
-                    if (onChunk) onChunk(chunk.event, chunk.data)
-                } catch {
-                    // skip
-                }
-            }
-
-            if (onDone) onDone()
-        } catch (err) {
-            if (onError) onError(err)
         }
     }
+
+    read(reader, decoder, state, onChunk, onDone, onError) {
+        reader.read().then(({ done, value }) => {
+            if (done || state.finished) {
+                if (!state.finished) {
+                    if (state.buffer.trim()) {
+                        try {
+                            const chunk = JSON.parse(state.buffer.trim())
+                            if (chunk.event === 'done') {
+                                if (onDone) onDone()
+                                return
+                            }
+                            if (onChunk) onChunk(chunk.event, chunk.data)
+                        } catch {
+                            // skip
+                        }
+                    }
+                    if (onDone) onDone()
+                }
+                return
+            }
+
+            state.buffer += decoder.decode(value, { stream: true })
+            this.processLines(state, onChunk, onDone)
+            if (!state.finished) this.read(reader, decoder, state, onChunk, onDone, onError)
+        }).catch(err => {
+            if (onError) onError(err)
+        })
+    }
+
+
+    async sendMessageAndStream(model, message, options, onChunk, onDone, onError) {
+    const { tool = '', useMemory = false, stream = true } = options || {}
+
+    try {
+        const sessionId = await this.createChatSession()
+        await this.initializeChatSession(sessionId)
+
+        const response = await fetch(`${chatApiBaseUrl}/v1/ChatRelay/Message`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/x-ndjson',
+            },
+            body: JSON.stringify({ model, message, stream, useMemory, tool }),
+        })
+
+        if (!response.ok) {
+            throw new Error(`Chat relay returned ${response.status}`)
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        const state = { buffer: '', finished: false }
+        
+        this.read(reader, decoder, state, onChunk, onDone, onError)
+    } catch (err) {
+        if (onError) onError(err)
+    }
+}
 }
