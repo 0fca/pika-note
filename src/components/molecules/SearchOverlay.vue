@@ -168,8 +168,9 @@ export default {
         prompt,
         { tool: 'search' },
         (event, data) => {
-          if (event === 'message' || event === 'datamessage') {
-            this.aiResponseText += data;
+          if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk') {
+            const message = typeof data === 'string' ? data : JSON.parse(data).message;
+            this.aiResponseText += message;
           }
         },
         () => {
