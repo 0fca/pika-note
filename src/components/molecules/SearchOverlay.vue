@@ -67,6 +67,7 @@
 <script>
 import NoteService from "@/services/noteService";
 import ChatRelayService from "@/services/chatRelayService";
+import { getAvailableTools, isToolAvailable } from "@/services/chatToolService";
 
 export default {
   name: 'SearchOverlay',
@@ -92,7 +93,9 @@ export default {
       useAiSearch: false,
       aiStreaming: false,
       aiResponseText: '',
-      chatRelayService: new ChatRelayService()
+      chatRelayService: new ChatRelayService(),
+      availableTools: [],
+      toolsLoaded: false
     }
   },
   watch: {
@@ -101,6 +104,9 @@ export default {
         this.$nextTick(() => {
           this.$refs.searchInput?.focus();
         });
+        if (!this.toolsLoaded) {
+          this.loadTools();
+        }
       } else {
         this.query = '';
         this.results = [];
@@ -134,12 +140,27 @@ export default {
       this.aiResponseText = '';
       this.aiStreaming = false;
     },
+    async loadTools() {
+      try {
+        this.availableTools = await getAvailableTools();
+        this.toolsLoaded = true;
+      } catch {
+        this.availableTools = [];
+      }
+    },
     async performAiSearch() {
       if (!this.query.trim()) return;
+
+      const tool = 'search';
+      if (!isToolAvailable(tool, this.availableTools)) {
+        this.aiResponseText = 'Error: AI search tool is not available';
+        return;
+      }
+
       this.aiStreaming = true;
       this.aiResponseText = '';
 
-      const model = process.env.VUE_APP_CHAT_MODEL || 'llama3.2';
+      const model = process.env.VUE_APP_CHAT_MODEL || 'dolphin3:8b';
       const prompt = `Search notes for: ${this.query}`;
 
       await this.chatRelayService.sendMessageAndStream(
