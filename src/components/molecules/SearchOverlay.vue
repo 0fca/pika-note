@@ -169,7 +169,9 @@ export default {
         { tool: 'search' },
         (event, data) => {
           if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk') {
-            const message = typeof data === 'string' ? data : JSON.parse(data).message;
+            console.log("Received chunk:", data);
+            console.log(JSON.parse(data));
+            const message =  JSON.parse(data).message.content;
             this.aiResponseText += message;
           }
         },
