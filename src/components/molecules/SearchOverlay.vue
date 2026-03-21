@@ -160,7 +160,7 @@ export default {
       this.aiStreaming = true;
       this.aiResponseText = '';
 
-      const model = process.env.VUE_APP_CHAT_MODEL || 'dolphin3:8b';
+      const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2.5-thinking';
       const prompt = `Search notes for: ${this.query}`;
 
       await this.chatRelayService.sendMessageAndStream(
