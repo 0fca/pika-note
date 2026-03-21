@@ -1,6 +1,6 @@
 import { authFetch } from "@/services/fetchClient";
 
-const chatApiBaseUrl = process.env.VUE_APP_CHAT_API_URL || 'https://chat.lukas-bownik.net'
+const chatApiBaseUrl = process.env.VUE_APP_CHAT_API_URL || 'https://ai-api.lukas-bownik.net'
 
 export default class ChatRelayService {
 
