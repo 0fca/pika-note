@@ -214,7 +214,7 @@ export default {
       await this.chatRelayService.sendMessageAndStream(
         model,
         prompt,
-        { tool: 'search' },
+        { tool: 'search', bucketId: this.bucketId },
         (event, data) => {
           if (event === 'ctlmessage') {
             if (data === 'await tool call') {
@@ -226,7 +226,7 @@ export default {
             }
             return;
           }
-          if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk') {
+          if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk' || event === 'usermessage') {
             const parsed = JSON.parse(data);
             if (parsed.message && parsed.message.thinking) {
               this.aiIsThinking = true;

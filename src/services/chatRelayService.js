@@ -89,7 +89,7 @@ export default class ChatRelayService {
 
 
     async sendMessageAndStream(model, message, options, onChunk, onDone, onError) {
-    const { tool = '', useMemory = false, stream = true } = options || {}
+    const { tool = '', useMemory = false, stream = true, bucketId = '' } = options || {}
 
     try {
         const sessionId = await this.createChatSession()
@@ -102,7 +102,7 @@ export default class ChatRelayService {
                 'Content-Type': 'application/json',
                 'Accept': 'application/x-ndjson',
             },
-            body: JSON.stringify({ model, message, stream, useMemory, tool }),
+            body: JSON.stringify({ model, message, stream, useMemory, tool, bucketId }),
         })
 
         if (!response.ok) {
