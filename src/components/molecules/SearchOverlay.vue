@@ -24,14 +24,14 @@
         </div>
         <div class="search-results">
           <template v-if="useAiSearch">
-            <div v-if="aiStreaming || aiResponseText || aiThinkingText" class="ai-response">
-              <div v-if="aiIsThinking && !aiResponseText" class="ai-thinking-active">
-                <div class="ai-thinking-header">
-                  <span class="material-symbols-outlined ai-thinking-icon">psychology</span>
-                  <span class="ai-thinking-label">Thinking</span>
-                  <span class="ai-thinking-dots"><span>.</span><span>.</span><span>.</span></span>
-                </div>
-                <div class="ai-thinking-text">{{ aiThinkingText }}<span class="ai-cursor">|</span></div>
+            <div v-if="aiStreaming || aiResponseText || aiThinkingText || aiError" class="ai-response">
+              <div v-if="aiIsThinking && !aiResponseText" class="ai-thinking-collapsed">
+                <button class="ai-thinking-toggle" @click="thinkingActiveExpanded = !thinkingActiveExpanded">
+                  <span class="material-symbols-outlined ai-thinking-chevron" :class="{ expanded: thinkingActiveExpanded }">chevron_right</span>
+                  <span class="material-symbols-outlined ai-thinking-icon-sm">psychology</span>
+                  <span>Thinking<span class="ai-thinking-dots-inline"><span>.</span><span>.</span><span>.</span></span></span>
+                </button>
+                <div v-if="thinkingActiveExpanded" class="ai-thinking-text-collapsed">{{ aiThinkingText }}<span class="ai-cursor">|</span></div>
               </div>
               <div v-if="aiThinkingText && (aiResponseText || !aiIsThinking)" class="ai-thinking-collapsed">
                 <button class="ai-thinking-toggle" @click="thinkingExpanded = !thinkingExpanded">
@@ -41,7 +41,16 @@
                 </button>
                 <div v-if="thinkingExpanded" class="ai-thinking-text-collapsed">{{ aiThinkingText }}</div>
               </div>
-              <div v-if="aiResponseText || (!aiIsThinking && aiStreaming)" class="ai-response-text">
+              <div v-if="aiToolCallActive" class="ai-tool-call-indicator">
+                <span class="material-symbols-outlined ai-tool-icon">build</span>
+                <span>Executing tool</span>
+                <span class="ai-thinking-dots-inline"><span>.</span><span>.</span><span>.</span></span>
+              </div>
+              <div v-if="aiError" class="ai-error-message">
+                <span class="material-symbols-outlined ai-error-icon">error</span>
+                <span>{{ aiError }}</span>
+              </div>
+              <div v-if="aiResponseText || (!aiIsThinking && !aiToolCallActive && !aiError && aiStreaming)" class="ai-response-text">
                 {{ aiResponseText }}<span v-if="aiStreaming" class="ai-cursor">|</span>
               </div>
             </div>
@@ -111,6 +120,9 @@ export default {
       aiThinkingText: '',
       aiIsThinking: false,
       thinkingExpanded: false,
+      thinkingActiveExpanded: false,
+      aiToolCallActive: false,
+      aiError: '',
       chatRelayService: new ChatRelayService(),
       availableTools: [],
       toolsLoaded: false
@@ -133,6 +145,9 @@ export default {
         this.aiThinkingText = '';
         this.aiIsThinking = false;
         this.thinkingExpanded = false;
+        this.thinkingActiveExpanded = false;
+        this.aiToolCallActive = false;
+        this.aiError = '';
         this.aiStreaming = false;
       }
     }
@@ -162,6 +177,9 @@ export default {
       this.aiThinkingText = '';
       this.aiIsThinking = false;
       this.thinkingExpanded = false;
+      this.thinkingActiveExpanded = false;
+      this.aiToolCallActive = false;
+      this.aiError = '';
       this.aiStreaming = false;
     },
     async loadTools() {
@@ -186,6 +204,9 @@ export default {
       this.aiThinkingText = '';
       this.aiIsThinking = false;
       this.thinkingExpanded = false;
+      this.thinkingActiveExpanded = false;
+      this.aiToolCallActive = false;
+      this.aiError = '';
 
       const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2.5-thinking';
       const prompt = `Search notes for: ${this.query}`;
@@ -195,6 +216,16 @@ export default {
         prompt,
         { tool: 'search' },
         (event, data) => {
+          if (event === 'ctlmessage') {
+            if (data === 'await tool call') {
+              this.aiIsThinking = false;
+              this.aiToolCallActive = true;
+            } else if (data === 'EMPTY RESP') {
+              this.aiToolCallActive = false;
+              this.aiError = 'Something went wrong — the model returned an empty response. Please try again.';
+            }
+            return;
+          }
           if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk') {
             const parsed = JSON.parse(data);
             if (parsed.message && parsed.message.thinking) {
@@ -203,17 +234,20 @@ export default {
             }
             if (parsed.message && parsed.message.content) {
               this.aiIsThinking = false;
+              this.aiToolCallActive = false;
               this.aiResponseText += parsed.message.content;
             }
           }
         },
         () => {
           this.aiIsThinking = false;
+          this.aiToolCallActive = false;
           this.aiStreaming = false;
         },
         (err) => {
           this.aiResponseText = `Error: ${err.message}`;
           this.aiIsThinking = false;
+          this.aiToolCallActive = false;
           this.aiStreaming = false;
         }
       );
@@ -239,6 +273,9 @@ export default {
       this.aiThinkingText = '';
       this.aiIsThinking = false;
       this.thinkingExpanded = false;
+      this.thinkingActiveExpanded = false;
+      this.aiToolCallActive = false;
+      this.aiError = '';
       this.aiStreaming = false;
       this.$refs.searchInput?.focus();
     },
@@ -386,42 +423,52 @@ export default {
 }
 
 /* Thinking phase - active */
-.ai-thinking-active {
-  margin-bottom: 12px;
-}
-
-.ai-thinking-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  color: var(--color-text-secondary, #888);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.ai-thinking-icon {
-  font-size: 18px;
-  color: var(--color-primary, #0a4492);
-  animation: pulse-think 2s ease-in-out infinite;
-}
-
-.ai-thinking-label {
-  color: var(--color-primary, #0a4492);
-}
-
-.ai-thinking-dots span {
+.ai-thinking-dots-inline span {
   animation: dot-bounce 1.4s ease-in-out infinite;
   color: var(--color-primary, #0a4492);
   font-weight: 700;
 }
 
-.ai-thinking-dots span:nth-child(2) {
+.ai-thinking-dots-inline span:nth-child(2) {
   animation-delay: 0.2s;
 }
 
-.ai-thinking-dots span:nth-child(3) {
+.ai-thinking-dots-inline span:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+/* Tool call indicator */
+.ai-tool-call-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  color: var(--color-text-secondary, #888);
+  font-size: 13px;
+}
+
+.ai-tool-icon {
+  font-size: 16px;
+  color: var(--color-text-secondary, #888);
+  animation: pulse-think 2s ease-in-out infinite;
+}
+
+/* Error message */
+.ai-error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #fef2f2;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.ai-error-icon {
+  font-size: 18px;
+  color: #dc2626;
 }
 
 @keyframes dot-bounce {
@@ -434,20 +481,7 @@ export default {
   50% { opacity: 0.5; }
 }
 
-.ai-thinking-text {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--color-text-secondary, #999);
-  white-space: pre-wrap;
-  word-break: break-word;
-  border-left: 2px solid var(--color-primary, #0a4492);
-  padding-left: 12px;
-  max-height: 200px;
-  overflow-y: auto;
-  font-style: italic;
-}
-
-/* Thinking phase - collapsed (after response starts) */
+/* Thinking phase - collapsed */
 .ai-thinking-collapsed {
   margin-bottom: 12px;
 }
