@@ -197,9 +197,9 @@ export default {
         (event, data) => {
           if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk') {
             const parsed = JSON.parse(data);
-            if (parsed.thinking) {
+            if (parsed.message && parsed.message.thinking) {
               this.aiIsThinking = true;
-              this.aiThinkingText += parsed.thinking;
+              this.aiThinkingText += parsed.message.thinking;
             }
             if (parsed.message && parsed.message.content) {
               this.aiIsThinking = false;
