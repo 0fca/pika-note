@@ -24,11 +24,26 @@
         </div>
         <div class="search-results">
           <template v-if="useAiSearch">
-            <div v-if="aiStreaming" class="ai-response">
-              <div class="ai-response-text">{{ aiResponseText }}<span class="ai-cursor">|</span></div>
-            </div>
-            <div v-else-if="aiResponseText && !aiStreaming" class="ai-response">
-              <div class="ai-response-text">{{ aiResponseText }}</div>
+            <div v-if="aiStreaming || aiResponseText || aiThinkingText" class="ai-response">
+              <div v-if="aiIsThinking && !aiResponseText" class="ai-thinking-active">
+                <div class="ai-thinking-header">
+                  <span class="material-symbols-outlined ai-thinking-icon">psychology</span>
+                  <span class="ai-thinking-label">Thinking</span>
+                  <span class="ai-thinking-dots"><span>.</span><span>.</span><span>.</span></span>
+                </div>
+                <div class="ai-thinking-text">{{ aiThinkingText }}<span class="ai-cursor">|</span></div>
+              </div>
+              <div v-if="aiThinkingText && (aiResponseText || !aiIsThinking)" class="ai-thinking-collapsed">
+                <button class="ai-thinking-toggle" @click="thinkingExpanded = !thinkingExpanded">
+                  <span class="material-symbols-outlined ai-thinking-chevron" :class="{ expanded: thinkingExpanded }">chevron_right</span>
+                  <span class="material-symbols-outlined ai-thinking-icon-sm">psychology</span>
+                  <span>Thought process</span>
+                </button>
+                <div v-if="thinkingExpanded" class="ai-thinking-text-collapsed">{{ aiThinkingText }}</div>
+              </div>
+              <div v-if="aiResponseText || (!aiIsThinking && aiStreaming)" class="ai-response-text">
+                {{ aiResponseText }}<span v-if="aiStreaming" class="ai-cursor">|</span>
+              </div>
             </div>
             <div v-else-if="!query" class="search-status">
               <i class="material-symbols-outlined">psychology</i>
@@ -93,6 +108,9 @@ export default {
       useAiSearch: false,
       aiStreaming: false,
       aiResponseText: '',
+      aiThinkingText: '',
+      aiIsThinking: false,
+      thinkingExpanded: false,
       chatRelayService: new ChatRelayService(),
       availableTools: [],
       toolsLoaded: false
@@ -112,6 +130,9 @@ export default {
         this.results = [];
         this.searched = false;
         this.aiResponseText = '';
+        this.aiThinkingText = '';
+        this.aiIsThinking = false;
+        this.thinkingExpanded = false;
         this.aiStreaming = false;
       }
     }
@@ -138,6 +159,9 @@ export default {
       this.results = [];
       this.searched = false;
       this.aiResponseText = '';
+      this.aiThinkingText = '';
+      this.aiIsThinking = false;
+      this.thinkingExpanded = false;
       this.aiStreaming = false;
     },
     async loadTools() {
@@ -159,6 +183,9 @@ export default {
 
       this.aiStreaming = true;
       this.aiResponseText = '';
+      this.aiThinkingText = '';
+      this.aiIsThinking = false;
+      this.thinkingExpanded = false;
 
       const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2.5-thinking';
       const prompt = `Search notes for: ${this.query}`;
@@ -169,17 +196,24 @@ export default {
         { tool: 'search' },
         (event, data) => {
           if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk') {
-            console.log("Received chunk:", data);
-            console.log(JSON.parse(data));
-            const message =  JSON.parse(data).message.content;
-            this.aiResponseText += message;
+            const parsed = JSON.parse(data);
+            if (parsed.thinking) {
+              this.aiIsThinking = true;
+              this.aiThinkingText += parsed.thinking;
+            }
+            if (parsed.message && parsed.message.content) {
+              this.aiIsThinking = false;
+              this.aiResponseText += parsed.message.content;
+            }
           }
         },
         () => {
+          this.aiIsThinking = false;
           this.aiStreaming = false;
         },
         (err) => {
           this.aiResponseText = `Error: ${err.message}`;
+          this.aiIsThinking = false;
           this.aiStreaming = false;
         }
       );
@@ -202,6 +236,9 @@ export default {
       this.results = [];
       this.searched = false;
       this.aiResponseText = '';
+      this.aiThinkingText = '';
+      this.aiIsThinking = false;
+      this.thinkingExpanded = false;
       this.aiStreaming = false;
       this.$refs.searchInput?.focus();
     },
@@ -346,6 +383,119 @@ export default {
 
 @keyframes blink {
   50% { opacity: 0; }
+}
+
+/* Thinking phase - active */
+.ai-thinking-active {
+  margin-bottom: 12px;
+}
+
+.ai-thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary, #888);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ai-thinking-icon {
+  font-size: 18px;
+  color: var(--color-primary, #0a4492);
+  animation: pulse-think 2s ease-in-out infinite;
+}
+
+.ai-thinking-label {
+  color: var(--color-primary, #0a4492);
+}
+
+.ai-thinking-dots span {
+  animation: dot-bounce 1.4s ease-in-out infinite;
+  color: var(--color-primary, #0a4492);
+  font-weight: 700;
+}
+
+.ai-thinking-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ai-thinking-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
+@keyframes pulse-think {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.ai-thinking-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary, #999);
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-left: 2px solid var(--color-primary, #0a4492);
+  padding-left: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-style: italic;
+}
+
+/* Thinking phase - collapsed (after response starts) */
+.ai-thinking-collapsed {
+  margin-bottom: 12px;
+}
+
+.ai-thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary, #888);
+  transition: background 0.15s, color 0.15s;
+}
+
+.ai-thinking-toggle:hover {
+  background: var(--color-background-soft, #f0f0f0);
+  color: var(--color-text, #333);
+}
+
+.ai-thinking-icon-sm {
+  font-size: 16px;
+}
+
+.ai-thinking-chevron {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.ai-thinking-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.ai-thinking-text-collapsed {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary, #999);
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-left: 2px solid var(--color-border, #e0e0e0);
+  padding-left: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-style: italic;
 }
 
 .search-results {
