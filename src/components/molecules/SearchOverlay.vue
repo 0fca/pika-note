@@ -2,6 +2,7 @@
   <transition name="search-overlay">
     <div v-if="visible" class="search-overlay-backdrop" @click.self="close">
       <div class="search-overlay-panel">
+        <span v-if="connectionStatus" class="connection-status-label">{{ connectionStatus }}</span>
         <div class="search-input-wrapper">
           <span class="material-symbols-outlined search-icon">search</span>
           <input
@@ -135,6 +136,7 @@ export default {
       aiToolCallActive: false,
       aiError: '',
       aiResults: [],
+      connectionStatus: '',
       chatRelayService: new ChatRelayService(),
       availableTools: [],
       toolsLoaded: false
@@ -162,6 +164,7 @@ export default {
         this.aiError = '';
         this.aiResults = [];
         this.aiStreaming = false;
+        this.connectionStatus = '';
       }
     }
   },
@@ -235,11 +238,11 @@ export default {
             try {
               const parsed = JSON.parse(data);
               if (parsed.error) {
-                this.aiError = parsed.error;
+                this.connectionStatus = parsed.error;
               }
             } catch {
-              if (data && data.includes("connected")) {
-                this.aiError = data;
+              if (data) {
+                this.connectionStatus = data;
               }
             }
             return;
@@ -367,6 +370,18 @@ export default {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   align-self: flex-start;
+  position: relative;
+}
+
+.connection-status-label {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #999);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .search-input-wrapper {
