@@ -24,7 +24,7 @@
         </div>
         <div class="search-results">
           <template v-if="useAiSearch">
-            <div v-if="aiStreaming || aiResponseText || aiThinkingText || aiError" class="ai-response">
+            <div v-if="aiStreaming || aiResponseText || aiThinkingText || aiError || aiResults.length" class="ai-response">
               <div v-if="aiIsThinking && !aiResponseText" class="ai-thinking-collapsed">
                 <button class="ai-thinking-toggle" @click="thinkingActiveExpanded = !thinkingActiveExpanded">
                   <span class="material-symbols-outlined ai-thinking-chevron" :class="{ expanded: thinkingActiveExpanded }">chevron_right</span>
@@ -49,6 +49,17 @@
               <div v-if="aiError" class="ai-error-message">
                 <span class="material-symbols-outlined ai-error-icon">error</span>
                 <span>{{ aiError }}</span>
+              </div>
+              <div v-if="aiResults.length" class="ai-results">
+                <div
+                  v-for="note in aiResults"
+                  :key="note.uid"
+                  class="search-result-item"
+                  @click="selectNote(note)"
+                >
+                  <div class="result-name">{{ note.humanName }}</div>
+                  <div class="result-date">{{ formatDate(note.timestamp) }}</div>
+                </div>
               </div>
               <div v-if="aiResponseText || (!aiIsThinking && !aiToolCallActive && !aiError && aiStreaming)" class="ai-response-text">
                 {{ aiResponseText }}<span v-if="aiStreaming" class="ai-cursor">|</span>
@@ -123,6 +134,7 @@ export default {
       thinkingActiveExpanded: false,
       aiToolCallActive: false,
       aiError: '',
+      aiResults: [],
       chatRelayService: new ChatRelayService(),
       availableTools: [],
       toolsLoaded: false
@@ -148,6 +160,7 @@ export default {
         this.thinkingActiveExpanded = false;
         this.aiToolCallActive = false;
         this.aiError = '';
+        this.aiResults = [];
         this.aiStreaming = false;
       }
     }
@@ -180,6 +193,7 @@ export default {
       this.thinkingActiveExpanded = false;
       this.aiToolCallActive = false;
       this.aiError = '';
+      this.aiResults = [];
       this.aiStreaming = false;
     },
     async loadTools() {
@@ -207,6 +221,7 @@ export default {
       this.thinkingActiveExpanded = false;
       this.aiToolCallActive = false;
       this.aiError = '';
+      this.aiResults = [];
 
       const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2.5-thinking';
       const prompt = `Search notes for: ${this.query}`;
@@ -226,7 +241,19 @@ export default {
             }
             return;
           }
-          if (event === 'message' || event === 'datamessage' || event === 'usermessage-chk' || event === 'usermessage') {
+          if (event === 'datamessage') {
+            try {
+              const parsed = JSON.parse(data);
+              if (Array.isArray(parsed)) {
+                this.aiToolCallActive = false;
+                this.aiResults = parsed;
+              }
+            } catch {
+              // not valid JSON, ignore
+            }
+            return;
+          }
+          if (event === 'message' || event === 'usermessage-chk' || event === 'usermessage') {
             const parsed = JSON.parse(data);
             if (parsed.message && parsed.message.thinking) {
               this.aiIsThinking = true;
@@ -276,6 +303,7 @@ export default {
       this.thinkingActiveExpanded = false;
       this.aiToolCallActive = false;
       this.aiError = '';
+      this.aiResults = [];
       this.aiStreaming = false;
       this.$refs.searchInput?.focus();
     },
@@ -411,6 +439,10 @@ export default {
   color: var(--color-text, #333);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.ai-results {
+  margin-top: 8px;
 }
 
 .ai-cursor {
