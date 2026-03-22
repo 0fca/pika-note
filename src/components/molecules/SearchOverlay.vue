@@ -231,6 +231,19 @@ export default {
         prompt,
         { tool: 'search', bucketId: this.bucketId },
         (event, data) => {
+          if (event === 'connection') {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) {
+                this.aiError = parsed.error;
+              }
+            } catch {
+              if (data) {
+                this.aiError = data;
+              }
+            }
+            return;
+          }
           if (event === 'ctlmessage') {
             if (data === 'await tool call') {
               this.aiIsThinking = false;
