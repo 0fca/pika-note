@@ -238,7 +238,7 @@ export default {
                 this.aiError = parsed.error;
               }
             } catch {
-              if (data) {
+              if (data && data.includes("connected")) {
                 this.aiError = data;
               }
             }
