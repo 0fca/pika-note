@@ -113,8 +113,8 @@ export default {
       }
     },
     noteTitle() {
-      // Only mark as unsaved if this is a user edit, not a programmatic update
-      if (!this.isProgrammaticTitleUpdate) {
+      // Only mark as unsaved if this is a user edit, not a programmatic update or note load
+      if (!this.isProgrammaticTitleUpdate && !this.isLoadingNote) {
         // Mark as having unsaved changes when title changes
         this.hasUnsavedChanges = true;
         // Trigger debounced auto-save on title changes
@@ -203,18 +203,22 @@ export default {
       if(event.inputType === 'deleteByCut'){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
       }
-      // Mark as having unsaved changes
-      _this.hasUnsavedChanges = true;
-      // Trigger debounced auto-save on content change
-      _this.triggerDebouncedAutoSave();
+      // Mark as having unsaved changes (skip during note loading)
+      if (!_this.isLoadingNote) {
+        _this.hasUnsavedChanges = true;
+        // Trigger debounced auto-save on content change
+        _this.triggerDebouncedAutoSave();
+      }
     });
     this.editor.subscribe('editablePaste', function(event){
       if(event.target.innerText !== ''){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
-        // Mark as having unsaved changes
-        _this.hasUnsavedChanges = true;
-        // Trigger debounced auto-save on paste
-        _this.triggerDebouncedAutoSave();
+        // Mark as having unsaved changes (skip during note loading)
+        if (!_this.isLoadingNote) {
+          _this.hasUnsavedChanges = true;
+          // Trigger debounced auto-save on paste
+          _this.triggerDebouncedAutoSave();
+        }
       }
     });
     
@@ -259,6 +263,11 @@ export default {
             toastService.error('Error loading note');
           }).finally(() => {
             this.isLoadingNote = false;
+            // Clear any auto-save timer that may have been triggered during load
+            if (this.autoSaveDebounceTimer) {
+              clearTimeout(this.autoSaveDebounceTimer);
+              this.autoSaveDebounceTimer = null;
+            }
           });
       }
     },
