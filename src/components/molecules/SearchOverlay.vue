@@ -226,7 +226,7 @@ export default {
       this.aiError = '';
       this.aiResults = [];
 
-      const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2.5-thinking';
+      const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2:24b';
       const prompt = `Search notes for: ${this.query}`;
 
       await this.chatRelayService.sendMessageAndStream(
