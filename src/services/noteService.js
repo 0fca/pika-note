@@ -34,7 +34,7 @@ export default class NoteService {
         return rawJson.payload;
     }
 
-    async saveNote(id, name, content, rawContent, contentType = 'text/pcn') {
+    async saveNote(id, name, content, rawContent, contentType) {
         const url = `${this.baseUrl}/notes/${id}`;
         if (process.env.VUE_APP_ENV === 'production') {
             const mlService = new MlService();
@@ -58,7 +58,7 @@ export default class NoteService {
         });
     }
 
-    async addNote(bucketId, name, content, rawContent, contentType = 'text/pcn') {
+    async addNote(bucketId, name, content, rawContent, contentType) {
         const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
         if (process.env.VUE_APP_ENV === 'production') {
             const mlService = new MlService();

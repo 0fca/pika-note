@@ -258,6 +258,10 @@ import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
 
 const pageSize = 15;
+// Below this viewport height the drawer needs the system links collapsed by default.
+const DRAWER_COLLAPSE_HEIGHT = 1200;
+// Keep a small breathing room above the focused note card after programmatic scrolling.
+const NOTE_SCROLL_OFFSET = 12;
 
 export default {
   name: 'WorkspaceLayout',
@@ -670,12 +674,12 @@ export default {
         const noteElement = this.findNoteElement(container, noteId);
 
         if (container && noteElement) {
-          container.scrollTop = noteElement.offsetTop - container.offsetTop;
+          container.scrollTop = Math.max(noteElement.offsetTop - container.offsetTop - NOTE_SCROLL_OFFSET, 0);
         }
       });
     },
     updateShortScreenState() {
-      this.isShortScreen = window.innerHeight < 1200;
+      this.isShortScreen = document.documentElement.clientHeight < DRAWER_COLLAPSE_HEIGHT;
       this.mobileSystemLinksOpen = !this.isShortScreen;
     },
     handleEdgeSwipeStart(e) {

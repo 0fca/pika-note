@@ -316,7 +316,8 @@ export default {
 
           this.$emit('note-loaded', n);
           this.hasUnsavedChanges = false;
-        } catch {
+        } catch (error) {
+          console.error(error);
           toastService.error('Error loading note');
         } finally {
           this.isLoadingNote = false;
@@ -369,10 +370,10 @@ export default {
                 toastService.error(`A server responded with non-success code: ${r.status}`);
               }
               this.$store.commit({type: 'updateIsSaving', isSaving: false});
-            }).catch(() => {
-              toastService.error('An unexpected error occured, reload the page');
-              this.$store.commit({type: 'updateIsSaving', isSaving: false});
-            });
+          }).catch(() => {
+            toastService.error('An unexpected error occurred, reload the page');
+            this.$store.commit({type: 'updateIsSaving', isSaving: false});
+          });
           } else {
             this.noteService.addNote(this.bucketId, titleValue, content, rawContent, this.noteContentType).then((r) => {
               if(r.ok){
@@ -394,12 +395,13 @@ export default {
               }
               this.$store.commit({type: 'updateIsSaving', isSaving: false});
             }).catch(() => {
-              toastService.error('An unexpected error occured, reload the page');
+              toastService.error('An unexpected error occurred, reload the page');
               this.$store.commit({type: 'updateIsSaving', isSaving: false});
             });
           }
-        } catch {
-          toastService.error('An unexpected error occured, reload the page');
+        } catch (error) {
+          console.error(error);
+          toastService.error('Failed to prepare note content for saving');
           this.$store.commit({type: 'updateIsSaving', isSaving: false});
         }
       } else {

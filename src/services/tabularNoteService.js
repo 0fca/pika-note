@@ -7,7 +7,7 @@ export const NOTE_CONTENT_TYPES = Object.freeze({
   XLSX: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 })
 
-const DEFAULT_COLUMNS_COUNT = 3
+const DEFAULT_COLUMN_COUNT = 3
 
 function sanitizeFieldName(value, index, usedFields) {
   const normalized = String(value ?? '').trim() || `Column ${index + 1}`
@@ -150,7 +150,7 @@ function rowsToTable(state) {
 }
 
 export function createDefaultColumns() {
-  return Array.from({ length: DEFAULT_COLUMNS_COUNT }, (_, index) => ({
+  return Array.from({ length: DEFAULT_COLUMN_COUNT }, (_, index) => ({
     field: `column_${index + 1}`,
     label: `Column ${index + 1}`
   }))

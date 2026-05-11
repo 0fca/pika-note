@@ -59,7 +59,8 @@ export default {
     return {
       tableColumns: initialState.columns,
       tableRows: initialState.rows,
-      syncingFromParent: false
+      syncingFromParent: false,
+      nextColumnIndex: initialState.columns.length + 1
     }
   },
   watch: {
@@ -70,6 +71,7 @@ export default {
         this.syncingFromParent = true
         this.tableColumns = nextState.columns
         this.tableRows = nextState.rows
+        this.nextColumnIndex = nextState.columns.length + 1
         this.$nextTick(() => {
           this.syncingFromParent = false
         })
@@ -107,12 +109,13 @@ export default {
       this.tableRows = [...this.tableRows, emptyRecord]
     },
     addColumn() {
-      const nextIndex = this.tableColumns.length + 1
+      const nextIndex = this.nextColumnIndex
       const column = {
-        field: `column_${nextIndex}_${Date.now()}`,
+        field: `column_${nextIndex}`,
         label: `Column ${nextIndex}`
       }
 
+      this.nextColumnIndex++
       this.tableColumns = [...this.tableColumns, column]
       this.tableRows = this.tableRows.map((row) => ({
         ...row,
