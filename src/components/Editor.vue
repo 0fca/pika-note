@@ -22,35 +22,35 @@
     </div>
     
     <div class="row">
-      <div class="fixed-action-btn">
-        <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon">
-          <i class="large material-icons">mode_edit</i>
+      <div class="fixed-action-btn" ref="fab">
+        <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click.stop="fabOpen = !fabOpen">
+          <span class="material-symbols-outlined fab-icon">mode_edit</span>
         </a>
-        <ul>
+        <ul :class="{ 'fab-open': fabOpen }">
           <li>
-            <button @click="save" class="btn-floating floating-btn-orange toolbar-icon">
-              <i class="material-icons">
+            <button @click.stop="save" class="btn-floating floating-btn-orange toolbar-icon">
+              <span class="material-symbols-outlined fab-icon">
                 save
-              </i>
+              </span>
             </button>
           </li>
           <li>
             <button 
-              @click="toggleAutoSave" 
+              @click.stop="toggleAutoSave" 
               class="btn-floating toolbar-icon"
               :class="autoSaveEnabled ? 'floating-btn-orange' : 'grey'"
               :title="autoSaveEnabled ? 'Auto-save: ON' : 'Auto-save: OFF'"
             >
-              <i class="material-icons">
+              <span class="material-symbols-outlined fab-icon">
                 {{ autoSaveEnabled ? 'sync' : 'sync_disabled' }}
-              </i>
+              </span>
             </button>
           </li>
           <li>
-            <button @click="clearAll" class="btn-floating floating-btn-orange toolbar-icon">
-              <i class="material-icons">
+            <button @click.stop="clearAll" class="btn-floating floating-btn-orange toolbar-icon">
+              <span class="material-symbols-outlined fab-icon">
                 clear_all
-              </i>
+              </span>
             </button>
           </li>
         </ul>
@@ -63,10 +63,10 @@
 </template>
 
 <script>
-import M from 'materialize-css';
 import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/Preloader";
+import { toastService } from '@/services/toastService';
 
 export default {
   components: {
@@ -113,8 +113,8 @@ export default {
       }
     },
     noteTitle() {
-      // Only mark as unsaved if this is a user edit, not a programmatic update
-      if (!this.isProgrammaticTitleUpdate) {
+      // Only mark as unsaved if this is a user edit, not a programmatic update or note load
+      if (!this.isProgrammaticTitleUpdate && !this.isLoadingNote) {
         // Mark as having unsaved changes when title changes
         this.hasUnsavedChanges = true;
         // Trigger debounced auto-save on title changes
@@ -133,18 +133,20 @@ export default {
       autoSaveEnabled: localStorage.getItem('autoSaveEnabled') !== 'false', // Default true
       hasUnsavedChanges: false,
       isProgrammaticTitleUpdate: false,
-      isLoadingNote: false
+      isLoadingNote: false,
+      fabOpen: false
     }
   },
   beforeRouteEnter(to, from, next){
     next(vm => {
       if(vm.$store.getters.loggedIn === false){
-        M.toast({html: 'Please, log in to use editor'});
+        toastService.show('Please, log in to use editor');
         vm.$router.push("/");
       }
     })
   },
   unmounted() {
+    document.removeEventListener('click', this.handleClickOutsideFab);
     this.$store.commit({type: 'updateContent', content: ""});
     this.$store.commit(({type: 'updateName', name: ""}));
     this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
@@ -155,21 +157,15 @@ export default {
     localStorage.removeItem('content');
   },
   mounted() {
-    M.AutoInit();
-    
+    document.addEventListener('click', this.handleClickOutsideFab);
     // Initialize autoSaveEnabled from localStorage and sync with store
     const savedAutoSave = localStorage.getItem('autoSaveEnabled');
     this.autoSaveEnabled = savedAutoSave !== 'false'; // Default true
     this.$store.commit({type: 'updateAutoSaveEnabled', autoSaveEnabled: this.autoSaveEnabled});
     
     this.noteService = new NoteService();
-    M.FloatingActionButton.init(document.querySelectorAll('.fixed-action-btn'), {
-      toolbarEnabled: false,
-      hoverEnabled: false
-    });
     
     this.runAutoSaveJob();
-    M.updateTextFields();
     this.editor = new MediumEditor('#editor', {
       targetBlank: true,
       paste: {
@@ -207,18 +203,22 @@ export default {
       if(event.inputType === 'deleteByCut'){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
       }
-      // Mark as having unsaved changes
-      _this.hasUnsavedChanges = true;
-      // Trigger debounced auto-save on content change
-      _this.triggerDebouncedAutoSave();
+      // Mark as having unsaved changes (skip during note loading)
+      if (!_this.isLoadingNote) {
+        _this.hasUnsavedChanges = true;
+        // Trigger debounced auto-save on content change
+        _this.triggerDebouncedAutoSave();
+      }
     });
     this.editor.subscribe('editablePaste', function(event){
       if(event.target.innerText !== ''){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
-        // Mark as having unsaved changes
-        _this.hasUnsavedChanges = true;
-        // Trigger debounced auto-save on paste
-        _this.triggerDebouncedAutoSave();
+        // Mark as having unsaved changes (skip during note loading)
+        if (!_this.isLoadingNote) {
+          _this.hasUnsavedChanges = true;
+          // Trigger debounced auto-save on paste
+          _this.triggerDebouncedAutoSave();
+        }
       }
     });
     
@@ -228,6 +228,11 @@ export default {
     }
   },
   methods: {
+    handleClickOutsideFab(event) {
+      if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
+        this.fabOpen = false;
+      }
+    },
     onTitleFocus() {
       // When user focuses title input for new note, we don't show stats yet
       this.showStatsFooter = false;
@@ -255,11 +260,14 @@ export default {
             // Reset unsaved changes flag when loading a note
             this.hasUnsavedChanges = false;
           }).catch(() => {
-            console.log("Error while loading note");
-            this.$store.commit({type: "updateIfError", error: true});
-            M.toast({html: 'Error loading note'});
+            toastService.error('Error loading note');
           }).finally(() => {
             this.isLoadingNote = false;
+            // Clear any auto-save timer that may have been triggered during load
+            if (this.autoSaveDebounceTimer) {
+              clearTimeout(this.autoSaveDebounceTimer);
+              this.autoSaveDebounceTimer = null;
+            }
           });
       }
     },
@@ -275,7 +283,7 @@ export default {
       
       if (titleValue) {
         if(this.$store.getters.count >= this.$store.getters.limit){
-          M.toast({html: 'Okay, that\'s too much!'});
+          toastService.warning('Okay, that\'s too much!');
           return;
         }
         const content = this.editor.getContent(0);
@@ -287,7 +295,7 @@ export default {
           this.noteService.saveNote(this.id, titleValue, content, this.editor.elements[0].innerText)
           .then((r) => {
             if(r.ok){
-              M.toast({html: 'Note saved!'});
+              toastService.success('Note saved!');
               const now = new Date();
               this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
               // Update the title in store after saving
@@ -297,11 +305,11 @@ export default {
               // Emit event to parent to reload notes list
               this.$emit('note-saved');
             } else {
-              M.toast({html: `A server responded with non-success code: ${r.status}`});
+              toastService.error(`A server responded with non-success code: ${r.status}`);
             }
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            M.toast({html: 'An unexpected error occured, reload the page'});
+            toastService.error('An unexpected error occured, reload the page');
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         } else {
@@ -322,22 +330,22 @@ export default {
                 // Emit event to parent to reload notes list
                 this.$emit('note-saved');
               });
-              M.toast({html: 'Note created!'})
+              toastService.success('Note created!')
             } else {
-              M.toast({html: `A server responded with non-success code: ${r.status}`});
+              toastService.error(`A server responded with non-success code: ${r.status}`);
             }
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            M.toast({html: 'An unexpected error occured, reload the page'});
+            toastService.error('An unexpected error occured, reload the page');
             this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         }
       } else {
-        M.toast({html: 'It is a damn good idea to add a title!'})
+        toastService.warning('It is a damn good idea to add a title!')
       }
     },
     clearAll: function () {
-      M.toast({html: 'Cleared!'})
+      toastService.show('Cleared!')
       this.$store.commit({type: 'setCharactersCount', count: 0});
       this.editor.resetContent();
     },
@@ -410,10 +418,9 @@ export default {
       }
       
       // Show feedback
-      M.toast({
-        html: this.autoSaveEnabled ? 'Auto-save enabled' : 'Auto-save disabled',
-        displayLength: 2000
-      });
+      toastService.show(
+        this.autoSaveEnabled ? 'Auto-save enabled' : 'Auto-save disabled'
+      );
     },
     runEditTimeout: function(){
       setTimeout(() => {
@@ -490,5 +497,66 @@ export default {
   .note-loading-overlay {
     background-color: rgba(30, 30, 30, 0.95);
   }
+}
+
+/* FAB (Floating Action Button) - CSS-only implementation */
+.fixed-action-btn {
+  position: fixed;
+  bottom: 60px;
+  right: 24px;
+  z-index: 998;
+}
+
+.fixed-action-btn > a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.fab-icon {
+  color: whitesmoke !important;
+  font-size: 24px;
+}
+
+.fixed-action-btn ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fixed-action-btn ul.fab-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.fixed-action-btn ul li button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  color: whitesmoke;
 }
 </style>

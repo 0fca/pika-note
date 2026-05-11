@@ -7,8 +7,6 @@
       </select>
 </template>
 <script>
-import M from 'materialize-css';
-
 export default {
     name: 'Select',
     props: [
@@ -19,10 +17,6 @@ export default {
       return {
         bucketId: this.$store.getters.bucketUuid
       }
-    },
-    updated: function() {
-      const elems = document.getElementById("bucket-select");
-      M.FormSelect.init(elems, null);
     }
 }
 </script>
@@ -36,6 +30,9 @@ export default {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-base);
   transition: all var(--transition-fast);
+  width: 100%;
+  height: 50px;
+  box-sizing: border-box;
 }
 
 .custom-select:focus {

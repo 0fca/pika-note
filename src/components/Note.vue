@@ -2,7 +2,7 @@
   <div class="note-wrapper">
     <!-- Red delete background for swipe (mobile only) -->
     <div class="delete-background">
-      <i class="material-icons delete-icon">delete</i>
+      <span class="material-symbols-outlined delete-icon">delete</span>
     </div>
     
     <!-- Note card -->
@@ -21,7 +21,7 @@
         <div class="note-title-container">
           <strong class="card-title flow-text note-title">{{ name }}</strong>
           <!-- Desktop delete icon -->
-          <i class="material-icons delete-icon-desktop" @click.stop="handleDelete">delete</i>
+          <span class="material-symbols-outlined delete-icon-desktop" @click.stop="handleDelete">delete</span>
         </div>
         <span class="right">{{ formatDate(date) }}</span>
       </div>

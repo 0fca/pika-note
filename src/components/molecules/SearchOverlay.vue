@@ -2,8 +2,9 @@
   <transition name="search-overlay">
     <div v-if="visible" class="search-overlay-backdrop" @click.self="close">
       <div class="search-overlay-panel">
+        <span v-if="connectionStatus" class="connection-status-label">{{ connectionStatus }}</span>
         <div class="search-input-wrapper">
-          <i class="material-icons search-icon">search</i>
+          <span class="material-symbols-outlined search-icon">search</span>
           <input
             ref="searchInput"
             type="text"
@@ -19,16 +20,51 @@
             <span class="ai-toggle-label">AI</span>
           </label>
           <button v-if="query" class="clear-btn" @click="clearQuery">
-            <i class="material-icons">close</i>
+            <span class="material-symbols-outlined">close</span>
           </button>
         </div>
         <div class="search-results">
           <template v-if="useAiSearch">
-            <div v-if="aiStreaming" class="ai-response">
-              <div class="ai-response-text">{{ aiResponseText }}<span class="ai-cursor">|</span></div>
-            </div>
-            <div v-else-if="aiResponseText && !aiStreaming" class="ai-response">
-              <div class="ai-response-text">{{ aiResponseText }}</div>
+            <div v-if="aiStreaming || aiResponseText || aiThinkingText || aiError || aiResults.length" class="ai-response">
+              <div v-if="aiIsThinking && !aiResponseText" class="ai-thinking-collapsed">
+                <button class="ai-thinking-toggle" @click="thinkingActiveExpanded = !thinkingActiveExpanded">
+                  <span class="material-symbols-outlined ai-thinking-chevron" :class="{ expanded: thinkingActiveExpanded }">chevron_right</span>
+                  <span class="material-symbols-outlined ai-thinking-icon-sm">psychology</span>
+                  <span>Thinking<span class="ai-thinking-dots-inline"><span>.</span><span>.</span><span>.</span></span></span>
+                </button>
+                <div v-if="thinkingActiveExpanded" class="ai-thinking-text-collapsed">{{ aiThinkingText }}<span class="ai-cursor">|</span></div>
+              </div>
+              <div v-if="aiThinkingText && (aiResponseText || !aiIsThinking)" class="ai-thinking-collapsed">
+                <button class="ai-thinking-toggle" @click="thinkingExpanded = !thinkingExpanded">
+                  <span class="material-symbols-outlined ai-thinking-chevron" :class="{ expanded: thinkingExpanded }">chevron_right</span>
+                  <span class="material-symbols-outlined ai-thinking-icon-sm">psychology</span>
+                  <span>Thought process</span>
+                </button>
+                <div v-if="thinkingExpanded" class="ai-thinking-text-collapsed">{{ aiThinkingText }}</div>
+              </div>
+              <div v-if="aiToolCallActive" class="ai-tool-call-indicator">
+                <span class="material-symbols-outlined ai-tool-icon">build</span>
+                <span>Executing tool</span>
+                <span class="ai-thinking-dots-inline"><span>.</span><span>.</span><span>.</span></span>
+              </div>
+              <div v-if="aiError" class="ai-error-message">
+                <span class="material-symbols-outlined ai-error-icon">error</span>
+                <span>{{ aiError }}</span>
+              </div>
+              <div v-if="aiResults.length" class="ai-results">
+                <div
+                  v-for="note in aiResults"
+                  :key="note.uid"
+                  class="search-result-item"
+                  @click="selectNote(note)"
+                >
+                  <div class="result-name">{{ note.humanName }}</div>
+                  <div class="result-date">{{ formatDate(note.timestamp) }}</div>
+                </div>
+              </div>
+              <div v-if="aiResponseText || (!aiIsThinking && !aiToolCallActive && !aiError && aiStreaming)" class="ai-response-text">
+                {{ aiResponseText }}<span v-if="aiStreaming" class="ai-cursor">|</span>
+              </div>
             </div>
             <div v-else-if="!query" class="search-status">
               <i class="material-symbols-outlined">psychology</i>
@@ -41,11 +77,11 @@
             <span>Searching...</span>
           </div>
           <div v-else-if="query && results.length === 0 && searched" class="search-status">
-            <i class="material-icons">search_off</i>
+            <span class="material-symbols-outlined">search_off</span>
             <span>No notes found</span>
           </div>
           <div v-else-if="!query" class="search-status">
-            <i class="material-icons">lightbulb_outline</i>
+            <span class="material-symbols-outlined">lightbulb</span>
             <span>Type to search across all notes in this bucket</span>
           </div>
           <div
@@ -67,6 +103,7 @@
 <script>
 import NoteService from "@/services/noteService";
 import ChatRelayService from "@/services/chatRelayService";
+import { getAvailableTools, isToolAvailable } from "@/services/chatToolService";
 
 export default {
   name: 'SearchOverlay',
@@ -92,7 +129,17 @@ export default {
       useAiSearch: false,
       aiStreaming: false,
       aiResponseText: '',
-      chatRelayService: new ChatRelayService()
+      aiThinkingText: '',
+      aiIsThinking: false,
+      thinkingExpanded: false,
+      thinkingActiveExpanded: false,
+      aiToolCallActive: false,
+      aiError: '',
+      aiResults: [],
+      connectionStatus: '',
+      chatRelayService: new ChatRelayService(),
+      availableTools: [],
+      toolsLoaded: false
     }
   },
   watch: {
@@ -101,12 +148,23 @@ export default {
         this.$nextTick(() => {
           this.$refs.searchInput?.focus();
         });
+        if (!this.toolsLoaded) {
+          this.loadTools();
+        }
       } else {
         this.query = '';
         this.results = [];
         this.searched = false;
         this.aiResponseText = '';
+        this.aiThinkingText = '';
+        this.aiIsThinking = false;
+        this.thinkingExpanded = false;
+        this.thinkingActiveExpanded = false;
+        this.aiToolCallActive = false;
+        this.aiError = '';
+        this.aiResults = [];
         this.aiStreaming = false;
+        this.connectionStatus = '';
       }
     }
   },
@@ -132,30 +190,107 @@ export default {
       this.results = [];
       this.searched = false;
       this.aiResponseText = '';
+      this.aiThinkingText = '';
+      this.aiIsThinking = false;
+      this.thinkingExpanded = false;
+      this.thinkingActiveExpanded = false;
+      this.aiToolCallActive = false;
+      this.aiError = '';
+      this.aiResults = [];
       this.aiStreaming = false;
+    },
+    async loadTools() {
+      try {
+        this.availableTools = await getAvailableTools();
+        this.toolsLoaded = true;
+      } catch {
+        this.availableTools = [];
+      }
     },
     async performAiSearch() {
       if (!this.query.trim()) return;
+
+      const tool = 'search';
+      if (!isToolAvailable(tool, this.availableTools)) {
+        this.aiResponseText = 'Error: AI search tool is not available';
+        return;
+      }
+
       this.aiStreaming = true;
       this.aiResponseText = '';
+      this.aiThinkingText = '';
+      this.aiIsThinking = false;
+      this.thinkingExpanded = false;
+      this.thinkingActiveExpanded = false;
+      this.aiToolCallActive = false;
+      this.aiError = '';
+      this.aiResults = [];
 
-      const model = process.env.VUE_APP_CHAT_MODEL || 'llama3.2';
+      const model = process.env.VUE_APP_CHAT_MODEL || 'lfm2:24b';
       const prompt = `Search notes for: ${this.query}`;
 
       await this.chatRelayService.sendMessageAndStream(
         model,
         prompt,
-        { tool: 'search' },
+        { tool: 'search', bucketId: this.bucketId },
         (event, data) => {
-          if (event === 'message' || event === 'datamessage') {
-            this.aiResponseText += data;
+          if (event === 'connection') {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) {
+                this.connectionStatus = parsed.error;
+              }
+            } catch {
+              if (data) {
+                this.connectionStatus = data;
+              }
+            }
+            return;
+          }
+          if (event === 'ctlmessage') {
+            if (data === 'await tool call') {
+              this.aiIsThinking = false;
+              this.aiToolCallActive = true;
+            } else if (data === 'EMPTY RESP') {
+              this.aiToolCallActive = false;
+              this.aiError = 'Something went wrong — the model returned an empty response. Please try again.';
+            }
+            return;
+          }
+          if (event === 'datamessage') {
+            try {
+              const parsed = JSON.parse(data);
+              if (Array.isArray(parsed)) {
+                this.aiToolCallActive = false;
+                this.aiResults = parsed;
+              }
+            } catch {
+              // not valid JSON, ignore
+            }
+            return;
+          }
+          if (event === 'message' || event === 'usermessage-chk' || event === 'usermessage') {
+            const parsed = JSON.parse(data);
+            if (parsed.message && parsed.message.thinking) {
+              this.aiIsThinking = true;
+              this.aiThinkingText += parsed.message.thinking;
+            }
+            if (parsed.message && parsed.message.content) {
+              this.aiIsThinking = false;
+              this.aiToolCallActive = false;
+              this.aiResponseText += parsed.message.content;
+            }
           }
         },
         () => {
+          this.aiIsThinking = false;
+          this.aiToolCallActive = false;
           this.aiStreaming = false;
         },
         (err) => {
           this.aiResponseText = `Error: ${err.message}`;
+          this.aiIsThinking = false;
+          this.aiToolCallActive = false;
           this.aiStreaming = false;
         }
       );
@@ -178,6 +313,13 @@ export default {
       this.results = [];
       this.searched = false;
       this.aiResponseText = '';
+      this.aiThinkingText = '';
+      this.aiIsThinking = false;
+      this.thinkingExpanded = false;
+      this.thinkingActiveExpanded = false;
+      this.aiToolCallActive = false;
+      this.aiError = '';
+      this.aiResults = [];
       this.aiStreaming = false;
       this.$refs.searchInput?.focus();
     },
@@ -228,6 +370,18 @@ export default {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   align-self: flex-start;
+  position: relative;
+}
+
+.connection-status-label {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #999);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .search-input-wrapper {
@@ -315,6 +469,10 @@ export default {
   word-break: break-word;
 }
 
+.ai-results {
+  margin-top: 8px;
+}
+
 .ai-cursor {
   animation: blink 0.8s step-end infinite;
   color: var(--color-primary, #0a4492);
@@ -322,6 +480,116 @@ export default {
 
 @keyframes blink {
   50% { opacity: 0; }
+}
+
+/* Thinking phase - active */
+.ai-thinking-dots-inline span {
+  animation: dot-bounce 1.4s ease-in-out infinite;
+  color: var(--color-primary, #0a4492);
+  font-weight: 700;
+}
+
+.ai-thinking-dots-inline span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ai-thinking-dots-inline span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Tool call indicator */
+.ai-tool-call-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  color: var(--color-text-secondary, #888);
+  font-size: 13px;
+}
+
+.ai-tool-icon {
+  font-size: 16px;
+  color: var(--color-text-secondary, #888);
+  animation: pulse-think 2s ease-in-out infinite;
+}
+
+/* Error message */
+.ai-error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #fef2f2;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.ai-error-icon {
+  font-size: 18px;
+  color: #dc2626;
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
+@keyframes pulse-think {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Thinking phase - collapsed */
+.ai-thinking-collapsed {
+  margin-bottom: 12px;
+}
+
+.ai-thinking-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary, #888);
+  transition: background 0.15s, color 0.15s;
+}
+
+.ai-thinking-toggle:hover {
+  background: var(--color-background-soft, #f0f0f0);
+  color: var(--color-text, #333);
+}
+
+.ai-thinking-icon-sm {
+  font-size: 16px;
+}
+
+.ai-thinking-chevron {
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.ai-thinking-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.ai-thinking-text-collapsed {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary, #999);
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-left: 2px solid var(--color-border, #e0e0e0);
+  padding-left: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-style: italic;
 }
 
 .search-results {

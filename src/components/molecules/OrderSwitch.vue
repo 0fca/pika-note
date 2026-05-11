@@ -1,5 +1,5 @@
 <template>
-    <button class="btn btn-flat order-switch-btn" v-on:click="$emit('orderChange')">
+    <button class="btn-action order-switch-btn" v-on:click="$emit('orderChange')">
         {{ this.$store.getters.order == 0 ? 'DESC' : "ASC" }}
     </button>
 </template>
@@ -11,12 +11,11 @@ export default {
 
 <style scoped>
 .order-switch-btn {
-  background-color: var(--color-primary) !important;
-  color: white !important;
-  font-weight: var(--font-weight-medium);
+  /* additional overrides if needed */
 }
 
 .order-switch-btn:hover {
-  background-color: var(--color-primary-soft) !important;
+  background: whitesmoke !important;
+  color: var(--color-primary) !important;
 }
 </style>

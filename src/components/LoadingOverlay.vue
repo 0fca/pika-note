@@ -13,9 +13,9 @@
           </div>
 
           <div v-else-if="needsLogin" class="login-block">
-            <p class="overlay-text">Please log in to continue.</p>
-            <p class="overlay-subtext">Redirecting in {{ countdown }}s…</p>
-            <a class="btn overlay-button" :href="loginUrl">Go to login</a>
+            <p class="overlay-heading">Welcome to Pika Note.</p>
+            <p class="overlay-text">To write down your thoughts or organize some of your tasks and events with AI, please log in using Pika Cloud Gateway.</p>
+            <a class="overlay-button" :href="loginUrl">Go to login</a>
           </div>
 
           <div v-else class="loader loader-classic" role="status" aria-live="polite">
@@ -50,10 +50,6 @@ export default {
       type: String,
       default: ''
     },
-    countdown: {
-      type: Number,
-      default: 0
-    },
     loginUrl: {
       type: String,
       default: ''
@@ -82,17 +78,17 @@ export default {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 20px;
-  padding: 40px 32px;
+  padding: 48px 48px 40px;
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
-  max-width: 560px;
+  max-width: 640px;
   width: 100%;
   text-align: center;
 }
 
 .overlay-logo {
-  width: 160px;
+  width: 180px;
   height: auto;
-  margin: 0 auto 20px;
+  margin: 0 auto 28px;
   display: block;
 }
 
@@ -103,25 +99,31 @@ export default {
   gap: 14px;
 }
 
-.overlay-text {
+.overlay-heading {
   color: #f8fbff;
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.overlay-subtext {
+.overlay-text {
   color: rgba(248, 251, 255, 0.85);
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 480px;
 }
 
 .overlay-button {
-  margin-top: 6px;
-  background: var(--color-primary, #0a4492);
-  color: white;
+  display: inline-block;
+  margin-top: 10px;
+  background: #0a4492;
+  color: white !important;
   border-radius: 10px;
-  padding: 0 18px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -214,6 +216,6 @@ export default {
 
 .overlay-button:hover {
   background: whitesmoke;
-  color: var(--color-primary, #0a4492);
+  color: #0a4492 !important;
 }
 </style>
