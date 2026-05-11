@@ -7,25 +7,27 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
- "dependencies": {
-        "core-js": "^3.29.0",
-        "jwt-decode": "^4.0.0",
-        "medium-editor": "^5.23.3",
-        "vue": "^3.5.13",
-        "vuex-persistedstate": "^4.1.0"
-    },
-    "devDependencies": {
-        "@babel/core": "^7.23.6",
-        "@babel/eslint-parser": "^7.23.3",
-        "@vue/cli-plugin-babel": "^5.0.8",
-        "@vue/cli-plugin-eslint": "^5.0.8",
-        "@vue/cli-service": "^5.0.8",
-        "@vue/compiler-sfc": "^3.3.11",
-        "eslint": "^7.20.0",
-        "eslint-plugin-vue": "^7.20.0",
-        "vue-router": "^4.2.5",
-        "vuex": "^4.1.0"
-    },
+  "dependencies": {
+    "core-js": "^3.29.0",
+    "exceljs": "^4.4.0",
+    "jwt-decode": "^4.0.0",
+    "medium-editor": "^5.23.3",
+    "vue": "^3.5.13",
+    "vue3-excel-editor": "^1.0.60",
+    "vuex-persistedstate": "^4.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.6",
+    "@babel/eslint-parser": "^7.23.3",
+    "@vue/cli-plugin-babel": "^5.0.8",
+    "@vue/cli-plugin-eslint": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "@vue/compiler-sfc": "^3.3.11",
+    "eslint": "^7.20.0",
+    "eslint-plugin-vue": "^7.20.0",
+    "vue-router": "^4.2.5",
+    "vuex": "^4.1.0"
+  },
   "eslintConfig": {
     "root": true,
     "env": {

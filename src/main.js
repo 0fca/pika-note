@@ -5,6 +5,7 @@ import About from './components/About'
 import WorkspaceLayout from "@/components/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
+import VueExcelEditor from 'vue3-excel-editor'
 
 
 const routes = [
@@ -18,6 +19,7 @@ const history =  createWebHistory()
 const router = createRouter({routes: routes, history: history});
 
 const app = createApp(App);
+app.use(VueExcelEditor)
 app.use(router)
 // Create a new store instance.
 const store = createStore({
@@ -35,6 +37,7 @@ const store = createStore({
       bucketName: localStorage.getItem('bucketName') ?? "",
       bucketUuid: localStorage.getItem('bucketUuid') ?? "",
       lastSavedAt: null,
+      noteContentType: 'text/pcn',
       isSaving: false,
       errorLoadingNote: false,
       updateLock: false,
@@ -97,6 +100,9 @@ const store = createStore({
     },
     updateLastSavedAt(state, payload){
       state.lastSavedAt = payload.lastSavedAt;
+    },
+    updateNoteContentType(state, payload){
+      state.noteContentType = payload.noteContentType;
     },
     updateIsSaving(state, payload){
       state.isSaving = payload.isSaving;
@@ -162,6 +168,9 @@ const store = createStore({
     },
     lastSavedAt(state){
       return state.lastSavedAt;
+    },
+    noteContentType(state){
+      return state.noteContentType;
     },
     isSaving(state){
       return state.isSaving;

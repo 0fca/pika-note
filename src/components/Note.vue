@@ -8,7 +8,8 @@
     <!-- Note card -->
     <div 
       v-bind:id="id" 
-      class="card whitesmoke note-cursor z-depth-0" 
+      :data-note-id="id"
+      class="card whitesmoke note-cursor note-card z-depth-0" 
       v-on:click="handleClick"
       v-on:mouseenter="addShadow(id)" 
       v-on:mouseleave="removeShadow(id)"

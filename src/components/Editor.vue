@@ -57,7 +57,11 @@
       </div>
     </div>
     <div class="row background">
-      <div id="editor" @focus="onEditorFocus"></div>
+      <SpreadsheetEditor
+        v-if="isTabularEditor"
+        v-model="tabularContent"
+      />
+      <div v-else id="editor" @focus="onEditorFocus"></div>
     </div>
   </div>
 </template>
@@ -66,13 +70,24 @@
 import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/Preloader";
+import SpreadsheetEditor from "@/components/SpreadsheetEditor";
 import { toastService } from '@/services/toastService';
+import {
+  NOTE_CONTENT_TYPES,
+  cloneTabularState,
+  createEmptyTabularState,
+  deserializeTabularContent,
+  estimateTabularCharacters,
+  isTabularContentType,
+  serializeTabularContent
+} from '@/services/tabularNoteService';
 
 export default {
   components: {
-    Preloader
+    Preloader,
+    SpreadsheetEditor
   },
-  emits: ['note-saved'],
+  emits: ['note-saved', 'note-loaded'],
   computed: {
     id: {
       get(){
@@ -86,6 +101,17 @@ export default {
       get(){
         return this.$store.getters.bucketUuid;
       }
+    },
+    noteContentType: {
+      get() {
+        return this.$store.getters.noteContentType;
+      },
+      set(noteContentType) {
+        this.$store.commit({type: 'updateNoteContentType', noteContentType});
+      }
+    },
+    isTabularEditor() {
+      return isTabularContentType(this.noteContentType);
     }
   },
   watch: {
@@ -96,6 +122,8 @@ export default {
           this.editor.setContent('', 0);
           this.$store.commit({type: 'updateContent', content: ''});
           this.$store.commit({type: 'setCharactersCount', count: 0});
+          this.noteContentType = NOTE_CONTENT_TYPES.PCN;
+          this.tabularContent = createEmptyTabularState();
           this.isProgrammaticTitleUpdate = true;
           this.noteTitle = '';
           this.isProgrammaticTitleUpdate = false;
@@ -120,6 +148,18 @@ export default {
         // Trigger debounced auto-save on title changes
         this.triggerDebouncedAutoSave();
       }
+    },
+    tabularContent: {
+      deep: true,
+      handler() {
+        if (!this.isTabularEditor || this.isLoadingNote) {
+          return;
+        }
+
+        this.$store.commit({type: 'setCharactersCount', count: estimateTabularCharacters(this.tabularContent)});
+        this.hasUnsavedChanges = true;
+        this.triggerDebouncedAutoSave();
+      }
     }
   },
   data() {
@@ -134,7 +174,8 @@ export default {
       hasUnsavedChanges: false,
       isProgrammaticTitleUpdate: false,
       isLoadingNote: false,
-      fabOpen: false
+      fabOpen: false,
+      tabularContent: createEmptyTabularState()
     }
   },
   beforeRouteEnter(to, from, next){
@@ -150,7 +191,10 @@ export default {
     this.$store.commit({type: 'updateContent', content: ""});
     this.$store.commit(({type: 'updateName', name: ""}));
     this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
-    this.editor.destroy();
+    this.$store.commit(({type: 'updateNoteContentType', noteContentType: NOTE_CONTENT_TYPES.PCN}));
+    if (this.editor) {
+      this.editor.destroy();
+    }
     const id = this.$store.getters.autoSaveJobId;
     clearInterval(id);
     this.$store.commit({type: 'updateIntervalId', autoSaveJobId: 0});
@@ -166,61 +210,7 @@ export default {
     this.noteService = new NoteService();
     
     this.runAutoSaveJob();
-    this.editor = new MediumEditor('#editor', {
-      targetBlank: true,
-      paste: {
-        forcePlainText: false,
-        cleanPastedHTML: true,
-        cleanAttrs: ['style', 'dir'],
-        cleanTags: ['label', 'meta', 'script']
-      },
-      toolbar: {
-          buttons: ['bold', 'italic', 'underline', 'strikethrough', 'quote', 'anchor', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'orderedlist', 'unorderedlist', 'outdent', 'indent', 'h2', 'h3', 'h4', 'h5', 'h6'],
-      },
-      'buttonLabels': 'fontawesome',
-      placeholder: {
-        text: 'Type your note...',
-        hideOnClick: true
-      },
-      autoLink: true
-    });
-    this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
-    this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
-    const _this = this;
-    this.editor.subscribe('editableInput', function (event) {
-      _this.$store.commit({type: 'updateLock', updateLock: true});
-      if (event.inputType === 'insertText') {
-        _this.$store.commit({type: 'updateRawText', update: event.data});
-        _this.$store.commit('increaseCharactersCounter');
-      }
-      if(event.inputType === 'deleteContentBackward'){
-        if(_this.editor.elements[0].innerText !== null && _this.editor.elements[0].innerText !== undefined){
-          _this.$store.commit('decreaseCharactersCounter');
-        } 
-        _this.$store.commit({type: 'updateRawText', update: event.data});
-      }
-      _this.runEditTimeout();
-      if(event.inputType === 'deleteByCut'){
-        _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
-      }
-      // Mark as having unsaved changes (skip during note loading)
-      if (!_this.isLoadingNote) {
-        _this.hasUnsavedChanges = true;
-        // Trigger debounced auto-save on content change
-        _this.triggerDebouncedAutoSave();
-      }
-    });
-    this.editor.subscribe('editablePaste', function(event){
-      if(event.target.innerText !== ''){
-        _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
-        // Mark as having unsaved changes (skip during note loading)
-        if (!_this.isLoadingNote) {
-          _this.hasUnsavedChanges = true;
-          // Trigger debounced auto-save on paste
-          _this.triggerDebouncedAutoSave();
-        }
-      }
-    });
+    this.initializeTextEditor();
     
     // Load note if ID exists
     if(this.id !== ''){
@@ -243,35 +233,101 @@ export default {
         this.showStatsFooter = true;
       }
     },
-    loadNote(noteId) {
+    initializeTextEditor() {
+      this.editor = new MediumEditor('#editor', {
+        targetBlank: true,
+        paste: {
+          forcePlainText: false,
+          cleanPastedHTML: true,
+          cleanAttrs: ['style', 'dir'],
+          cleanTags: ['label', 'meta', 'script']
+        },
+        toolbar: {
+            buttons: ['bold', 'italic', 'underline', 'strikethrough', 'quote', 'anchor', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'orderedlist', 'unorderedlist', 'outdent', 'indent', 'h2', 'h3', 'h4', 'h5', 'h6'],
+        },
+        'buttonLabels': 'fontawesome',
+        placeholder: {
+          text: 'Type your note...',
+          hideOnClick: true
+        },
+        autoLink: true
+      });
+      this.$store.commit({type: 'updateRawText', content: this.editor.elements[0].innerText});
+      this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+      const _this = this;
+      this.editor.subscribe('editableInput', function (event) {
+        _this.$store.commit({type: 'updateLock', updateLock: true});
+        if (event.inputType === 'insertText') {
+          _this.$store.commit({type: 'updateRawText', update: event.data});
+          _this.$store.commit('increaseCharactersCounter');
+        }
+        if(event.inputType === 'deleteContentBackward'){
+          if(_this.editor.elements[0].innerText !== null && _this.editor.elements[0].innerText !== undefined){
+            _this.$store.commit('decreaseCharactersCounter');
+          }
+          _this.$store.commit({type: 'updateRawText', update: event.data});
+        }
+        _this.runEditTimeout();
+        if(event.inputType === 'deleteByCut'){
+          _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
+        }
+        if (!_this.isLoadingNote) {
+          _this.hasUnsavedChanges = true;
+          _this.triggerDebouncedAutoSave();
+        }
+      });
+      this.editor.subscribe('editablePaste', function(event){
+        if(event.target.innerText !== ''){
+          _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
+          if (!_this.isLoadingNote) {
+            _this.hasUnsavedChanges = true;
+            _this.triggerDebouncedAutoSave();
+          }
+        }
+      });
+    },
+    async loadNote(noteId) {
       if (noteId && this.editor) {
         this.isLoadingNote = true;
-        this.noteService.getNote(noteId)
-          .then(n => {
+        try {
+          const n = await this.noteService.getNote(noteId);
+          const contentType = n['content-type'] ?? NOTE_CONTENT_TYPES.PCN;
+          this.noteContentType = contentType;
+          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: n.timestamp ?? null});
+          this.$store.commit({type: "updateIfError", error: false});
+          this.$store.commit({type: 'updateName', name: n.humanName});
+          this.isProgrammaticTitleUpdate = true;
+          this.noteTitle = n.humanName;
+          this.isProgrammaticTitleUpdate = false;
+
+          if (isTabularContentType(contentType)) {
+            const tabularContent = await deserializeTabularContent(contentType, n.content);
+            this.tabularContent = cloneTabularState(tabularContent);
+            this.$store.commit({type: 'setCharactersCount', count: estimateTabularCharacters(tabularContent)});
+            this.$store.commit({type: 'updateContent', content: ''});
+            this.editor.setContent('', 0);
+          } else {
             const content = JSON.parse(n.content);
+            this.tabularContent = createEmptyTabularState();
             this.$store.commit({type: 'updateContent', content: content.content});
             this.editor.setContent(content.content, 0);
             this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
-            this.$store.commit({type: "updateIfError", error: false});
-            this.$store.commit({type: 'updateName', name: n.humanName});
-            this.isProgrammaticTitleUpdate = true;
-            this.noteTitle = n.humanName;
-            this.isProgrammaticTitleUpdate = false;
-            // Reset unsaved changes flag when loading a note
-            this.hasUnsavedChanges = false;
-          }).catch(() => {
-            toastService.error('Error loading note');
-          }).finally(() => {
-            this.isLoadingNote = false;
-            // Clear any auto-save timer that may have been triggered during load
-            if (this.autoSaveDebounceTimer) {
-              clearTimeout(this.autoSaveDebounceTimer);
-              this.autoSaveDebounceTimer = null;
-            }
-          });
+          }
+
+          this.$emit('note-loaded', n);
+          this.hasUnsavedChanges = false;
+        } catch {
+          toastService.error('Error loading note');
+        } finally {
+          this.isLoadingNote = false;
+          if (this.autoSaveDebounceTimer) {
+            clearTimeout(this.autoSaveDebounceTimer);
+            this.autoSaveDebounceTimer = null;
+          }
+        }
       }
     },
-    save: function () {
+    async save() {
       // Reset auto-save debounce timer when user manually saves
       if (this.autoSaveDebounceTimer) {
         clearTimeout(this.autoSaveDebounceTimer);
@@ -286,59 +342,65 @@ export default {
           toastService.warning('Okay, that\'s too much!');
           return;
         }
-        const content = this.editor.getContent(0);
         if(this.$store.getters.count === 0){
           return;
         }
         this.$store.commit({type: 'updateIsSaving', isSaving: true});
-        if (this.$store.getters.id) {
-          this.noteService.saveNote(this.id, titleValue, content, this.editor.elements[0].innerText)
-          .then((r) => {
-            if(r.ok){
-              toastService.success('Note saved!');
-              const now = new Date();
-              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
-              // Update the title in store after saving
-              this.$store.commit({type: 'updateName', name: titleValue});
-              // Reset unsaved changes flag
-              this.hasUnsavedChanges = false;
-              // Emit event to parent to reload notes list
-              this.$emit('note-saved');
-            } else {
-              toastService.error(`A server responded with non-success code: ${r.status}`);
-            }
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
-          }).catch(() => {
-            toastService.error('An unexpected error occured, reload the page');
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
-          });
-        } else {
-          this.noteService.addNote(this.bucketId, titleValue, content, this.editor.elements[0].innerText).then((r) => {
-            if(r.ok){
-              r.json().then(json => {
-                const id = json.payload.id;
-                this.$store.commit({type: 'updateId', id: id});
-                this.$store.commit({type: 'updateName', name: titleValue});
+        try {
+          const isTabular = this.isTabularEditor;
+          const content = isTabular
+            ? await serializeTabularContent(this.noteContentType, this.tabularContent)
+            : this.editor.getContent(0);
+          const rawContent = isTabular
+            ? content
+            : this.editor.elements[0].innerText;
+
+          if (this.$store.getters.id) {
+            this.noteService.saveNote(this.id, titleValue, content, rawContent, this.noteContentType)
+            .then((r) => {
+              if(r.ok){
+                toastService.success('Note saved!');
                 const now = new Date();
                 this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
-                // Reset unsaved changes flag
+                this.$store.commit({type: 'updateName', name: titleValue});
                 this.hasUnsavedChanges = false;
-                // Update URL to reflect the new note id
-                if (this.$route.params.id !== id) {
-                  this.$router.replace('/editor/' + id);
-                }
-                // Emit event to parent to reload notes list
                 this.$emit('note-saved');
-              });
-              toastService.success('Note created!')
-            } else {
-              toastService.error(`A server responded with non-success code: ${r.status}`);
-            }
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
-          }).catch(() => {
-            toastService.error('An unexpected error occured, reload the page');
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
-          });
+              } else {
+                toastService.error(`A server responded with non-success code: ${r.status}`);
+              }
+              this.$store.commit({type: 'updateIsSaving', isSaving: false});
+            }).catch(() => {
+              toastService.error('An unexpected error occured, reload the page');
+              this.$store.commit({type: 'updateIsSaving', isSaving: false});
+            });
+          } else {
+            this.noteService.addNote(this.bucketId, titleValue, content, rawContent, this.noteContentType).then((r) => {
+              if(r.ok){
+                r.json().then(json => {
+                  const id = json.payload.id;
+                  this.$store.commit({type: 'updateId', id: id});
+                  this.$store.commit({type: 'updateName', name: titleValue});
+                  const now = new Date();
+                  this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+                  this.hasUnsavedChanges = false;
+                  if (this.$route.params.id !== id) {
+                    this.$router.replace('/editor/' + id);
+                  }
+                  this.$emit('note-saved');
+                });
+                toastService.success('Note created!')
+              } else {
+                toastService.error(`A server responded with non-success code: ${r.status}`);
+              }
+              this.$store.commit({type: 'updateIsSaving', isSaving: false});
+            }).catch(() => {
+              toastService.error('An unexpected error occured, reload the page');
+              this.$store.commit({type: 'updateIsSaving', isSaving: false});
+            });
+          }
+        } catch {
+          toastService.error('An unexpected error occured, reload the page');
+          this.$store.commit({type: 'updateIsSaving', isSaving: false});
         }
       } else {
         toastService.warning('It is a damn good idea to add a title!')
@@ -347,7 +409,11 @@ export default {
     clearAll: function () {
       toastService.show('Cleared!')
       this.$store.commit({type: 'setCharactersCount', count: 0});
-      this.editor.resetContent();
+      if (this.isTabularEditor) {
+        this.tabularContent = createEmptyTabularState();
+      } else {
+        this.editor.resetContent();
+      }
     },
     runAutoSaveJob: function() {
       const autoSaveJobId = setInterval(() => {

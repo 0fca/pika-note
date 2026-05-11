@@ -44,8 +44,17 @@
 
         <!-- Applications Section -->
         <div class="drawer-apps-section">
-          <div class="drawer-section-title">Applications</div>
-          <div class="drawer-apps-list">
+          <button
+            v-if="isShortScreen"
+            class="drawer-anchor-pane"
+            type="button"
+            @click="mobileSystemLinksOpen = !mobileSystemLinksOpen"
+          >
+            <span>System links</span>
+            <span class="material-symbols-outlined">{{ mobileSystemLinksOpen ? 'expand_less' : 'expand_more' }}</span>
+          </button>
+          <div v-else class="drawer-section-title">Applications</div>
+          <div v-show="!isShortScreen || mobileSystemLinksOpen" class="drawer-apps-list">
             <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
               <span class="material-symbols-outlined">cloud</span>
               <span>Pika Cloudfront</span>
@@ -219,6 +228,7 @@
         <Editor 
           v-if="this.$store.getters.loggedIn === true" 
           @note-saved="onNoteSaved"
+          @note-loaded="handleEditorNoteLoaded"
         />
       </main>
     </div>
@@ -284,6 +294,8 @@ export default {
     }
   },
   mounted: function () {
+    this.updateShortScreenState();
+    window.addEventListener('resize', this.updateShortScreenState);
     this.loggedIn = this.$store.getters.loggedIn;
     if(this.$store.getters.bucketUuid !== ""){
       this.bucketId = this.$store.getters.bucketUuid;
@@ -330,6 +342,7 @@ export default {
     });
   },
   beforeUnmount() {
+    window.removeEventListener('resize', this.updateShortScreenState);
     // Clear infinite loader timer
     if (this.infiniteLoaderTimer) {
       clearTimeout(this.infiniteLoaderTimer);
@@ -364,7 +377,12 @@ export default {
       version: packageJson.version,
       initialBucketsResolved: false,
       initialNotesResolved: false,
-      showSearchOverlay: false
+      showSearchOverlay: false,
+      pendingScrollNoteId: this.$route.params.id ?? '',
+      isEnsuringNoteVisible: false,
+      isShortScreen: false,
+      mobileSystemLinksOpen: true,
+      pendingLoadedNoteMeta: null
     }
   },
   watch: {
@@ -377,11 +395,11 @@ export default {
     }
   },
   methods: {
-    loadNotes() {
+    async loadNotes() {
       this.$store.commit({type: 'setLoadingError', loadingError: ''});
       this.$store.commit({type: 'setNotesLoading', notesLoading: true});
       const order = this.$store.getters.order;
-      this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&bucketId=" + this.bucketId)
+      return this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&bucketId=" + this.bucketId)
         .then(data => {
           if (this.$store.getters.loadingError) {
             this.$store.commit({type: 'setLoadingError', loadingError: ''});
@@ -410,8 +428,8 @@ export default {
           }
         });
     },
-    loadMoreNotes() {
-      if (this.isLoadingMore || !this.hasMoreNotes) return;
+    async loadMoreNotes() {
+      if (this.isLoadingMore || !this.hasMoreNotes) return false;
       
       this.isLoadingMore = true;
       
@@ -427,19 +445,22 @@ export default {
       const order = this.$store.getters.order;
       const offset = this.currentPage * pageSize;
       
-      this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&offset=" + offset + "&bucketId=" + this.bucketId)
+      return this.noteService.readData('/notes?order=' + order + "&pageSize=" + pageSize + "&offset=" + offset + "&bucketId=" + this.bucketId)
         .then(data => {
           if (data.payload && data.payload.length > 0) {
             this.notes.push(...data.payload);
             this.actuallyLoaded = this.notes.length;
             this.hasMoreNotes = data.payload.length === pageSize;
+            return true;
           } else {
             this.hasMoreNotes = false;
+            return false;
           }
         })
         .catch(() => {
           this.isLoadingMore = false;
           this.hasMoreNotes = false;
+          return false;
         })
         .finally(() => {
           clearTimeout(this.infiniteLoaderTimer);
@@ -478,6 +499,9 @@ export default {
       this.notes = data.payload;
       this.loaded = true;
       this.actuallyLoaded = this.notes.length;
+      this.$nextTick(() => {
+        this.ensurePendingNoteVisible();
+      });
     },
     onBucketsPayloadReceived: function(bucketsPayload) {
       if(bucketsPayload.success === true){
@@ -503,6 +527,10 @@ export default {
           // No bucket selected - show prompt toast
           this.showBucketPromptToast();
         }
+
+        if (this.pendingLoadedNoteMeta) {
+          this.applyLoadedNoteContext(this.pendingLoadedNoteMeta);
+        }
       }
     },
     onBucketSelectChange: function(e){
@@ -522,6 +550,7 @@ export default {
       this.$store.commit({type: 'updateId', id: note.id});
       this.$store.commit({type: 'updateName', name: note.humanName});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
+      this.pendingScrollNoteId = note.id;
       
       if (this.$route.params.id !== note.id) {
         this.$router.push('/editor/' + note.id);
@@ -532,6 +561,7 @@ export default {
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+      this.$store.commit({type: 'updateNoteContentType', noteContentType: 'text/pcn'});
       this.$store.commit({type: 'setCharactersCount', count: 0});
       if (this.$route.path !== '/') {
         this.$router.push('/');
@@ -558,7 +588,95 @@ export default {
       this.currentPage = 0;
       this.hasMoreNotes = true;
       this.loaded = false;
+      this.pendingScrollNoteId = this.$store.getters.id;
       this.loadNotes();
+    },
+    handleEditorNoteLoaded(note) {
+      this.pendingLoadedNoteMeta = note;
+      this.pendingScrollNoteId = note.id ?? this.$store.getters.id;
+
+      if (note.timestamp) {
+        this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
+      }
+
+      if (this.buckets.length > 0) {
+        this.applyLoadedNoteContext(note);
+      }
+    },
+    applyLoadedNoteContext(note) {
+      const bucketId = note.bucketId ?? note.bucketUuid ?? note['bucket-id'] ?? '';
+      if (!bucketId) {
+        this.ensurePendingNoteVisible();
+        return;
+      }
+
+      const matchingBucket = this.buckets.find((bucket) => bucket.id === bucketId);
+      const bucketName = note.bucketName ?? note['bucket-name'] ?? matchingBucket?.text ?? this.$store.getters.bucketName;
+
+      if (bucketName) {
+        this.$store.commit({type: 'updateCurrentBucket', bucketName, bucketUuid: bucketId});
+      }
+
+      if (this.bucketId !== bucketId) {
+        this.bucketId = bucketId;
+        this.notes = [];
+        this.currentPage = 0;
+        this.hasMoreNotes = true;
+        this.loaded = false;
+        this.loadNotes();
+        return;
+      }
+
+      this.ensurePendingNoteVisible();
+    },
+    async ensurePendingNoteVisible() {
+      const noteId = this.pendingScrollNoteId;
+      if (!noteId || this.isEnsuringNoteVisible || !this.bucketId) {
+        return;
+      }
+
+      this.isEnsuringNoteVisible = true;
+
+      try {
+        while (!this.notes.some((note) => note.id === noteId) && this.hasMoreNotes) {
+          const loadedMore = await this.loadMoreNotes();
+          if (!loadedMore) {
+            break;
+          }
+        }
+
+        if (this.notes.some((note) => note.id === noteId)) {
+          this.$nextTick(() => {
+            this.scrollNoteCardToTop(noteId);
+          });
+        }
+      } finally {
+        this.pendingScrollNoteId = '';
+        this.isEnsuringNoteVisible = false;
+      }
+    },
+    findNoteElement(container, noteId) {
+      if (!container) {
+        return null;
+      }
+
+      return Array.from(container.querySelectorAll('[data-note-id]')).find(
+        (element) => element.dataset.noteId === String(noteId)
+      ) ?? null;
+    },
+    scrollNoteCardToTop(noteId) {
+      ['notesContainer', 'mobileNotesContainer'].forEach((refName) => {
+        const container = this.$refs[refName];
+        const noteElement = this.findNoteElement(container, noteId);
+
+        if (container && noteElement) {
+          container.scrollTop = noteElement.offsetTop - container.offsetTop;
+        }
+      });
+    },
+    updateShortScreenState() {
+      this.isShortScreen = window.innerHeight < 1200;
+      this.mobileSystemLinksOpen = !this.isShortScreen;
     },
     handleEdgeSwipeStart(e) {
       // Only track swipes that start within 30px of the left edge
@@ -860,6 +978,19 @@ export default {
 /* Drawer Applications Section */
 .drawer-apps-section {
   padding: var(--spacing-md);
+}
+
+.drawer-anchor-pane {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: var(--font-weight-semibold);
 }
 
 .drawer-section-title {

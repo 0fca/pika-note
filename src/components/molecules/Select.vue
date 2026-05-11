@@ -1,5 +1,5 @@
 <template>
-      <select id="bucket-select" class="browser-default custom-select" v-model="this.bucketId">
+      <select id="bucket-select" class="browser-default custom-select" :value="$store.getters.bucketUuid" v-bind="$attrs">
         <option value="" disabled selected>Choose a bucket</option>
           <option :value="entry.id" v-for="entry in entries" :key="entry.id">
             {{ entry.text }}
@@ -12,12 +12,7 @@ export default {
     props: [
         'dropdownText',
         'entries',
-    ],
-    data(){
-      return {
-        bucketId: this.$store.getters.bucketUuid
-      }
-    }
+    ]
 }
 </script>
 
