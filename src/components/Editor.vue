@@ -286,10 +286,6 @@ export default {
       const titleValue = this.noteTitle;
       
       if (titleValue) {
-        if(this.$store.getters.count >= this.$store.getters.limit){
-          toastService.warning('Okay, that\'s too much!');
-          return;
-        }
         const content = this.editor.getContent(0);
         if(this.$store.getters.count === 0){
           return;

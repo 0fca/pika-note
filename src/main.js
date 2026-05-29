@@ -55,18 +55,12 @@ const store = createStore({
   },
   mutations: {
     updateRawText (state, text) {
-      if(state.count >= state.limit){
-        return;
-      }
       state.rawText += text;
     },
     setCharactersCount(state, payload){
       state.count = payload.count;
     },
     increaseCharactersCounter(state){
-      if(state.count >= state.limit){
-        return;
-      }
       state.count++;
     },
     decreaseCharactersCounter(state){

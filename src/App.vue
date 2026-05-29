@@ -83,7 +83,7 @@
         
         <!-- Top Right: Character Counter -->
         <div class="stats-item">
-          <small><strong>Characters:</strong> {{ $store.getters.count }}/{{ $store.getters.limit }}</small>
+          <small><strong>Characters:</strong> {{ $store.getters.count }}</small>
         </div>
         
         <!-- Bottom Left: Auto-save Status -->

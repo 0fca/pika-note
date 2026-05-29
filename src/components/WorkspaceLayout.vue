@@ -331,6 +331,14 @@ export default {
         this.onBucketsPayloadReceived(bucketsPayload);
         this.loaded = true;
         this.loading = false;
+        
+        // After buckets are loaded, handle route-based note loading
+        const routeId = this.$route.params.id;
+        if (routeId) {
+          this.loadNoteFromUrl(routeId);
+        } else {
+          this.loadNotes();
+        }
       })
       .catch((err) => {
         const wasLoggedIn = this.$store.getters.loggedIn;
@@ -345,13 +353,6 @@ export default {
         this.initialBucketsResolved = true;
         this.$store.commit({type: 'setBucketsLoading', bucketsLoading: false});
       });
-      this.loadNotes();
-    
-    // Load note from route param if present
-    const routeId = this.$route.params.id;
-    if (routeId) {
-      this.$store.commit({type: 'updateId', id: routeId});
-    }
     
     // Enable drawer functionality after mount
     this.$nextTick(() => {
@@ -545,6 +546,17 @@ export default {
       // Update store - this will also update localStorage via mutation
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
       
+      // Reset editor panes when switching buckets
+      this.$store.commit('clearAllTabs');
+      this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateName', name: ''});
+      this.$store.commit({type: 'updateContent', content: ''});
+      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+      this.$store.commit({type: 'setCharactersCount', count: 0});
+      if (this.$route.path !== '/') {
+        this.$router.push('/');
+      }
+      
       this.notes = [];
       this.currentPage = 0;
       this.hasMoreNotes = true;
@@ -584,6 +596,48 @@ export default {
       this.$nextTick(() => {
         this.scrollToNote(note.id);
       });
+    },
+    loadNoteFromUrl(noteId) {
+      // Fetch the note to determine its bucket and metadata
+      this.noteService.getNote(noteId)
+        .then(note => {
+          // Switch to the note's bucket if different from current
+          if (note.bucketId && note.bucketId !== this.bucketId) {
+            this.bucketId = note.bucketId;
+            const bucket = this.buckets.find(b => b.id === note.bucketId);
+            if (bucket) {
+              this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
+            }
+          }
+          
+          // Set the note in the store
+          this.$store.commit({type: 'updateId', id: noteId});
+          this.$store.commit({type: 'updateName', name: note.humanName});
+          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
+          
+          // Add tab (desktop only)
+          if (!this.isTouchScreen) {
+            this.$store.commit({type: 'addOrReplaceTab', id: noteId, title: note.humanName, pinned: false});
+          }
+          
+          // Load notes list for the bucket, then scroll to the note
+          this.notes = [];
+          this.currentPage = 0;
+          this.hasMoreNotes = true;
+          this.loadNotes();
+          
+          // Wait for notes to render, then scroll to the note
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.scrollToNote(noteId);
+            }, 500);
+          });
+        })
+        .catch(() => {
+          // If note fetch fails, fall back to just setting the ID and loading notes normally
+          this.$store.commit({type: 'updateId', id: noteId});
+          this.loadNotes();
+        });
     },
     createNewNote() {
       this.$store.commit('resetInactivityCounter');
