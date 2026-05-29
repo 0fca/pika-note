@@ -779,7 +779,7 @@ export default {
       // Try desktop sidebar first, then mobile drawer
       const container = this.$refs.notesContainer || this.$refs.mobileNotesContainer;
       if (container) {
-        const noteEl = container.querySelector(`[id="${noteId}"]`);
+        const noteEl = container.querySelector(`[id="${CSS.escape(noteId)}"]`);
         if (noteEl) {
           noteEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
