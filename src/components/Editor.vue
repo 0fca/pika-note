@@ -236,12 +236,16 @@ export default {
     onTitleFocus() {
       // When user focuses title input for new note, we don't show stats yet
       this.showStatsFooter = false;
+      // Reset inactivity counter on user interaction
+      this.$store.commit('resetInactivityCounter');
     },
     onEditorFocus() {
       // When user focuses editor for new note, show stats footer
       if (this.$store.getters.id === '') {
         this.showStatsFooter = true;
       }
+      // Reset inactivity counter on user interaction
+      this.$store.commit('resetInactivityCounter');
     },
     loadNote(noteId) {
       if (noteId && this.editor) {
@@ -300,44 +304,48 @@ export default {
               this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
               // Update the title in store after saving
               this.$store.commit({type: 'updateName', name: titleValue});
-              // Reset unsaved changes flag
-              this.hasUnsavedChanges = false;
-              // Emit event to parent to reload notes list
-              this.$emit('note-saved');
-            } else {
-              toastService.error(`A server responded with non-success code: ${r.status}`);
-            }
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
+             // Update tab title
+             this.$store.commit({type: 'updateTabTitle', id: this.id, title: titleValue});
+             // Reset unsaved changes flag
+             this.hasUnsavedChanges = false;
+             // Emit event to parent to reload notes list
+             this.$emit('note-saved');
+           } else {
+             toastService.error(`A server responded with non-success code: ${r.status}`);
+           }
+           this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            toastService.error('An unexpected error occured, reload the page');
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
+           toastService.error('An unexpected error occured, reload the page');
+           this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         } else {
           this.noteService.addNote(this.bucketId, titleValue, content, this.editor.elements[0].innerText).then((r) => {
-            if(r.ok){
-              r.json().then(json => {
-                const id = json.payload.id;
-                this.$store.commit({type: 'updateId', id: id});
-                this.$store.commit({type: 'updateName', name: titleValue});
-                const now = new Date();
-                this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
-                // Reset unsaved changes flag
-                this.hasUnsavedChanges = false;
-                // Update URL to reflect the new note id
-                if (this.$route.params.id !== id) {
-                  this.$router.replace('/editor/' + id);
-                }
-                // Emit event to parent to reload notes list
-                this.$emit('note-saved');
-              });
-              toastService.success('Note created!')
-            } else {
-              toastService.error(`A server responded with non-success code: ${r.status}`);
-            }
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
+           if(r.ok){
+             r.json().then(json => {
+               const id = json.payload.id;
+               this.$store.commit({type: 'updateId', id: id});
+               this.$store.commit({type: 'updateName', name: titleValue});
+               // Add tab for new note
+               this.$store.commit({type: 'addOrReplaceTab', id: id, title: titleValue, pinned: false});
+               const now = new Date();
+               this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
+               // Reset unsaved changes flag
+               this.hasUnsavedChanges = false;
+               // Update URL to reflect the new note id
+               if (this.$route.params.id !== id) {
+                 this.$router.replace('/editor/' + id);
+               }
+               // Emit event to parent to reload notes list
+               this.$emit('note-saved');
+             });
+             toastService.success('Note created!')
+           } else {
+             toastService.error(`A server responded with non-success code: ${r.status}`);
+           }
+           this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-            toastService.error('An unexpected error occured, reload the page');
-            this.$store.commit({type: 'updateIsSaving', isSaving: false});
+           toastService.error('An unexpected error occured, reload the page');
+           this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         }
       } else {

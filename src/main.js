@@ -44,7 +44,13 @@ const store = createStore({
       bucketsLoading: false,
       notesLoading: false,
       loadingError: '',
-      drawerOpen: false
+      drawerOpen: false,
+      // Inactivity counter: counts consecutive successful status checks
+      inactivityCounter: 0,
+      inactivityThreshold: 100,
+      // Multi-tab state
+      editorTabs: [],
+      activeTabId: null
     }
   },
   mutations: {
@@ -127,6 +133,87 @@ const store = createStore({
     },
     setDrawerOpen(state, payload){
       state.drawerOpen = payload.drawerOpen;
+    },
+    incrementInactivityCounter(state){
+      state.inactivityCounter++;
+      if(state.inactivityCounter >= state.inactivityThreshold && state.id !== ''){
+        // Unload current note
+        state.id = '';
+        state.name = '';
+        state.content = '';
+        state.count = 0;
+        state.lastSavedAt = null;
+        state.rawText = '';
+        state.updateLock = false;
+        state.inactivityCounter = 0;
+        localStorage.removeItem('content');
+        // Close all tabs
+        state.editorTabs = [];
+        state.activeTabId = null;
+      }
+    },
+    resetInactivityCounter(state){
+      state.inactivityCounter = 0;
+    },
+    // Tab mutations
+    addOrReplaceTab(state, payload){
+      // payload: { id, title, pinned }
+      const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
+      if(existingIndex !== -1){
+        // Already exists, just activate
+        state.activeTabId = payload.id;
+        return;
+      }
+      // Find unpinned tab to replace
+      const unpinnedIndex = state.editorTabs.findIndex(t => !t.pinned && t.id === state.activeTabId);
+      if(unpinnedIndex !== -1 && state.editorTabs.length > 0){
+        // Replace the active unpinned tab
+        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: false });
+      } else {
+        // Add new tab
+        state.editorTabs.push({ id: payload.id, title: payload.title, pinned: false });
+      }
+      state.activeTabId = payload.id;
+    },
+    addPinnedTab(state, payload){
+      // Add as a new pinned tab (from double-click on tab)
+      const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
+      if(existingIndex !== -1){
+        state.editorTabs[existingIndex].pinned = true;
+      }
+    },
+    closeTab(state, payload){
+      const index = state.editorTabs.findIndex(t => t.id === payload.id);
+      if(index !== -1){
+        state.editorTabs.splice(index, 1);
+        // If we closed the active tab, activate another
+        if(state.activeTabId === payload.id){
+          if(state.editorTabs.length > 0){
+            const newIndex = Math.min(index, state.editorTabs.length - 1);
+            state.activeTabId = state.editorTabs[newIndex].id;
+          } else {
+            state.activeTabId = null;
+            state.id = '';
+            state.name = '';
+            state.content = '';
+            state.count = 0;
+            state.lastSavedAt = null;
+          }
+        }
+      }
+    },
+    setActiveTab(state, payload){
+      state.activeTabId = payload.id;
+    },
+    updateTabTitle(state, payload){
+      const tab = state.editorTabs.find(t => t.id === payload.id);
+      if(tab){
+        tab.title = payload.title;
+      }
+    },
+    clearAllTabs(state){
+      state.editorTabs = [];
+      state.activeTabId = null;
     }
   },
   getters: {
@@ -192,6 +279,15 @@ const store = createStore({
     },
     drawerOpen(state){
       return state.drawerOpen;
+    },
+    inactivityCounter(state){
+      return state.inactivityCounter;
+    },
+    editorTabs(state){
+      return state.editorTabs;
+    },
+    activeTabId(state){
+      return state.activeTabId;
     }
   }
 });

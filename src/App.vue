@@ -15,14 +15,6 @@
               </button>
             </div>
             <div class="nav-center">
-              <div v-if="$store.getters.id !== '' && $store.getters.name">
-                <h5 class="nav-title">{{ $store.getters.name }}</h5>
-              </div>
-              <div v-else-if="$store.getters.bucketName && $store.getters.loggedIn">
-                <h5 class="nav-title">
-                  {{ $store.getters.bucketName }}
-                </h5>
-              </div>
             </div>
             <div class="nav-right">
               <ul class="nav-actions hide-on-med-and-down">
@@ -282,6 +274,10 @@ export default {
       try {
         const isLoggedIn = await securityService.validateLoggedInState();
         this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
+        if(isLoggedIn){
+          // Increment inactivity counter on each successful status check
+          this.$store.commit('incrementInactivityCounter');
+        }
       } catch (error) {
         console.error('Auth refresh failed', error);
         // Silent refresh failure - keep current state
@@ -347,12 +343,18 @@ nav .material-symbols-outlined {
   border: none;
   color: var(--color-nav-text);
   cursor: pointer;
-  padding: 8px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
   transition: background-color var(--transition-fast);
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.nav-hamburger .material-symbols-outlined {
+  font-size: 28px;
 }
 
 .nav-hamburger:hover {
