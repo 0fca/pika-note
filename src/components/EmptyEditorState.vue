@@ -2,35 +2,8 @@
   <div class="empty-editor-state">
     <!-- Desktop view -->
     <div v-if="!isTouchScreen" class="empty-desktop">
-      <div class="empty-left">
-        <svg class="arrow-svg" width="100" height="160" viewBox="0 0 100 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Curved arrow pointing left toward the "Create New Note" card in sidebar -->
-          <path 
-            d="M90 150 C60 110, 40 70, 10 20" 
-            stroke="#e8eef7" 
-            stroke-width="5" 
-            stroke-linecap="round"
-            fill="none"
-            opacity="0.35"
-          />
-          <path 
-            d="M90 150 C60 110, 40 70, 10 20" 
-            stroke="#5379ba" 
-            stroke-width="2.5" 
-            stroke-linecap="round"
-            fill="none"
-          />
-          <!-- Arrowhead pointing upper-left -->
-          <path 
-            d="M10 20 L4 6 L20 16 Z" 
-            fill="#5379ba"
-          />
-        </svg>
-        <span class="arrow-label">Create a new note</span>
-      </div>
-      <div class="empty-right">
-        <img src="@/assets/pika_note.png" alt="Pika Note mascot" class="mascot-image" />
-      </div>
+      <img src="@/assets/pika_note.png" alt="Pika Note mascot" class="mascot-image" />
+      <p class="empty-description">To start, click <strong>Create New Note</strong> for a new one, or choose an existing one from the list.</p>
     </div>
     <!-- Mobile view -->
     <div v-else class="empty-mobile">
@@ -66,42 +39,31 @@ export default {
 /* Desktop layout */
 .empty-desktop {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 2rem;
-  width: 100%;
-  padding-left: var(--spacing-md);
-}
-
-.empty-left {
-  display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.arrow-svg {
-  opacity: 0.85;
-}
-
-.arrow-label {
-  color: var(--color-primary-soft);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: 0.3px;
-  opacity: 0.8;
-}
-
-.empty-right {
-  display: flex;
-  align-items: center;
   justify-content: center;
+  gap: var(--spacing-lg);
 }
 
 .mascot-image {
-  max-width: 220px;
+  max-width: 280px;
   width: 100%;
   opacity: 0.9;
+}
+
+.empty-description {
+  color: #999;
+  font-size: var(--font-size-base);
+  text-align: center;
+  margin: 0;
+  max-width: 320px;
+  line-height: var(--line-height-relaxed);
+  opacity: 0.85;
+}
+
+.empty-description strong {
+  color: var(--color-primary-soft);
+  font-weight: var(--font-weight-medium);
 }
 
 /* Mobile layout */
