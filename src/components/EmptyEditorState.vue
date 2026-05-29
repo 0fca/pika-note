@@ -3,32 +3,28 @@
     <!-- Desktop view -->
     <div v-if="!isTouchScreen" class="empty-desktop">
       <div class="empty-left">
-        <svg class="arrow-svg" width="120" height="180" viewBox="0 0 120 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Curved arrow pointing up-left toward the "Create New Note" card in sidebar -->
+        <svg class="arrow-svg" width="100" height="160" viewBox="0 0 100 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Curved arrow pointing left toward the "Create New Note" card in sidebar -->
           <path 
-            d="M100 170 C90 120, 80 80, 30 20" 
-            stroke="#5379ba" 
-            stroke-width="3" 
-            stroke-linecap="round"
-            fill="none"
-          />
-          <path 
-            d="M100 170 C90 120, 80 80, 30 20" 
+            d="M90 150 C60 110, 40 70, 10 20" 
             stroke="#e8eef7" 
-            stroke-width="6" 
+            stroke-width="5" 
             stroke-linecap="round"
             fill="none"
-            opacity="0.4"
+            opacity="0.35"
           />
           <path 
-            d="M100 170 C90 120, 80 80, 30 20" 
+            d="M90 150 C60 110, 40 70, 10 20" 
             stroke="#5379ba" 
             stroke-width="2.5" 
             stroke-linecap="round"
             fill="none"
           />
-          <!-- Arrowhead -->
-          <polygon points="22,28 38,10 40,34" fill="#5379ba" stroke="#e8eef7" stroke-width="1"/>
+          <!-- Arrowhead pointing upper-left -->
+          <path 
+            d="M10 20 L4 6 L20 16 Z" 
+            fill="#5379ba"
+          />
         </svg>
         <span class="arrow-label">Create a new note</span>
       </div>
@@ -71,10 +67,10 @@ export default {
 .empty-desktop {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3rem;
+  justify-content: flex-start;
+  gap: 2rem;
   width: 100%;
-  max-width: 700px;
+  padding-left: var(--spacing-md);
 }
 
 .empty-left {
@@ -85,7 +81,6 @@ export default {
 }
 
 .arrow-svg {
-  transform: rotate(-15deg);
   opacity: 0.85;
 }
 
