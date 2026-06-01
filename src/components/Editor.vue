@@ -259,8 +259,9 @@ export default {
             this.$store.commit({type: "updateIfError", error: false});
             this.$store.commit({type: 'updateName', name: n.humanName});
             // Set Last Saved At to the note's last modified date from the API
-            if (n.timestamp) {
-              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: n.timestamp});
+            const noteDate = n.timestamp || n.lastModifiedDate || n.dateModified || n.modifiedAt || n.updatedAt || n.date;
+            if (noteDate) {
+              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
             }
             this.isProgrammaticTitleUpdate = true;
             this.noteTitle = n.humanName;

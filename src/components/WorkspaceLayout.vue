@@ -620,7 +620,10 @@ export default {
           // Set the note in the store
           this.$store.commit({type: 'updateId', id: noteId});
           this.$store.commit({type: 'updateName', name: note.humanName});
-          this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
+          const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
+          if (noteDate) {
+            this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
+          }
           
           // Add tab (desktop only)
           if (!this.isTouchScreen) {
