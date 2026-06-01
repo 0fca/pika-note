@@ -258,6 +258,10 @@ export default {
             this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
             this.$store.commit({type: "updateIfError", error: false});
             this.$store.commit({type: 'updateName', name: n.humanName});
+            // Set Last Saved At to the note's last modified date from the API
+            if (n.timestamp) {
+              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: n.timestamp});
+            }
             this.isProgrammaticTitleUpdate = true;
             this.noteTitle = n.humanName;
             this.isProgrammaticTitleUpdate = false;
