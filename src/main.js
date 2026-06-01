@@ -161,14 +161,13 @@ const store = createStore({
         state.activeTabId = payload.id;
         return;
       }
-      // Find active tab to replace - only replace saved notes (not unsaved/new notes)
-      const activeIndex = state.editorTabs.findIndex(t => t.id === state.activeTabId);
-      const isUnsaved = activeIndex !== -1 && state.editorTabs[activeIndex].id === NEW_NOTE_TAB_ID;
-      if(activeIndex !== -1 && !isUnsaved){
-        // Replace the active tab (saved notes get closed regardless of pin status)
-        state.editorTabs.splice(activeIndex, 1, { id: payload.id, title: payload.title, pinned: false });
+      // Find unpinned, saved tab to replace
+      const unpinnedIndex = state.editorTabs.findIndex(t => !t.pinned && t.id !== NEW_NOTE_TAB_ID && t.id === state.activeTabId);
+      if(unpinnedIndex !== -1){
+        // Replace the active unpinned tab
+        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: false });
       } else {
-        // Add new tab (unsaved note stays open)
+        // Add new tab (pinned and unsaved notes stay open)
         state.editorTabs.push({ id: payload.id, title: payload.title, pinned: false });
       }
       state.activeTabId = payload.id;
