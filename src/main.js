@@ -131,7 +131,8 @@ const store = createStore({
     },
     incrementInactivityCounter(state){
       state.inactivityCounter++;
-      if(state.inactivityCounter >= state.inactivityThreshold && state.id !== ''){
+      const hasActiveEditorSession = state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
+      if(state.inactivityCounter >= state.inactivityThreshold && hasActiveEditorSession){
         // Unload current note
         state.id = '';
         state.name = '';
