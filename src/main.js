@@ -9,6 +9,7 @@ import { createStore } from 'vuex'
 
 const routes = [
   { path: '/', name: 'index', component: WorkspaceLayout },
+  { path: '/editor', name: 'new-editor', component: WorkspaceLayout },
   { path: '/editor/:id', name: 'editor', component: WorkspaceLayout },
   { path: '/about', component: About },
   { path: '/callback', name: 'callback', component: Callback }

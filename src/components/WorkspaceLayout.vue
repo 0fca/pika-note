@@ -227,10 +227,10 @@
           @tabs-empty="onTabsEmpty"
         />
         <EmptyEditorState 
-          v-if="this.$store.getters.loggedIn === true && this.$store.getters.id === ''" 
+          v-if="showEmptyEditorState"
         />
         <Editor 
-          v-if="this.$store.getters.loggedIn === true && this.$store.getters.id !== ''" 
+          v-if="showEditor"
           ref="editor"
           @note-saved="onNoteSaved"
         />
@@ -274,6 +274,7 @@ import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
 
 const pageSize = 15;
+const NEW_NOTE_TAB_ID = '__new_note__';
 
 export default {
   name: 'WorkspaceLayout',
@@ -307,6 +308,12 @@ export default {
       set(loggedIn) {
         this.$store.commit({type: 'updateLoggedInState', loggedIn: loggedIn});
       },
+    },
+    showEditor() {
+      return this.$store.getters.loggedIn === true && (this.$store.getters.id !== '' || this.$route.path === '/editor');
+    },
+    showEmptyEditorState() {
+      return this.$store.getters.loggedIn === true && this.$store.getters.id === '' && this.$route.path !== '/editor';
     },
     getActuallyLoaded() {
       return this.actuallyLoaded;
@@ -646,8 +653,11 @@ export default {
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
       this.$store.commit({type: 'setCharactersCount', count: 0});
-      if (this.$route.path !== '/') {
-        this.$router.push('/');
+      if (!this.isTouchScreen) {
+        this.$store.commit({type: 'addOrReplaceTab', id: NEW_NOTE_TAB_ID, title: 'Untitled', pinned: false});
+      }
+      if (this.$route.path !== '/editor') {
+        this.$router.push('/editor');
       }
     },
     createNewNoteAndCloseNav() {
@@ -840,6 +850,17 @@ export default {
       }
     },
     onTabSelected(tabId) {
+      if (tabId === NEW_NOTE_TAB_ID) {
+        this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateName', name: ''});
+        this.$store.commit({type: 'updateContent', content: ''});
+        this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+        this.$store.commit({type: 'setCharactersCount', count: 0});
+        if (this.$route.path !== '/editor') {
+          this.$router.push('/editor');
+        }
+        return;
+      }
       // Load the note for the selected tab
       const note = this.notes.find(n => n.id === tabId);
       if (note) {
