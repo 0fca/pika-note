@@ -295,7 +295,7 @@ export default {
           this.$store.commit('incrementInactivityCounter');
           const currentCounter = this.$store.getters.inactivityCounter;
           const currentTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
-          const timeoutOccurred = currentTimeoutClearedAt !== previousTimeoutClearedAt;
+          const timeoutOccurred = currentTimeoutClearedAt > previousTimeoutClearedAt;
           logInactivityDebug('[inactivity] counter after increment', {
             counterAfterIncrement: currentCounter,
             hasActiveEditorSession: this.$store.getters.hasActiveEditorSession,
