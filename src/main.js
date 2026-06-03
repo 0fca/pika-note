@@ -13,6 +13,12 @@ function hasActiveEditorSession(state) {
   return state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
 }
 
+function logInactivityDebug(message, payload = {}) {
+  if (process.env.NODE_ENV !== 'production' || process.env.VUE_APP_INACTIVITY_DEBUG === 'true') {
+    console.log(message, payload);
+  }
+}
+
 const routes = [
   { path: '/', name: 'index', component: WorkspaceLayout },
   { path: '/editor', name: 'new-editor', component: WorkspaceLayout },
@@ -55,6 +61,7 @@ const store = createStore({
       // Inactivity counter: counts consecutive successful status checks
       inactivityCounter: 0,
       inactivityThreshold: 100,
+      lastInactivityTimeoutAt: 0,
       // Multi-tab state
       editorTabs: [],
       activeTabId: null
@@ -138,7 +145,7 @@ const store = createStore({
     incrementInactivityCounter(state){
       state.inactivityCounter++;
       const hasActiveSession = hasActiveEditorSession(state);
-      console.log('[inactivity] incrementInactivityCounter', {
+      logInactivityDebug('[inactivity] incrementInactivityCounter', {
         counter: state.inactivityCounter,
         threshold: state.inactivityThreshold,
         hasActiveEditorSession: hasActiveSession,
@@ -147,7 +154,7 @@ const store = createStore({
         noteId: state.id
       });
       if(state.inactivityCounter >= state.inactivityThreshold && hasActiveSession){
-        console.log('[inactivity] threshold reached, clearing active editor session', {
+        logInactivityDebug('[inactivity] threshold reached, clearing active editor session', {
           counter: state.inactivityCounter,
           activeTabId: state.activeTabId,
           tabCount: state.editorTabs.length,
@@ -162,11 +169,14 @@ const store = createStore({
         state.rawText = '';
         state.updateLock = false;
         state.inactivityCounter = 0;
+        state.lastInactivityTimeoutAt = Date.now();
         localStorage.removeItem('content');
         // Close all tabs
         state.editorTabs = [];
         state.activeTabId = null;
-        console.log('[inactivity] active editor session cleared');
+        logInactivityDebug('[inactivity] active editor session cleared', {
+          lastInactivityTimeoutAt: state.lastInactivityTimeoutAt
+        });
       }
     },
     resetInactivityCounter(state){
@@ -299,6 +309,9 @@ const store = createStore({
     },
     inactivityCounter(state){
       return state.inactivityCounter;
+    },
+    lastInactivityTimeoutAt(state){
+      return state.lastInactivityTimeoutAt;
     },
     hasActiveEditorSession(state){
       return hasActiveEditorSession(state);
