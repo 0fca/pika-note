@@ -284,7 +284,7 @@ export default {
         this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
         if(isLoggedIn){
           const previousCounter = this.$store.getters.inactivityCounter;
-          const previousTimeoutAt = this.$store.getters.lastInactivityTimeoutAt;
+          const previousTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
           logInactivityDebug('[inactivity] auth refresh succeeded', {
             counterBeforeIncrement: previousCounter,
             hadActiveEditorSession: this.$store.getters.hasActiveEditorSession,
@@ -294,16 +294,16 @@ export default {
           // Increment inactivity counter on each successful status check
           this.$store.commit('incrementInactivityCounter');
           const currentCounter = this.$store.getters.inactivityCounter;
-          const currentTimeoutAt = this.$store.getters.lastInactivityTimeoutAt;
-          const timedOutByInactivity = currentTimeoutAt !== previousTimeoutAt;
+          const currentTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
+          const timeoutOccurred = currentTimeoutClearedAt !== previousTimeoutClearedAt;
           logInactivityDebug('[inactivity] counter after increment', {
             counterAfterIncrement: currentCounter,
             hasActiveEditorSession: this.$store.getters.hasActiveEditorSession,
             activeTabId: this.$store.getters.activeTabId,
             route: this.$route.path,
-            timedOutByInactivity: timedOutByInactivity
+            timeoutOccurred: timeoutOccurred
           });
-          if (timedOutByInactivity && this.$route.path.startsWith('/editor')) {
+          if (timeoutOccurred && this.$route.path.startsWith('/editor')) {
             logInactivityDebug('[inactivity] editor session timed out, redirecting to home');
             this.$router.replace('/');
           }

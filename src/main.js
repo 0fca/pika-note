@@ -9,7 +9,7 @@ import { createStore } from 'vuex'
 const NEW_NOTE_TAB_ID = '__new_note__';
 
 function hasActiveEditorSession(state) {
-  // `count` tracks editor character count and keeps untitled drafts eligible for inactivity cleanup.
+  // `count` tracks editor character count so untitled drafts still count as an active editor session.
   return state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
 }
 
@@ -61,7 +61,7 @@ const store = createStore({
       // Inactivity counter: counts consecutive successful status checks
       inactivityCounter: 0,
       inactivityThreshold: 100,
-      lastInactivityTimeoutAt: 0,
+      lastTimeoutClearedAt: 0,
       // Multi-tab state
       editorTabs: [],
       activeTabId: null
@@ -169,13 +169,13 @@ const store = createStore({
         state.rawText = '';
         state.updateLock = false;
         state.inactivityCounter = 0;
-        state.lastInactivityTimeoutAt = Date.now();
+        state.lastTimeoutClearedAt = Date.now();
         localStorage.removeItem('content');
         // Close all tabs
         state.editorTabs = [];
         state.activeTabId = null;
         logInactivityDebug('[inactivity] active editor session cleared', {
-          lastInactivityTimeoutAt: state.lastInactivityTimeoutAt
+          lastTimeoutClearedAt: state.lastTimeoutClearedAt
         });
       }
     },
@@ -310,8 +310,8 @@ const store = createStore({
     inactivityCounter(state){
       return state.inactivityCounter;
     },
-    lastInactivityTimeoutAt(state){
-      return state.lastInactivityTimeoutAt;
+    lastTimeoutClearedAt(state){
+      return state.lastTimeoutClearedAt;
     },
     hasActiveEditorSession(state){
       return hasActiveEditorSession(state);
