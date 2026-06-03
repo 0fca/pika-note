@@ -8,6 +8,10 @@ import { createStore } from 'vuex'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
 
+function hasActiveEditorSession(state) {
+  return state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
+}
+
 const routes = [
   { path: '/', name: 'index', component: WorkspaceLayout },
   { path: '/editor', name: 'new-editor', component: WorkspaceLayout },
@@ -132,8 +136,22 @@ const store = createStore({
     },
     incrementInactivityCounter(state){
       state.inactivityCounter++;
-      const hasActiveEditorSession = state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
-      if(state.inactivityCounter >= state.inactivityThreshold && hasActiveEditorSession){
+      const hasActiveSession = hasActiveEditorSession(state);
+      console.log('[inactivity] incrementInactivityCounter', {
+        counter: state.inactivityCounter,
+        threshold: state.inactivityThreshold,
+        hasActiveEditorSession: hasActiveSession,
+        activeTabId: state.activeTabId,
+        tabCount: state.editorTabs.length,
+        noteId: state.id
+      });
+      if(state.inactivityCounter >= state.inactivityThreshold && hasActiveSession){
+        console.log('[inactivity] threshold reached, clearing active editor session', {
+          counter: state.inactivityCounter,
+          activeTabId: state.activeTabId,
+          tabCount: state.editorTabs.length,
+          noteId: state.id
+        });
         // Unload current note
         state.id = '';
         state.name = '';
@@ -147,6 +165,7 @@ const store = createStore({
         // Close all tabs
         state.editorTabs = [];
         state.activeTabId = null;
+        console.log('[inactivity] active editor session cleared');
       }
     },
     resetInactivityCounter(state){
@@ -279,6 +298,9 @@ const store = createStore({
     },
     inactivityCounter(state){
       return state.inactivityCounter;
+    },
+    hasActiveEditorSession(state){
+      return hasActiveEditorSession(state);
     },
     editorTabs(state){
       return state.editorTabs;

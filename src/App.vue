@@ -275,8 +275,28 @@ export default {
         const isLoggedIn = await securityService.validateLoggedInState();
         this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
         if(isLoggedIn){
+          const previousCounter = this.$store.getters.inactivityCounter;
+          const hadActiveEditorSession = this.$store.getters.hasActiveEditorSession;
+          console.log('[inactivity] auth refresh succeeded', {
+            counterBeforeIncrement: previousCounter,
+            hadActiveEditorSession: hadActiveEditorSession,
+            activeTabId: this.$store.getters.activeTabId,
+            route: this.$route.path
+          });
           // Increment inactivity counter on each successful status check
           this.$store.commit('incrementInactivityCounter');
+          const currentCounter = this.$store.getters.inactivityCounter;
+          const hasActiveEditorSession = this.$store.getters.hasActiveEditorSession;
+          console.log('[inactivity] counter after increment', {
+            counterAfterIncrement: currentCounter,
+            hasActiveEditorSession: hasActiveEditorSession,
+            activeTabId: this.$store.getters.activeTabId,
+            route: this.$route.path
+          });
+          if (hadActiveEditorSession && !hasActiveEditorSession && currentCounter === 0 && this.$route.path.startsWith('/editor')) {
+            console.log('[inactivity] editor session timed out, redirecting to home');
+            this.$router.replace('/');
+          }
         }
       } catch (error) {
         console.error('Auth refresh failed', error);
