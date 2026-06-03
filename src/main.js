@@ -9,6 +9,7 @@ import { createStore } from 'vuex'
 const NEW_NOTE_TAB_ID = '__new_note__';
 
 function hasActiveEditorSession(state) {
+  // `count` tracks editor character count and keeps untitled drafts eligible for inactivity cleanup.
   return state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
 }
 

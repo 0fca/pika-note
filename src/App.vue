@@ -293,7 +293,7 @@ export default {
             activeTabId: this.$store.getters.activeTabId,
             route: this.$route.path
           });
-          if (hadActiveEditorSession && !hasActiveEditorSession && currentCounter === 0 && this.$route.path.startsWith('/editor')) {
+          if (hadActiveEditorSession && !hasActiveEditorSession && this.$route.path.startsWith('/editor')) {
             console.log('[inactivity] editor session timed out, redirecting to home');
             this.$router.replace('/');
           }
