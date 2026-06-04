@@ -14,7 +14,7 @@
           type="text" 
           id="note-title-input" 
           v-model="noteTitle" 
-          :placeholder="noteType === 'sheet' ? 'Sheet title' : 'Note title...'"
+          :placeholder="noteType === 'sheet' ? 'Sheet title...' : 'Note title...'"
           class="title-input"
           @focus="onTitleFocus"
           :readonly="noteType === 'sheet'"
@@ -292,30 +292,30 @@ export default {
       if (noteId && this.editor) {
         this.isLoadingNote = true;
         this.noteService.getNote(noteId)
-          .then(n => {
-            const noteType = normalizeNoteType(n.noteType);
+          .then(note => {
+            const noteType = normalizeNoteType(note.noteType);
             this.$store.commit({type: 'updateNoteType', noteType: noteType});
             if (noteType === 'sheet') {
-              this.sheetRows = extractSheetRows(n.content);
+              this.sheetRows = extractSheetRows(note.content);
               this.$store.commit({type: 'updateContent', content: ''});
               this.editor.setContent('', 0);
               this.$store.commit({type: 'setCharactersCount', count: 0});
             } else {
-              const content = extractNoteTextContent(n.content);
+              const content = extractNoteTextContent(note.content);
               this.sheetRows = [];
               this.$store.commit({type: 'updateContent', content: content});
               this.editor.setContent(content, 0);
               this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
             }
             this.$store.commit({type: "updateIfError", error: false});
-            this.$store.commit({type: 'updateName', name: n.humanName});
+            this.$store.commit({type: 'updateName', name: note.humanName});
             // Set Last Saved At to the note's last modified date from the API
-            const noteDate = n.timestamp || n.lastModifiedDate || n.dateModified || n.modifiedAt || n.updatedAt || n.date;
+            const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
             if (noteDate) {
               this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
             }
             this.isProgrammaticTitleUpdate = true;
-            this.noteTitle = n.humanName;
+            this.noteTitle = note.humanName;
             this.isProgrammaticTitleUpdate = false;
             // Reset unsaved changes flag when loading a note
             this.hasUnsavedChanges = false;

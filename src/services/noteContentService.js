@@ -71,7 +71,7 @@ function normalizeSheetRows(rows) {
 
   if (rows.every(Array.isArray)) {
     const [headerRow = [], ...dataRows] = rows;
-    const headers = buildHeaders(headerRow, Math.max(headerRow.length, ...dataRows.map(row => row.length), 0));
+    const headers = buildHeaders(headerRow, getTableWidth(headerRow, dataRows));
 
     return dataRows
       .filter(row => row.some(cell => `${cell}`.trim() !== ''))
@@ -140,7 +140,7 @@ function parseCsvText(rawText) {
   }
 
   const [headerRow = [], ...dataRows] = records;
-  const headers = buildHeaders(headerRow, Math.max(headerRow.length, ...dataRows.map(row => row.length), 0));
+  const headers = buildHeaders(headerRow, getTableWidth(headerRow, dataRows));
 
   return dataRows
     .filter(row => row.some(cell => `${cell}`.trim() !== ''))
@@ -162,6 +162,11 @@ function buildHeaders(headerRow, width) {
     while (usedHeaders.has(header)) {
       header = `${baseHeader} ${duplicateIndex}`;
       duplicateIndex++;
+    }
+
+    function getTableWidth(headerRow, dataRows) {
+      return [headerRow.length, ...dataRows.map(row => row.length), 0]
+        .reduce((maxWidth, currentWidth) => Math.max(maxWidth, currentWidth), 0);
     }
 
     usedHeaders.add(header);
