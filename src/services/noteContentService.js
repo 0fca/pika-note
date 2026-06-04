@@ -3,6 +3,7 @@ export const SHEET_NOTE_TYPE = 'sheet';
 
 const DEFAULT_SHEET_COLUMN_LABELS = ['Column 1', 'Column 2', 'Column 3'];
 const SAFE_SHEET_FIELD_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const MAX_NESTED_SHEET_CONTENT_DEPTH = 10;
 
 export function normalizeNoteType(noteType) {
   return noteType === SHEET_NOTE_TYPE ? SHEET_NOTE_TYPE : DEFAULT_NOTE_TYPE;
@@ -486,7 +487,7 @@ function safeJsonParse(value) {
 function unwrapNestedSheetContent(rawContent) {
   let currentValue = rawContent;
 
-  for (let depth = 0; depth < 10; depth++) {
+  for (let depth = 0; depth < MAX_NESTED_SHEET_CONTENT_DEPTH; depth++) {
     if (typeof currentValue === 'string') {
       const parsedValue = safeJsonParse(currentValue);
       if (parsedValue === null) {
