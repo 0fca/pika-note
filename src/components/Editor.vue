@@ -30,13 +30,14 @@
           :placeholder="noteType === 'sheet' ? 'Sheet title...' : 'Note title...'"
           class="title-input"
           @focus="onTitleFocus"
-          :readonly="noteType === 'sheet' && !isSheetEditable"
-          :aria-label="noteType === 'sheet' && !isSheetEditable ? 'Sheet title, read only' : (noteType === 'sheet' ? 'Sheet title' : 'Note title')"
+          :readonly="isReadOnlySheet"
+          :aria-readonly="isReadOnlySheet ? 'true' : 'false'"
+          :aria-label="isReadOnlySheet ? 'Sheet title, read only' : (noteType === 'sheet' ? 'Sheet title' : 'Note title')"
         />
       </div>
     </div>
     
-    <div class="row" v-if="noteType !== 'sheet' || isSheetEditable">
+    <div class="row" v-if="noteType !== 'sheet' || !isReadOnlySheet">
       <div class="fixed-action-btn" ref="fab">
         <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click.stop="fabOpen = !fabOpen">
           <span class="material-symbols-outlined fab-icon">mode_edit</span>
@@ -83,7 +84,7 @@
           no-mass-update
           disable-panel-setting
           disable-panel-filter
-          :readonly="!isSheetEditable"
+          :readonly="isReadOnlySheet"
           width="100%"
           height="480px"
           @update="onSheetChanged"
@@ -102,7 +103,7 @@
           <button type="button" class="btn-action sheet-action-btn" @click="addSheetRow">Add row</button>
           <button type="button" class="btn-action sheet-action-btn" @click="addSheetColumn">Add column</button>
         </div>
-        <div v-else-if="sheetRows.length === 0" class="sheet-empty-state" role="status" aria-live="polite">
+        <div v-else-if="sheetRows.length === 0" class="sheet-empty-state" role="status" aria-live="assertive">
           No CSV rows available for this sheet.
         </div>
       </div>
@@ -152,6 +153,9 @@ export default {
     isNewNoteDraft() {
       return this.id === '';
     },
+    isReadOnlySheet() {
+      return this.noteType === 'sheet' && !this.isSheetEditable;
+    },
     sheetColumns() {
       return Object.keys(this.sheetRows[0] || createEmptySheetRows()[0]);
     },
@@ -186,7 +190,7 @@ export default {
       }
     },
     noteTitle() {
-      if (this.noteType === 'sheet' && !this.isSheetEditable) {
+      if (this.isReadOnlySheet) {
         return;
       }
       // Only mark as unsaved if this is a user edit, not a programmatic update or note load
@@ -438,7 +442,7 @@ export default {
       }
     },
     save: function () {
-      if (this.noteType === 'sheet' && !this.isSheetEditable) {
+      if (this.isReadOnlySheet) {
         toastService.warning('Sheet notes are read-only');
         return;
       }
@@ -462,7 +466,7 @@ export default {
           ? hasSheetContent(this.sheetRows)
           : this.$store.getters.count > 0;
 
-        if(!hasContent){
+        if (!hasContent) {
           toastService.warning(this.noteType === 'sheet'
             ? 'Add some sheet data before saving'
             : 'Add some note text before saving');
@@ -527,7 +531,7 @@ export default {
       }
     },
     clearAll: function () {
-      if (this.noteType === 'sheet' && !this.isSheetEditable) {
+      if (this.isReadOnlySheet) {
         return;
       }
       toastService.show('Cleared!')
@@ -553,7 +557,7 @@ export default {
     },
     
     triggerDebouncedAutoSave() {
-      if (this.noteType === 'sheet' && !this.isSheetEditable) {
+      if (this.isReadOnlySheet) {
         return;
       }
       // Only trigger debounced auto-save if enabled
@@ -573,7 +577,7 @@ export default {
     },
     
     performAutoSave() {
-      if (this.noteType === 'sheet' && !this.isSheetEditable) {
+      if (this.isReadOnlySheet) {
         return;
       }
       // Check if there are unsaved changes
