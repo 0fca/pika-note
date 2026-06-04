@@ -5,6 +5,7 @@ import About from './components/About'
 import WorkspaceLayout from "@/components/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
+import VueExcelEditor from 'vue3-excel-editor'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
 
@@ -32,6 +33,7 @@ const router = createRouter({routes: routes, history: history});
 
 const app = createApp(App);
 app.use(router)
+app.use(VueExcelEditor)
 // Create a new store instance.
 const store = createStore({
   state () {
@@ -42,6 +44,7 @@ const store = createStore({
       name: '',
       limit: 20000,
       id: '',
+      noteType: 'note',
       order: localStorage.getItem('order') ?? 1,
       noteCount: localStorage.getItem('count') ?? 10,
       loggedIn: false,
@@ -92,6 +95,9 @@ const store = createStore({
     },
     updateId(state, payload){
       state.id = payload.id; 
+    },
+    updateNoteType(state, payload){
+      state.noteType = payload.noteType;
     },
     updateOrder(state, payload){
       state.order = payload.order;
@@ -162,6 +168,7 @@ const store = createStore({
         });
         // Unload current note
         state.id = '';
+        state.noteType = 'note';
         state.name = '';
         state.content = '';
         state.count = 0;
@@ -221,6 +228,7 @@ const store = createStore({
           } else {
             state.activeTabId = null;
             state.id = '';
+            state.noteType = 'note';
             state.name = '';
             state.content = '';
             state.count = 0;
@@ -258,6 +266,9 @@ const store = createStore({
     },
     id(state){
       return state.id;
+    },
+    noteType(state){
+      return state.noteType;
     },
     order(state){
       return state.order;

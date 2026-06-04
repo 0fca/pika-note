@@ -272,6 +272,7 @@ import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
 import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
+import { normalizeNoteType } from '@/services/noteContentService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
@@ -556,6 +557,7 @@ export default {
       // Reset editor panes when switching buckets
       this.$store.commit('clearAllTabs');
       this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -587,6 +589,7 @@ export default {
       }
       
       this.$store.commit({type: 'updateId', id: note.id});
+      this.$store.commit({type: 'updateNoteType', noteType: normalizeNoteType(note.noteType)});
       this.$store.commit({type: 'updateName', name: note.humanName});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       
@@ -619,6 +622,7 @@ export default {
           
           // Set the note in the store
           this.$store.commit({type: 'updateId', id: noteId});
+          this.$store.commit({type: 'updateNoteType', noteType: normalizeNoteType(note.noteType)});
           this.$store.commit({type: 'updateName', name: note.humanName});
           const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
           if (noteDate) {
@@ -646,12 +650,14 @@ export default {
         .catch(() => {
           // If note fetch fails, fall back to just setting the ID and loading notes normally
           this.$store.commit({type: 'updateId', id: noteId});
+          this.$store.commit({type: 'updateNoteType', noteType: 'note'});
           this.loadNotes();
         });
     },
     createNewNote() {
       this.$store.commit('resetInactivityCounter');
       this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -818,6 +824,7 @@ export default {
       // If the deleted note is currently loaded, clear it
       if (this.$store.getters.id === noteId) {
         this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateNoteType', noteType: 'note'});
         this.$store.commit({type: 'updateName', name: ''});
         this.$store.commit({type: 'updateContent', content: ''});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -855,6 +862,7 @@ export default {
     onTabSelected(tabId) {
       if (tabId === NEW_NOTE_TAB_ID) {
         this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateNoteType', noteType: 'note'});
         this.$store.commit({type: 'updateName', name: ''});
         this.$store.commit({type: 'updateContent', content: ''});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -868,11 +876,13 @@ export default {
       const note = this.notes.find(n => n.id === tabId);
       if (note) {
         this.$store.commit({type: 'updateId', id: note.id});
+        this.$store.commit({type: 'updateNoteType', noteType: normalizeNoteType(note.noteType)});
         this.$store.commit({type: 'updateName', name: note.humanName});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       } else {
         // Note not in current list, load by ID
         this.$store.commit({type: 'updateId', id: tabId});
+        this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       }
       if (this.$route.params.id !== tabId) {
         this.$router.push('/editor/' + tabId);
@@ -881,6 +891,7 @@ export default {
     onTabsEmpty() {
       // All tabs closed, show empty state
       this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});

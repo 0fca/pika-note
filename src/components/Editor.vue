@@ -14,14 +14,15 @@
           type="text" 
           id="note-title-input" 
           v-model="noteTitle" 
-          placeholder="Note title..."
+          :placeholder="noteType === 'sheet' ? 'Sheet title' : 'Note title...'"
           class="title-input"
           @focus="onTitleFocus"
+          :readonly="noteType === 'sheet'"
         />
       </div>
     </div>
     
-    <div class="row">
+    <div class="row" v-if="noteType !== 'sheet'">
       <div class="fixed-action-btn" ref="fab">
         <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click.stop="fabOpen = !fabOpen">
           <span class="material-symbols-outlined fab-icon">mode_edit</span>
@@ -57,7 +58,24 @@
       </div>
     </div>
     <div class="row background">
-      <div id="editor" @focus="onEditorFocus"></div>
+      <div v-if="noteType !== 'sheet'" id="editor" @focus="onEditorFocus"></div>
+      <div v-else class="sheet-container">
+        <vue-excel-editor
+          v-if="sheetRows.length > 0"
+          v-model="sheetRows"
+          filter-row
+          readonly
+          no-paging
+          no-mass-update
+          disable-panel-setting
+          disable-panel-filter
+          width="100%"
+          height="480px"
+        />
+        <div v-if="sheetRows.length === 0" class="sheet-empty-state">
+          No CSV rows available for this sheet.
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -67,6 +85,7 @@ import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/Preloader";
 import { toastService } from '@/services/toastService';
+import { extractNoteTextContent, extractSheetRows, normalizeNoteType } from '@/services/noteContentService';
 
 export default {
   components: {
@@ -86,6 +105,11 @@ export default {
       get(){
         return this.$store.getters.bucketUuid;
       }
+    },
+    noteType: {
+      get() {
+        return this.$store.getters.noteType;
+      }
     }
   },
   watch: {
@@ -100,6 +124,7 @@ export default {
           this.noteTitle = '';
           this.isProgrammaticTitleUpdate = false;
           this.showStatsFooter = false;
+          this.sheetRows = [];
           // Reset unsaved changes for new note
           this.hasUnsavedChanges = false;
         } else {
@@ -113,12 +138,24 @@ export default {
       }
     },
     noteTitle() {
+      if (this.noteType === 'sheet') {
+        return;
+      }
       // Only mark as unsaved if this is a user edit, not a programmatic update or note load
       if (!this.isProgrammaticTitleUpdate && !this.isLoadingNote) {
         // Mark as having unsaved changes when title changes
         this.hasUnsavedChanges = true;
         // Trigger debounced auto-save on title changes
         this.triggerDebouncedAutoSave();
+      }
+    },
+    noteType(newType) {
+      if (newType === 'sheet') {
+        if (this.autoSaveDebounceTimer) {
+          clearTimeout(this.autoSaveDebounceTimer);
+          this.autoSaveDebounceTimer = null;
+        }
+        this.hasUnsavedChanges = false;
       }
     }
   },
@@ -134,7 +171,8 @@ export default {
       hasUnsavedChanges: false,
       isProgrammaticTitleUpdate: false,
       isLoadingNote: false,
-      fabOpen: false
+      fabOpen: false,
+      sheetRows: []
     }
   },
   beforeRouteEnter(to, from, next){
@@ -150,7 +188,9 @@ export default {
     this.$store.commit({type: 'updateContent', content: ""});
     this.$store.commit(({type: 'updateName', name: ""}));
     this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
-    this.editor.destroy();
+    if (this.editor) {
+      this.editor.destroy();
+    }
     const id = this.$store.getters.autoSaveJobId;
     clearInterval(id);
     this.$store.commit({type: 'updateIntervalId', autoSaveJobId: 0});
@@ -252,10 +292,20 @@ export default {
         this.isLoadingNote = true;
         this.noteService.getNote(noteId)
           .then(n => {
-            const content = JSON.parse(n.content);
-            this.$store.commit({type: 'updateContent', content: content.content});
-            this.editor.setContent(content.content, 0);
-            this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+            const noteType = normalizeNoteType(n.noteType);
+            this.$store.commit({type: 'updateNoteType', noteType: noteType});
+            if (noteType === 'sheet') {
+              this.sheetRows = extractSheetRows(n.content);
+              this.$store.commit({type: 'updateContent', content: ''});
+              this.editor.setContent('', 0);
+              this.$store.commit({type: 'setCharactersCount', count: 0});
+            } else {
+              const content = extractNoteTextContent(n.content);
+              this.sheetRows = [];
+              this.$store.commit({type: 'updateContent', content: content});
+              this.editor.setContent(content, 0);
+              this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+            }
             this.$store.commit({type: "updateIfError", error: false});
             this.$store.commit({type: 'updateName', name: n.humanName});
             // Set Last Saved At to the note's last modified date from the API
@@ -281,6 +331,10 @@ export default {
       }
     },
     save: function () {
+      if (this.noteType === 'sheet') {
+        toastService.warning('Sheet notes are read-only');
+        return;
+      }
       // Reset auto-save debounce timer when user manually saves
       if (this.autoSaveDebounceTimer) {
         clearTimeout(this.autoSaveDebounceTimer);
@@ -354,6 +408,9 @@ export default {
       }
     },
     clearAll: function () {
+      if (this.noteType === 'sheet') {
+        return;
+      }
       toastService.show('Cleared!')
       this.$store.commit({type: 'setCharactersCount', count: 0});
       this.editor.resetContent();
@@ -372,6 +429,9 @@ export default {
     },
     
     triggerDebouncedAutoSave() {
+      if (this.noteType === 'sheet') {
+        return;
+      }
       // Only trigger debounced auto-save if enabled
       if (!this.autoSaveEnabled) {
         return;
@@ -389,6 +449,9 @@ export default {
     },
     
     performAutoSave() {
+      if (this.noteType === 'sheet') {
+        return;
+      }
       // Check if there are unsaved changes
       if (!this.hasUnsavedChanges) {
         console.log("No unsaved changes, skipping auto-save");
@@ -499,6 +562,15 @@ export default {
   height: fit-content;
   min-height: 50vh;
   position: relative;
+}
+
+.sheet-container {
+  width: 100%;
+}
+
+.sheet-empty-state {
+  padding: var(--spacing-md);
+  color: var(--color-text-muted);
 }
 
 /* Dark mode support for note loading */

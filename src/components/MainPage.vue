@@ -50,7 +50,6 @@
 
 <script>
 import Note from '@/components/Note';
-import Preloader from "@/components/Preloader";
 import Error from "@/components/Error";
 import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
@@ -67,7 +66,6 @@ export default {
   components: {
     Error,
     Note,
-    Preloader,
     Select,
     Info,
     NoteCountDropdown,
