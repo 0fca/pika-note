@@ -7,6 +7,19 @@
       </div>
     </transition>
     
+    <div v-if="isNewNoteDraft" class="note-type-section">
+      <label class="note-type-label" for="new-note-type">Note type</label>
+      <select
+        id="new-note-type"
+        class="browser-default note-type-select"
+        :value="noteType"
+        @change="onNewNoteTypeChange($event.target.value)"
+      >
+        <option value="note">Note</option>
+        <option value="sheet">Sheet</option>
+      </select>
+    </div>
+    
     <!-- Title Input for All Notes -->
     <div class="title-input-section">
       <div class="input-field">
@@ -17,13 +30,13 @@
           :placeholder="noteType === 'sheet' ? 'Sheet title...' : 'Note title...'"
           class="title-input"
           @focus="onTitleFocus"
-          :readonly="noteType === 'sheet'"
-          :aria-label="noteType === 'sheet' ? 'Sheet title, read only' : 'Note title'"
+          :readonly="noteType === 'sheet' && !isSheetEditable"
+          :aria-label="noteType === 'sheet' && !isSheetEditable ? 'Sheet title, read only' : (noteType === 'sheet' ? 'Sheet title' : 'Note title')"
         />
       </div>
     </div>
     
-    <div class="row" v-if="noteType !== 'sheet'">
+    <div class="row" v-if="noteType !== 'sheet' || isSheetEditable">
       <div class="fixed-action-btn" ref="fab">
         <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click.stop="fabOpen = !fabOpen">
           <span class="material-symbols-outlined fab-icon">mode_edit</span>
@@ -62,18 +75,34 @@
       <div v-if="noteType !== 'sheet'" id="editor" @focus="onEditorFocus"></div>
       <div v-else class="sheet-container">
         <vue-excel-editor
-          v-if="sheetRows.length > 0"
+          :key="sheetEditorKey"
+          ref="sheetEditor"
           v-model="sheetRows"
           filter-row
-          readonly
           no-paging
           no-mass-update
           disable-panel-setting
           disable-panel-filter
+          :readonly="!isSheetEditable"
           width="100%"
           height="480px"
-        />
-        <div v-if="sheetRows.length === 0" class="sheet-empty-state" role="status" aria-live="polite">
+          @update="onSheetChanged"
+          @delete="onSheetChanged"
+        >
+          <vue-excel-column
+            v-for="column in sheetColumns"
+            :key="column"
+            :field="column"
+            :label="column"
+            type="string"
+            width="180px"
+          />
+        </vue-excel-editor>
+        <div v-if="isSheetEditable" class="sheet-actions">
+          <button type="button" class="btn-action sheet-action-btn" @click="addSheetRow">Add row</button>
+          <button type="button" class="btn-action sheet-action-btn" @click="addSheetColumn">Add column</button>
+        </div>
+        <div v-else-if="sheetRows.length === 0" class="sheet-empty-state" role="status" aria-live="polite">
           No CSV rows available for this sheet.
         </div>
       </div>
@@ -86,7 +115,15 @@ import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/Preloader";
 import { toastService } from '@/services/toastService';
-import { extractNoteTextContent, extractSheetRows, normalizeNoteType } from '@/services/noteContentService';
+import {
+  createEmptySheetRows,
+  extractNoteTextContent,
+  extractSheetRows,
+  hasSheetContent,
+  normalizeNoteType,
+  serializeSheetRows,
+  stringifySheetRows
+} from '@/services/noteContentService';
 
 export default {
   components: {
@@ -111,6 +148,15 @@ export default {
       get() {
         return this.$store.getters.noteType;
       }
+    },
+    isNewNoteDraft() {
+      return this.id === '';
+    },
+    sheetColumns() {
+      return Object.keys(this.sheetRows[0] || createEmptySheetRows()[0]);
+    },
+    sheetEditorKey() {
+      return this.sheetColumns.join('|');
     }
   },
   watch: {
@@ -126,6 +172,7 @@ export default {
           this.isProgrammaticTitleUpdate = false;
           this.showStatsFooter = false;
           this.sheetRows = [];
+          this.isSheetEditable = false;
           // Reset unsaved changes for new note
           this.hasUnsavedChanges = false;
         } else {
@@ -139,7 +186,7 @@ export default {
       }
     },
     noteTitle() {
-      if (this.noteType === 'sheet') {
+      if (this.noteType === 'sheet' && !this.isSheetEditable) {
         return;
       }
       // Only mark as unsaved if this is a user edit, not a programmatic update or note load
@@ -151,7 +198,7 @@ export default {
       }
     },
     noteType(newType) {
-      if (newType === 'sheet') {
+      if (newType === 'sheet' && !this.isSheetEditable) {
         if (this.autoSaveDebounceTimer) {
           clearTimeout(this.autoSaveDebounceTimer);
           this.autoSaveDebounceTimer = null;
@@ -173,7 +220,8 @@ export default {
       isProgrammaticTitleUpdate: false,
       isLoadingNote: false,
       fabOpen: false,
-      sheetRows: []
+      sheetRows: [],
+      isSheetEditable: false
     }
   },
   beforeRouteEnter(to, from, next){
@@ -288,6 +336,62 @@ export default {
       // Reset inactivity counter on user interaction
       this.$store.commit('resetInactivityCounter');
     },
+    onNewNoteTypeChange(noteType) {
+      const normalizedType = normalizeNoteType(noteType);
+      if (normalizedType === this.noteType) {
+        return;
+      }
+
+      this.$store.commit('resetInactivityCounter');
+      this.$store.commit({type: 'updateNoteType', noteType: normalizedType});
+      this.$store.commit({type: 'updateContent', content: ''});
+      this.$store.commit({type: 'setCharactersCount', count: 0});
+      this.hasUnsavedChanges = false;
+
+      if (this.editor) {
+        this.editor.setContent('', 0);
+      }
+
+      if (normalizedType === 'sheet') {
+        this.isSheetEditable = true;
+        this.sheetRows = createEmptySheetRows();
+      } else {
+        this.isSheetEditable = false;
+        this.sheetRows = [];
+      }
+    },
+    onSheetChanged() {
+      if (!this.isSheetEditable || this.isLoadingNote) {
+        return;
+      }
+
+      this.$store.commit('resetInactivityCounter');
+      this.hasUnsavedChanges = true;
+      this.triggerDebouncedAutoSave();
+    },
+    addSheetRow() {
+      if (!this.isSheetEditable) {
+        return;
+      }
+
+      const nextRow = this.sheetColumns.reduce((record, columnName) => {
+        record[columnName] = '';
+        return record;
+      }, {});
+
+      this.sheetRows = [...this.sheetRows, nextRow];
+      this.onSheetChanged();
+    },
+    addSheetColumn() {
+      if (!this.isSheetEditable) {
+        return;
+      }
+
+      const nextColumnName = `Column ${this.sheetColumns.length + 1}`;
+      this.sheetRows = (this.sheetRows.length > 0 ? this.sheetRows : createEmptySheetRows(this.sheetColumns))
+        .map(row => ({ ...row, [nextColumnName]: '' }));
+      this.onSheetChanged();
+    },
     loadNote(noteId) {
       if (noteId && this.editor) {
         this.isLoadingNote = true;
@@ -296,11 +400,13 @@ export default {
             const noteType = normalizeNoteType(note.noteType);
             this.$store.commit({type: 'updateNoteType', noteType: noteType});
             if (noteType === 'sheet') {
+              this.isSheetEditable = true;
               this.sheetRows = extractSheetRows(note.content);
               this.$store.commit({type: 'updateContent', content: ''});
               this.editor.setContent('', 0);
               this.$store.commit({type: 'setCharactersCount', count: 0});
             } else {
+              this.isSheetEditable = false;
               const content = extractNoteTextContent(note.content);
               this.sheetRows = [];
               this.$store.commit({type: 'updateContent', content: content});
@@ -332,7 +438,7 @@ export default {
       }
     },
     save: function () {
-      if (this.noteType === 'sheet') {
+      if (this.noteType === 'sheet' && !this.isSheetEditable) {
         toastService.warning('Sheet notes are read-only');
         return;
       }
@@ -346,13 +452,25 @@ export default {
       const titleValue = this.noteTitle;
       
       if (titleValue) {
-        const content = this.editor.getContent(0);
-        if(this.$store.getters.count === 0){
+        const content = this.noteType === 'sheet'
+          ? serializeSheetRows(this.sheetRows)
+          : this.editor.getContent(0);
+        const rawContent = this.noteType === 'sheet'
+          ? stringifySheetRows(this.sheetRows)
+          : this.editor.elements[0].innerText;
+        const hasContent = this.noteType === 'sheet'
+          ? hasSheetContent(this.sheetRows)
+          : this.$store.getters.count > 0;
+
+        if(!hasContent){
+          toastService.warning(this.noteType === 'sheet'
+            ? 'Add some sheet data before saving'
+            : 'Add some note text before saving');
           return;
         }
         this.$store.commit({type: 'updateIsSaving', isSaving: true});
         if (this.$store.getters.id) {
-          this.noteService.saveNote(this.id, titleValue, content, this.editor.elements[0].innerText)
+          this.noteService.saveNote(this.id, titleValue, content, rawContent, this.noteType)
           .then((r) => {
             if(r.ok){
               toastService.success('Note saved!');
@@ -375,7 +493,7 @@ export default {
            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         } else {
-          this.noteService.addNote(this.bucketId, titleValue, content, this.editor.elements[0].innerText).then((r) => {
+          this.noteService.addNote(this.bucketId, titleValue, content, rawContent, this.noteType).then((r) => {
            if(r.ok){
              r.json().then(json => {
                const id = json.payload.id;
@@ -409,10 +527,15 @@ export default {
       }
     },
     clearAll: function () {
-      if (this.noteType === 'sheet') {
+      if (this.noteType === 'sheet' && !this.isSheetEditable) {
         return;
       }
       toastService.show('Cleared!')
+      if (this.noteType === 'sheet') {
+        this.sheetRows = createEmptySheetRows();
+        this.onSheetChanged();
+        return;
+      }
       this.$store.commit({type: 'setCharactersCount', count: 0});
       this.editor.resetContent();
     },
@@ -430,7 +553,7 @@ export default {
     },
     
     triggerDebouncedAutoSave() {
-      if (this.noteType === 'sheet') {
+      if (this.noteType === 'sheet' && !this.isSheetEditable) {
         return;
       }
       // Only trigger debounced auto-save if enabled
@@ -450,7 +573,7 @@ export default {
     },
     
     performAutoSave() {
-      if (this.noteType === 'sheet') {
+      if (this.noteType === 'sheet' && !this.isSheetEditable) {
         return;
       }
       // Check if there are unsaved changes
@@ -465,8 +588,10 @@ export default {
       }
       
       // Check if editor has content
-      const content = this.$store.getters.count;
-      if (!content || content === 0) {
+      const hasContent = this.noteType === 'sheet'
+        ? hasSheetContent(this.sheetRows)
+        : this.$store.getters.count > 0;
+      if (!hasContent) {
         return;
       }
       
@@ -535,6 +660,28 @@ export default {
   margin-bottom: var(--spacing-lg);
 }
 
+.note-type-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.note-type-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.note-type-select {
+  background-color: var(--color-background) !important;
+  color: var(--color-text) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-height: 44px;
+}
+
 .title-input {
   width: 100%;
   font-size: var(--font-size-2xl);
@@ -567,6 +714,17 @@ export default {
 
 .sheet-container {
   width: 100%;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.sheet-action-btn {
+  min-width: 120px;
 }
 
 .sheet-empty-state {

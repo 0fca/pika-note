@@ -1,7 +1,40 @@
-const DEFAULT_NOTE_TYPE = 'note';
+export const DEFAULT_NOTE_TYPE = 'note';
+export const SHEET_NOTE_TYPE = 'sheet';
+const DEFAULT_SHEET_COLUMNS = ['Column 1', 'Column 2', 'Column 3'];
 
 export function normalizeNoteType(noteType) {
-  return noteType === 'sheet' ? 'sheet' : DEFAULT_NOTE_TYPE;
+  return noteType === SHEET_NOTE_TYPE ? SHEET_NOTE_TYPE : DEFAULT_NOTE_TYPE;
+}
+
+export function createEmptySheetRows(columnNames = DEFAULT_SHEET_COLUMNS) {
+  return [columnNames.reduce((record, columnName) => {
+    record[columnName] = '';
+    return record;
+  }, {})];
+}
+
+export function hasSheetContent(rows) {
+  return Array.isArray(rows) && rows.some(row => row && Object.values(row).some(cell => `${cell ?? ''}`.trim() !== ''));
+}
+
+export function serializeSheetRows(rows) {
+  return JSON.stringify({
+    rows: Array.isArray(rows) && rows.length > 0 ? rows : createEmptySheetRows()
+  });
+}
+
+export function stringifySheetRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return '';
+  }
+
+  const columns = Object.keys(rows[0] || {});
+  const csvRows = [
+    columns,
+    ...rows.map(row => columns.map(column => `${row?.[column] ?? ''}`))
+  ];
+
+  return csvRows.map(row => row.join('\t')).join('\n');
 }
 
 export function extractNoteTextContent(rawContent) {
