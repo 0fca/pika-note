@@ -6,9 +6,22 @@ import WorkspaceLayout from "@/components/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
 
+const NEW_NOTE_TAB_ID = '__new_note__';
+
+function hasActiveEditorSession(state) {
+  // `count` tracks editor character count so untitled drafts still count as an active editor session.
+  return state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
+}
+
+function logInactivityDebug(message, payload = {}) {
+  if (process.env.NODE_ENV !== 'production' || process.env.VUE_APP_INACTIVITY_DEBUG === 'true') {
+    console.log(message, payload);
+  }
+}
 
 const routes = [
   { path: '/', name: 'index', component: WorkspaceLayout },
+  { path: '/editor', name: 'new-editor', component: WorkspaceLayout },
   { path: '/editor/:id', name: 'editor', component: WorkspaceLayout },
   { path: '/about', component: About },
   { path: '/callback', name: 'callback', component: Callback }
@@ -44,23 +57,24 @@ const store = createStore({
       bucketsLoading: false,
       notesLoading: false,
       loadingError: '',
-      drawerOpen: false
+      drawerOpen: false,
+      // Inactivity counter: counts consecutive successful status checks
+      inactivityCounter: 0,
+      inactivityThreshold: 100,
+      lastTimeoutClearedAt: 0,
+      // Multi-tab state
+      editorTabs: [],
+      activeTabId: null
     }
   },
   mutations: {
     updateRawText (state, text) {
-      if(state.count >= state.limit){
-        return;
-      }
       state.rawText += text;
     },
     setCharactersCount(state, payload){
       state.count = payload.count;
     },
     increaseCharactersCounter(state){
-      if(state.count >= state.limit){
-        return;
-      }
       state.count++;
     },
     decreaseCharactersCounter(state){
@@ -127,6 +141,106 @@ const store = createStore({
     },
     setDrawerOpen(state, payload){
       state.drawerOpen = payload.drawerOpen;
+    },
+    incrementInactivityCounter(state){
+      state.inactivityCounter++;
+      const hasActiveSession = hasActiveEditorSession(state);
+      logInactivityDebug('[inactivity] incrementInactivityCounter', {
+        counter: state.inactivityCounter,
+        threshold: state.inactivityThreshold,
+        hasActiveEditorSession: hasActiveSession,
+        activeTabId: state.activeTabId,
+        tabCount: state.editorTabs.length,
+        noteId: state.id
+      });
+      if(state.inactivityCounter >= state.inactivityThreshold && hasActiveSession){
+        logInactivityDebug('[inactivity] threshold reached, clearing active editor session', {
+          counter: state.inactivityCounter,
+          activeTabId: state.activeTabId,
+          tabCount: state.editorTabs.length,
+          noteId: state.id
+        });
+        // Unload current note
+        state.id = '';
+        state.name = '';
+        state.content = '';
+        state.count = 0;
+        state.lastSavedAt = null;
+        state.rawText = '';
+        state.updateLock = false;
+        state.inactivityCounter = 0;
+        state.lastTimeoutClearedAt = Date.now();
+        localStorage.removeItem('content');
+        // Close all tabs
+        state.editorTabs = [];
+        state.activeTabId = null;
+        logInactivityDebug('[inactivity] active editor session cleared', {
+          lastTimeoutClearedAt: state.lastTimeoutClearedAt
+        });
+      }
+    },
+    resetInactivityCounter(state){
+      state.inactivityCounter = 0;
+    },
+    // Tab mutations
+    addOrReplaceTab(state, payload){
+      // payload: { id, title, pinned }
+      const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
+      if(existingIndex !== -1){
+        // Already exists, just activate
+        state.activeTabId = payload.id;
+        return;
+      }
+      // Find unpinned, saved tab to replace
+      const unpinnedIndex = state.editorTabs.findIndex(t => !t.pinned && t.id !== NEW_NOTE_TAB_ID && t.id === state.activeTabId);
+      if(unpinnedIndex !== -1){
+        // Replace the active unpinned tab
+        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: false });
+      } else {
+        // Add new tab (pinned and unsaved notes stay open)
+        state.editorTabs.push({ id: payload.id, title: payload.title, pinned: false });
+      }
+      state.activeTabId = payload.id;
+    },
+    addPinnedTab(state, payload){
+      // Add as a new pinned tab (from double-click on tab)
+      const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
+      if(existingIndex !== -1){
+        state.editorTabs[existingIndex].pinned = true;
+      }
+    },
+    closeTab(state, payload){
+      const index = state.editorTabs.findIndex(t => t.id === payload.id);
+      if(index !== -1){
+        state.editorTabs.splice(index, 1);
+        // If we closed the active tab, activate another
+        if(state.activeTabId === payload.id){
+          if(state.editorTabs.length > 0){
+            const newIndex = Math.min(index, state.editorTabs.length - 1);
+            state.activeTabId = state.editorTabs[newIndex].id;
+          } else {
+            state.activeTabId = null;
+            state.id = '';
+            state.name = '';
+            state.content = '';
+            state.count = 0;
+            state.lastSavedAt = null;
+          }
+        }
+      }
+    },
+    setActiveTab(state, payload){
+      state.activeTabId = payload.id;
+    },
+    updateTabTitle(state, payload){
+      const tab = state.editorTabs.find(t => t.id === payload.id);
+      if(tab){
+        tab.title = payload.title;
+      }
+    },
+    clearAllTabs(state){
+      state.editorTabs = [];
+      state.activeTabId = null;
     }
   },
   getters: {
@@ -192,6 +306,21 @@ const store = createStore({
     },
     drawerOpen(state){
       return state.drawerOpen;
+    },
+    inactivityCounter(state){
+      return state.inactivityCounter;
+    },
+    lastTimeoutClearedAt(state){
+      return state.lastTimeoutClearedAt;
+    },
+    hasActiveEditorSession(state){
+      return hasActiveEditorSession(state);
+    },
+    editorTabs(state){
+      return state.editorTabs;
+    },
+    activeTabId(state){
+      return state.activeTabId;
     }
   }
 });

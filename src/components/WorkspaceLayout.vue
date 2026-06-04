@@ -42,27 +42,32 @@
           </form>
         </div>
 
-        <!-- Applications Section -->
+        <!-- Applications Section (collapsible) -->
         <div class="drawer-apps-section">
-          <div class="drawer-section-title">Applications</div>
-          <div class="drawer-apps-list">
-            <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
-              <span class="material-symbols-outlined">cloud</span>
-              <span>Pika Cloudfront</span>
-            </a>
-            <a class="drawer-app-item" href="https://core.lukas-bownik.net/" title="Pika Core">
-              <span class="material-symbols-outlined">storage</span>
-              <span>Pika Core</span>
-            </a>
-            <a class="drawer-app-item" href="https://ai.lukas-bownik.net/" title="Pika AI Assistant">
-              <span class="material-symbols-outlined">chat</span>
-              <span>Pika AI Assistant</span>
-            </a>
-            <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/status" title="Pika Status">
-              <span class="material-symbols-outlined">vital_signs</span>
-              <span>Pika Status</span>
-            </a>
-          </div>
+          <button class="drawer-section-toggle" @click="toggleAppsMenu">
+            <span class="drawer-section-title">Applications</span>
+            <span class="material-symbols-outlined drawer-chevron" :class="{ 'drawer-chevron-open': appsMenuOpen }">expand_more</span>
+          </button>
+          <transition name="collapse">
+            <div v-if="appsMenuOpen" class="drawer-apps-list">
+              <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/" title="Pika Cloudfront">
+                <span class="material-symbols-outlined">cloud</span>
+                <span>Pika Cloudfront</span>
+              </a>
+              <a class="drawer-app-item" href="https://core.lukas-bownik.net/" title="Pika Core">
+                <span class="material-symbols-outlined">storage</span>
+                <span>Pika Core</span>
+              </a>
+              <a class="drawer-app-item" href="https://ai.lukas-bownik.net/" title="Pika AI Assistant">
+                <span class="material-symbols-outlined">chat</span>
+                <span>Pika AI Assistant</span>
+              </a>
+              <a class="drawer-app-item" href="https://cloud.lukas-bownik.net/status" title="Pika Status">
+                <span class="material-symbols-outlined">vital_signs</span>
+                <span>Pika Status</span>
+              </a>
+            </div>
+          </transition>
         </div>
 
         <div class="drawer-divider"></div>
@@ -216,8 +221,17 @@
 
       <!-- Editor Area -->
       <main class="editor-main">
+        <EditorTabs 
+          v-if="this.$store.getters.loggedIn === true && !isTouchScreen"
+          @tab-selected="onTabSelected"
+          @tabs-empty="onTabsEmpty"
+        />
+        <EmptyEditorState 
+          v-if="showEmptyEditorState"
+        />
         <Editor 
-          v-if="this.$store.getters.loggedIn === true" 
+          v-if="showEditor"
+          ref="editor"
           @note-saved="onNoteSaved"
         />
       </main>
@@ -229,16 +243,28 @@
       @close="closeSearch"
       @note-selected="onSearchNoteSelected"
     />
+
+    <ConfirmDialog
+      :visible="showDeleteConfirm"
+      message="Are you sure you want to delete this note?"
+      confirmText="Delete"
+      @confirm="confirmDeleteNote"
+      @cancel="cancelDeleteNote"
+    />
   </div>
 </template>
 
 <script>
 import Note from '@/components/Note';
 import Editor from '@/components/Editor';
+import EditorTabs from '@/components/EditorTabs';
+import EmptyEditorState from '@/components/EmptyEditorState';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import Preloader from "@/components/Preloader";
 import Error from "@/components/Error";
 import Info from "@/components/Info";
 import NoteService from "@/services/noteService";
+import MobileDetectService from '@/services/mobileDetectService';
 import Select from './molecules/Select.vue';
 import OrderSwitch from './molecules/OrderSwitch.vue';
 import SearchOverlay from './molecules/SearchOverlay.vue';
@@ -248,6 +274,7 @@ import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
 
 const pageSize = 15;
+const NEW_NOTE_TAB_ID = '__new_note__';
 
 export default {
   name: 'WorkspaceLayout',
@@ -255,6 +282,9 @@ export default {
     Error,
     Note,
     Editor,
+    EditorTabs,
+    EmptyEditorState,
+    ConfirmDialog,
     Preloader,
     Select,
     Info,
@@ -279,6 +309,12 @@ export default {
         this.$store.commit({type: 'updateLoggedInState', loggedIn: loggedIn});
       },
     },
+    showEditor() {
+      return this.$store.getters.loggedIn === true && (this.$store.getters.id !== '' || this.$route.path === '/editor');
+    },
+    showEmptyEditorState() {
+      return this.$store.getters.loggedIn === true && this.$store.getters.id === '' && this.$route.path !== '/editor';
+    },
     getActuallyLoaded() {
       return this.actuallyLoaded;
     }
@@ -302,6 +338,14 @@ export default {
         this.onBucketsPayloadReceived(bucketsPayload);
         this.loaded = true;
         this.loading = false;
+        
+        // After buckets are loaded, handle route-based note loading
+        const routeId = this.$route.params.id;
+        if (routeId) {
+          this.loadNoteFromUrl(routeId);
+        } else {
+          this.loadNotes();
+        }
       })
       .catch((err) => {
         const wasLoggedIn = this.$store.getters.loggedIn;
@@ -316,13 +360,6 @@ export default {
         this.initialBucketsResolved = true;
         this.$store.commit({type: 'setBucketsLoading', bucketsLoading: false});
       });
-      this.loadNotes();
-    
-    // Load note from route param if present
-    const routeId = this.$route.params.id;
-    if (routeId) {
-      this.$store.commit({type: 'updateId', id: routeId});
-    }
     
     // Enable drawer functionality after mount
     this.$nextTick(() => {
@@ -364,7 +401,10 @@ export default {
       version: packageJson.version,
       initialBucketsResolved: false,
       initialNotesResolved: false,
-      showSearchOverlay: false
+      showSearchOverlay: false,
+      isTouchScreen: MobileDetectService.isTouchScreen(),
+      showDeleteConfirm: false,
+      pendingDeleteNoteId: null
     }
   },
   watch: {
@@ -513,21 +553,8 @@ export default {
       // Update store - this will also update localStorage via mutation
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
       
-      this.notes = [];
-      this.currentPage = 0;
-      this.hasMoreNotes = true;
-      this.loadNotes();
-    },
-    loadNoteIntoEditor(note) {
-      this.$store.commit({type: 'updateId', id: note.id});
-      this.$store.commit({type: 'updateName', name: note.humanName});
-      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
-      
-      if (this.$route.params.id !== note.id) {
-        this.$router.push('/editor/' + note.id);
-      }
-    },
-    createNewNote() {
+      // Reset editor panes when switching buckets
+      this.$store.commit('clearAllTabs');
       this.$store.commit({type: 'updateId', id: ''});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
@@ -535,6 +562,105 @@ export default {
       this.$store.commit({type: 'setCharactersCount', count: 0});
       if (this.$route.path !== '/') {
         this.$router.push('/');
+      }
+      
+      this.notes = [];
+      this.currentPage = 0;
+      this.hasMoreNotes = true;
+      this.loadNotes();
+    },
+    loadNoteIntoEditor(note) {
+      // Reset inactivity counter on user interaction
+      this.$store.commit('resetInactivityCounter');
+      
+      // Switch bucket if note is in a different bucket
+      if (note.bucketId && note.bucketId !== this.bucketId) {
+        this.bucketId = note.bucketId;
+        const bucket = this.buckets.find(b => b.id === note.bucketId);
+        if (bucket) {
+          this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
+          this.notes = [];
+          this.currentPage = 0;
+          this.hasMoreNotes = true;
+          this.loadNotes();
+        }
+      }
+      
+      this.$store.commit({type: 'updateId', id: note.id});
+      this.$store.commit({type: 'updateName', name: note.humanName});
+      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
+      
+      // Add/replace tab (desktop only)
+      if (!this.isTouchScreen) {
+        this.$store.commit({type: 'addOrReplaceTab', id: note.id, title: note.humanName, pinned: false});
+      }
+      
+      if (this.$route.params.id !== note.id) {
+        this.$router.push('/editor/' + note.id);
+      }
+      
+      // Scroll note into view
+      this.$nextTick(() => {
+        this.scrollToNote(note.id);
+      });
+    },
+    loadNoteFromUrl(noteId) {
+      // Fetch the note to determine its bucket and metadata
+      this.noteService.getNote(noteId)
+        .then(note => {
+          // Switch to the note's bucket if different from current
+          if (note.bucketId && note.bucketId !== this.bucketId) {
+            this.bucketId = note.bucketId;
+            const bucket = this.buckets.find(b => b.id === note.bucketId);
+            if (bucket) {
+              this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
+            }
+          }
+          
+          // Set the note in the store
+          this.$store.commit({type: 'updateId', id: noteId});
+          this.$store.commit({type: 'updateName', name: note.humanName});
+          const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
+          if (noteDate) {
+            this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
+          }
+          
+          // Add tab (desktop only)
+          if (!this.isTouchScreen) {
+            this.$store.commit({type: 'addOrReplaceTab', id: noteId, title: note.humanName, pinned: false});
+          }
+          
+          // Load notes list for the bucket, then scroll to the note
+          this.notes = [];
+          this.currentPage = 0;
+          this.hasMoreNotes = true;
+          this.loadNotes();
+          
+          // Wait for notes to render, then scroll to the note
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.scrollToNote(noteId);
+            }, 500);
+          });
+        })
+        .catch(() => {
+          // If note fetch fails, fall back to just setting the ID and loading notes normally
+          this.$store.commit({type: 'updateId', id: noteId});
+          this.loadNotes();
+        });
+    },
+    createNewNote() {
+      this.$store.commit('resetInactivityCounter');
+      this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateName', name: ''});
+      this.$store.commit({type: 'updateContent', content: ''});
+      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+      this.$store.commit({type: 'setCharactersCount', count: 0});
+      if (!this.isTouchScreen) {
+        this.$store.commit({type: 'addOrReplaceTab', id: NEW_NOTE_TAB_ID, title: 'Untitled', pinned: false});
+      }
+      if (this.$route.path !== '/editor') {
+        this.$router.push('/editor');
       }
     },
     createNewNoteAndCloseNav() {
@@ -671,9 +797,32 @@ export default {
       this.showBucketPrompt = false;
     },
     handleNoteDeleted(noteId) {
+      // Show confirmation dialog
+      this.pendingDeleteNoteId = noteId;
+      this.showDeleteConfirm = true;
+    },
+    confirmDeleteNote() {
+      const noteId = this.pendingDeleteNoteId;
+      this.showDeleteConfirm = false;
+      this.pendingDeleteNoteId = null;
+      
+      if (!noteId) return;
+      
       // Immediately remove from UI
       this.notes = this.notes.filter(note => note.id !== noteId);
       this.actuallyLoaded = this.notes.length;
+      
+      // Close tab if open
+      this.$store.commit({type: 'closeTab', id: noteId});
+      
+      // If the deleted note is currently loaded, clear it
+      if (this.$store.getters.id === noteId) {
+        this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateName', name: ''});
+        this.$store.commit({type: 'updateContent', content: ''});
+        this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+      }
+      
       // Fire delete request in background
       this.noteService.removeNote(noteId)
         .then(response => {
@@ -688,6 +837,56 @@ export default {
           toastService.error('Error deleting note');
           this.loadNotes();
         });
+    },
+    cancelDeleteNote() {
+      this.showDeleteConfirm = false;
+      this.pendingDeleteNoteId = null;
+    },
+    scrollToNote(noteId) {
+      // Try desktop sidebar first, then mobile drawer
+      const container = this.$refs.notesContainer || this.$refs.mobileNotesContainer;
+      if (container) {
+        const noteEl = container.querySelector(`[id="${CSS.escape(noteId)}"]`);
+        if (noteEl) {
+          noteEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    },
+    onTabSelected(tabId) {
+      if (tabId === NEW_NOTE_TAB_ID) {
+        this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateName', name: ''});
+        this.$store.commit({type: 'updateContent', content: ''});
+        this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+        this.$store.commit({type: 'setCharactersCount', count: 0});
+        if (this.$route.path !== '/editor') {
+          this.$router.push('/editor');
+        }
+        return;
+      }
+      // Load the note for the selected tab
+      const note = this.notes.find(n => n.id === tabId);
+      if (note) {
+        this.$store.commit({type: 'updateId', id: note.id});
+        this.$store.commit({type: 'updateName', name: note.humanName});
+        this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
+      } else {
+        // Note not in current list, load by ID
+        this.$store.commit({type: 'updateId', id: tabId});
+      }
+      if (this.$route.params.id !== tabId) {
+        this.$router.push('/editor/' + tabId);
+      }
+    },
+    onTabsEmpty() {
+      // All tabs closed, show empty state
+      this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateName', name: ''});
+      this.$store.commit({type: 'updateContent', content: ''});
+      this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
+      if (this.$route.path !== '/') {
+        this.$router.push('/');
+      }
     },
     openSearch() {
       this.showSearchOverlay = true;
@@ -790,7 +989,8 @@ export default {
   flex: 1;
   overflow-y: auto;
   background-color: var(--color-background);
-  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 992px) {
@@ -802,6 +1002,21 @@ export default {
 
 @media (max-width: 600px) {
   .editor-main {
+    padding: 0;
+  }
+}
+
+/* Editor content gets padding, tab bar does not */
+.editor-main > .editor,
+.editor-main > .empty-editor-state {
+  padding: var(--spacing-lg);
+  flex: 1;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .editor-main > .editor,
+  .editor-main > .empty-editor-state {
     padding: var(--spacing-sm);
   }
 }
@@ -857,9 +1072,21 @@ export default {
   color: white !important;
 }
 
-/* Drawer Applications Section */
+/* Drawer Applications Section - Collapsible */
 .drawer-apps-section {
   padding: var(--spacing-md);
+}
+
+.drawer-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
 }
 
 .drawer-section-title {
@@ -868,8 +1095,6 @@ export default {
   color: var(--color-text-soft);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: var(--spacing-sm);
-  padding: 0 var(--spacing-xs);
 }
 
 .drawer-apps-list {
@@ -1093,6 +1318,36 @@ export default {
 .toast-enter-from, .toast-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(-10px);
+}
+
+/* Chevron for collapsible sections */
+.drawer-chevron {
+  font-size: 20px;
+  color: var(--color-text-soft);
+  transition: transform 0.2s ease;
+}
+
+.drawer-chevron-open {
+  transform: rotate(180deg);
+}
+
+/* Collapse transition */
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
+.collapse-enter-to,
+.collapse-leave-from {
+  opacity: 1;
+  max-height: 300px;
 }
 
 /* Dark mode support */
