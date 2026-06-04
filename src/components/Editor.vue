@@ -238,16 +238,16 @@ export default {
   },
   unmounted() {
     document.removeEventListener('click', this.handleClickOutsideFab);
-    this.$store.commit({type: 'updateContent', content: ""});
-    this.$store.commit(({type: 'updateName', name: ""}));
-    this.$store.commit(({type: 'updateLastSavedAt', lastSavedAt: null}));
+    if (this.autoSaveDebounceTimer) {
+      clearTimeout(this.autoSaveDebounceTimer);
+      this.autoSaveDebounceTimer = null;
+    }
     if (this.editor) {
       this.editor.destroy();
     }
     const id = this.$store.getters.autoSaveJobId;
     clearInterval(id);
     this.$store.commit({type: 'updateIntervalId', autoSaveJobId: 0});
-    localStorage.removeItem('content');
   },
   mounted() {
     document.addEventListener('click', this.handleClickOutsideFab);

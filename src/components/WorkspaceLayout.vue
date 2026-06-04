@@ -230,8 +230,14 @@
           v-if="showEmptyEditorState"
         />
         <Editor 
-          v-if="showEditor"
+          v-if="showEditor && activeEditorType !== 'sheet'"
+          :key="editorInstanceKey"
           ref="editor"
+          @note-saved="onNoteSaved"
+        />
+        <SheetEditor
+          v-else-if="showEditor"
+          :key="editorInstanceKey"
           @note-saved="onNoteSaved"
         />
       </main>
@@ -257,6 +263,7 @@
 <script>
 import Note from '@/components/Note';
 import Editor from '@/components/Editor';
+import SheetEditor from '@/components/SheetEditor';
 import EditorTabs from '@/components/EditorTabs';
 import EmptyEditorState from '@/components/EmptyEditorState';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -283,6 +290,7 @@ export default {
     Error,
     Note,
     Editor,
+    SheetEditor,
     EditorTabs,
     EmptyEditorState,
     ConfirmDialog,
@@ -315,6 +323,12 @@ export default {
     },
     showEmptyEditorState() {
       return this.$store.getters.loggedIn === true && this.$store.getters.id === '' && this.$route.path !== '/editor';
+    },
+    activeEditorType() {
+      return this.$store.getters.noteType;
+    },
+    editorInstanceKey() {
+      return `${this.$store.getters.activeTabId ?? this.$store.getters.id ?? 'draft'}-${this.$store.getters.noteType}`;
     },
     getActuallyLoaded() {
       return this.actuallyLoaded;
