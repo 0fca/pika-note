@@ -300,7 +300,7 @@ function collectRowHeaders(rows) {
 
   (Array.isArray(rows) ? rows : []).forEach(row => {
     Object.keys(row || {})
-      // VueExcelEditor injects internal keys like `$id`; keep them out of user-facing columns.
+      // VueExcelEditor injects internal keys like `$id`; filtering them here prevents editor internals from leaking into saved and visible column definitions.
       .filter(key => !key.startsWith('$'))
       .forEach(key => {
         if (!headers.includes(key)) {

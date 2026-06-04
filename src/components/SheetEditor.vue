@@ -115,6 +115,11 @@ import {
   stringifySheetRows
 } from '@/services/noteContentService';
 
+const SHEET_EDITOR_OFFSET = 320;
+const SHEET_EDITOR_MIN_HEIGHT = 360;
+const AUTO_SAVE_INTERVAL_MS = 300000;
+const AUTO_SAVE_DEBOUNCE_MS = 5000;
+
 export default {
   name: 'SheetEditor',
   components: {
@@ -225,7 +230,7 @@ export default {
       }
     },
     updateSheetEditorHeight() {
-      this.sheetEditorHeight = `${Math.max(window.innerHeight - 320, 360)}px`;
+      this.sheetEditorHeight = `${Math.max(window.innerHeight - SHEET_EDITOR_OFFSET, SHEET_EDITOR_MIN_HEIGHT)}px`;
     },
     resetSheetDraft() {
       const initialState = createEmptySheetState();
@@ -412,7 +417,7 @@ export default {
         if (!this.$store.getters.canSave && !this.$store.getters.isSaving) {
           this.triggerDebouncedAutoSave();
         }
-      }, 300000);
+      }, AUTO_SAVE_INTERVAL_MS);
       this.$store.commit({ type: 'updateIntervalId', autoSaveJobId });
     },
     triggerDebouncedAutoSave() {
@@ -426,7 +431,7 @@ export default {
 
       this.autoSaveDebounceTimer = setTimeout(() => {
         this.performAutoSave();
-      }, 5000);
+      }, AUTO_SAVE_DEBOUNCE_MS);
     },
     performAutoSave() {
       if (!this.hasUnsavedChanges) {

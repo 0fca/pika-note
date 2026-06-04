@@ -91,8 +91,8 @@
           @delete="onSheetChanged"
         >
           <vue-excel-column
-            v-for="column in sheetColumns"
-            :key="column"
+            v-for="(column, columnIndex) in sheetColumns"
+            :key="`column-${columnIndex}`"
             :field="column"
             :label="column"
             type="string"
@@ -157,7 +157,9 @@ export default {
       return this.noteType === 'sheet' && !this.isSheetEditable;
     },
     sheetColumns() {
-      return Object.keys(this.sheetRows[0] || createEmptySheetRows()[0] || {});
+      return this.sheetRows.length > 0
+        ? Object.keys(this.sheetRows[0] || {})
+        : Object.keys(createEmptySheetRows()[0] || {});
     },
     sheetEditorKey() {
       return this.sheetColumns.join('|');
