@@ -46,13 +46,16 @@ export function extractNoteTextContent(rawContent) {
 }
 
 export function extractSheetState(rawContent) {
-  const parsedContent = typeof rawContent === 'string' ? safeJsonParse(rawContent) : null;
+  const normalizedContent = unwrapNestedSheetContent(rawContent);
+  const parsedContent = normalizedContent && typeof normalizedContent === 'object' && !Array.isArray(normalizedContent)
+    ? normalizedContent
+    : null;
 
   if (parsedContent && Array.isArray(parsedContent.columns) && Array.isArray(parsedContent.rows)) {
     return normalizeStructuredSheetState(parsedContent.columns, parsedContent.rows);
   }
 
-  const sheetPayload = extractSheetPayload(rawContent);
+  const sheetPayload = extractSheetPayload(normalizedContent);
 
   if (Array.isArray(sheetPayload)) {
     return normalizeArraySheetState(sheetPayload);
@@ -129,6 +132,22 @@ function createEmptySheetRow(columns) {
 function extractSheetPayload(rawContent) {
   if (Array.isArray(rawContent)) {
     return rawContent;
+  }
+
+  if (rawContent && typeof rawContent === 'object') {
+    if (Array.isArray(rawContent.rows)) {
+      return rawContent.rows;
+    }
+
+    if (typeof rawContent.csv === 'string') {
+      return rawContent.csv;
+    }
+
+    if (typeof rawContent.content === 'string') {
+      return rawContent.content;
+    }
+
+    return [];
   }
 
   if (typeof rawContent !== 'string') {
@@ -462,4 +481,37 @@ function safeJsonParse(value) {
   } catch (error) {
     return null;
   }
+}
+
+function unwrapNestedSheetContent(rawContent) {
+  let currentValue = rawContent;
+
+  for (let depth = 0; depth < 10; depth++) {
+    if (typeof currentValue === 'string') {
+      const parsedValue = safeJsonParse(currentValue);
+      if (parsedValue === null) {
+        return currentValue;
+      }
+
+      currentValue = parsedValue;
+      continue;
+    }
+
+    if (
+      currentValue &&
+      typeof currentValue === 'object' &&
+      !Array.isArray(currentValue) &&
+      typeof currentValue.content === 'string'
+    ) {
+      const parsedValue = safeJsonParse(currentValue.content);
+      if (parsedValue !== null) {
+        currentValue = parsedValue;
+        continue;
+      }
+    }
+
+    return currentValue;
+  }
+
+  return currentValue;
 }
