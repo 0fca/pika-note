@@ -646,6 +646,7 @@ export default {
           // Add tab (desktop only)
           if (!this.isTouchScreen) {
             this.$store.commit({type: 'addOrReplaceTab', id: noteId, title: note.humanName, pinned: false});
+            this.restorePinnedTabs(noteId);
           }
           
           // Load notes list for the bucket, then scroll to the note
@@ -667,6 +668,34 @@ export default {
           this.$store.commit({type: 'updateNoteType', noteType: 'note'});
           this.loadNotes();
         });
+    },
+    restorePinnedTabs(activeNoteId) {
+      if (this.isTouchScreen || !activeNoteId) {
+        return;
+      }
+
+      const pinnedNoteIds = this.$store.getters.persistedPinnedNoteTabIds
+        .filter(noteId => noteId !== activeNoteId);
+
+      if (pinnedNoteIds.length === 0) {
+        return;
+      }
+
+      Promise.allSettled(
+        pinnedNoteIds.map(noteId => this.noteService.getNote(noteId)
+          .then(note => ({
+            id: noteId,
+            title: note.humanName
+          })))
+      ).then(results => {
+        const restoredTabs = results
+          .filter(result => result.status === 'fulfilled')
+          .map(result => result.value);
+
+        if (restoredTabs.length > 0) {
+          this.$store.commit({ type: 'restorePinnedTabs', tabs: restoredTabs });
+        }
+      });
     },
     createNewNote() {
       this.$store.commit('resetInactivityCounter');

@@ -8,6 +8,39 @@ import { createStore } from 'vuex'
 import VueExcelEditor from 'vue3-excel-editor'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
+const PINNED_NOTE_TAB_IDS_STORAGE_KEY = 'pinnedNoteTabIds';
+
+function isPersistablePinnedTabId(id) {
+  return typeof id === 'string' && id !== '' && id !== NEW_NOTE_TAB_ID;
+}
+
+function sanitizePinnedNoteTabIds(ids) {
+  return [...new Set((Array.isArray(ids) ? ids : []).filter(isPersistablePinnedTabId))];
+}
+
+function loadPersistedPinnedNoteTabIds() {
+  const storedValue = localStorage.getItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY);
+  if (!storedValue) {
+    return [];
+  }
+
+  try {
+    return sanitizePinnedNoteTabIds(JSON.parse(storedValue));
+  } catch (error) {
+    return [];
+  }
+}
+
+function persistPinnedNoteTabIds(ids) {
+  const sanitizedIds = sanitizePinnedNoteTabIds(ids);
+
+  if (sanitizedIds.length === 0) {
+    localStorage.removeItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY, JSON.stringify(sanitizedIds));
+}
 
 function hasActiveEditorSession(state) {
   // `count` tracks editor character count so untitled drafts still count as an active editor session.
@@ -68,7 +101,8 @@ const store = createStore({
       lastTimeoutClearedAt: 0,
       // Multi-tab state
       editorTabs: [],
-      activeTabId: null
+      activeTabId: null,
+      persistedPinnedNoteTabIds: loadPersistedPinnedNoteTabIds()
     }
   },
   mutations: {
@@ -185,6 +219,8 @@ const store = createStore({
         // Close all tabs
         state.editorTabs = [];
         state.activeTabId = null;
+        state.persistedPinnedNoteTabIds = [];
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
         logInactivityDebug('[inactivity] active editor session cleared', {
           lastTimeoutClearedAt: state.lastTimeoutClearedAt
         });
@@ -196,9 +232,14 @@ const store = createStore({
     // Tab mutations
     addOrReplaceTab(state, payload){
       // payload: { id, title, pinned }
+      const shouldPin = payload.pinned === true || state.persistedPinnedNoteTabIds.includes(payload.id);
       const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
       if(existingIndex !== -1){
-        // Already exists, just activate
+        state.editorTabs[existingIndex] = {
+          ...state.editorTabs[existingIndex],
+          title: payload.title ?? state.editorTabs[existingIndex].title,
+          pinned: state.editorTabs[existingIndex].pinned || shouldPin
+        };
         state.activeTabId = payload.id;
         return;
       }
@@ -206,24 +247,66 @@ const store = createStore({
       const unpinnedIndex = state.editorTabs.findIndex(t => !t.pinned && t.id !== NEW_NOTE_TAB_ID && t.id === state.activeTabId);
       if(unpinnedIndex !== -1){
         // Replace the active unpinned tab
-        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: false });
+        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: shouldPin });
       } else {
         // Add new tab (pinned and unsaved notes stay open)
-        state.editorTabs.push({ id: payload.id, title: payload.title, pinned: false });
+        state.editorTabs.push({ id: payload.id, title: payload.title, pinned: shouldPin });
+      }
+      if (shouldPin) {
+        state.persistedPinnedNoteTabIds = sanitizePinnedNoteTabIds([...state.persistedPinnedNoteTabIds, payload.id]);
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
       }
       state.activeTabId = payload.id;
     },
     addPinnedTab(state, payload){
       // Add as a new pinned tab (from double-click on tab)
+      if (!isPersistablePinnedTabId(payload.id)) {
+        return;
+      }
+
       const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
       if(existingIndex !== -1){
         state.editorTabs[existingIndex].pinned = true;
+        state.persistedPinnedNoteTabIds = sanitizePinnedNoteTabIds([...state.persistedPinnedNoteTabIds, payload.id]);
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
       }
+    },
+    restorePinnedTabs(state, payload){
+      const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
+      const nextPinnedIds = [...state.persistedPinnedNoteTabIds];
+
+      tabs.forEach(tab => {
+        if (!isPersistablePinnedTabId(tab?.id)) {
+          return;
+        }
+
+        const existingIndex = state.editorTabs.findIndex(existingTab => existingTab.id === tab.id);
+        if (existingIndex !== -1) {
+          state.editorTabs[existingIndex] = {
+            ...state.editorTabs[existingIndex],
+            title: tab.title ?? state.editorTabs[existingIndex].title,
+            pinned: true
+          };
+        } else {
+          state.editorTabs.push({
+            id: tab.id,
+            title: tab.title,
+            pinned: true
+          });
+        }
+
+        nextPinnedIds.push(tab.id);
+      });
+
+      state.persistedPinnedNoteTabIds = sanitizePinnedNoteTabIds(nextPinnedIds);
+      persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
     },
     closeTab(state, payload){
       const index = state.editorTabs.findIndex(t => t.id === payload.id);
       if(index !== -1){
         state.editorTabs.splice(index, 1);
+        state.persistedPinnedNoteTabIds = state.persistedPinnedNoteTabIds.filter(id => id !== payload.id);
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
         // If we closed the active tab, activate another
         if(state.activeTabId === payload.id){
           if(state.editorTabs.length > 0){
@@ -253,6 +336,8 @@ const store = createStore({
     clearAllTabs(state){
       state.editorTabs = [];
       state.activeTabId = null;
+      state.persistedPinnedNoteTabIds = [];
+      persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
     }
   },
   getters: {
@@ -339,6 +424,9 @@ const store = createStore({
     },
     activeTabId(state){
       return state.activeTabId;
+    },
+    persistedPinnedNoteTabIds(state){
+      return state.persistedPinnedNoteTabIds;
     }
   }
 });
