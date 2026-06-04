@@ -74,7 +74,7 @@ function normalizeSheetRows(rows) {
     const headers = buildHeaders(headerRow, Math.max(headerRow.length, ...dataRows.map(row => row.length), 0));
 
     return dataRows
-      .filter(row => row.some(cell => `${cell ?? ''}`.trim() !== ''))
+      .filter(row => row.some(cell => `${cell}`.trim() !== ''))
       .map(row => headers.reduce((record, header, index) => {
         record[header] = row[index] ?? '';
         return record;
@@ -131,7 +131,7 @@ function parseCsvText(rawText) {
   }
 
   currentRow.push(currentField);
-  if (currentRow.some(cell => `${cell}`.trim() !== '') || records.length === 0) {
+  if (currentRow.some(cell => `${cell}`.trim() !== '')) {
     records.push(currentRow);
   }
 
@@ -143,7 +143,7 @@ function parseCsvText(rawText) {
   const headers = buildHeaders(headerRow, Math.max(headerRow.length, ...dataRows.map(row => row.length), 0));
 
   return dataRows
-    .filter(row => row.some(cell => `${cell ?? ''}`.trim() !== ''))
+    .filter(row => row.some(cell => `${cell}`.trim() !== ''))
     .map(row => headers.reduce((record, header, index) => {
       record[header] = row[index] ?? '';
       return record;

@@ -18,6 +18,7 @@
           class="title-input"
           @focus="onTitleFocus"
           :readonly="noteType === 'sheet'"
+          :aria-label="noteType === 'sheet' ? 'Sheet title, read only' : 'Note title'"
         />
       </div>
     </div>
@@ -72,7 +73,7 @@
           width="100%"
           height="480px"
         />
-        <div v-if="sheetRows.length === 0" class="sheet-empty-state">
+        <div v-if="sheetRows.length === 0" class="sheet-empty-state" role="status" aria-live="polite">
           No CSV rows available for this sheet.
         </div>
       </div>
