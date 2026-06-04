@@ -6,7 +6,7 @@
       </div>
     </transition>
 
-    <div v-if="isNewNoteDraft" class="note-type-section">
+    <div v-if="isNewNoteDraft" id="new-note-type-discovery" class="note-type-section">
       <label class="note-type-label" for="new-sheet-note-type">Note type</label>
       <select
         id="new-sheet-note-type"
@@ -34,7 +34,7 @@
     <div class="row">
       <div class="fixed-action-btn" ref="fab">
         <a id="create_floating_btn" class="btn-floating btn-large floating-btn-orange toolbar-icon" @click.stop="fabOpen = !fabOpen">
-          <span class="material-symbols-outlined fab-icon">table_chart</span>
+          <span class="material-symbols-outlined fab-icon">table</span>
         </a>
         <ul :class="{ 'fab-open': fabOpen }">
           <li>

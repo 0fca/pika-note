@@ -186,13 +186,20 @@ export default {
              !this.$store.getters.notesLoading &&
              !this.$store.getters.loadingError;
     },
+    discoveryStateKey() {
+      return [
+        this.$route.path,
+        this.$store.getters.id,
+        this.$store.getters.editorTabs.length
+      ].join('|');
+    },
     showFeatureDiscovery() {
       // Show feature discovery when workspace is loaded and there are discoveries to show
       return this.workspaceLoaded && this.hasUnseenDiscoveries;
     },
     featureDiscoveries() {
       // Computed property to access component instance properties
-      return [
+      const discoveries = [
         {
           id: 'login_discovery',
           targetSelector: this.isTouchScreen ? '#hamburger' : '#login',
@@ -210,6 +217,28 @@ export default {
           position: 'left'
         }
       ];
+
+      if (this.$store.getters.editorTabs.length > 0) {
+        discoveries.push({
+          id: 'tabs_discovery',
+          targetSelector: '#editor-tabs-discovery',
+          title: 'Pinned tabs',
+          description: 'Pika Note allows you to easily open a note using a single tab, but if you need more opened at the same time - double click the tab header to pin the tab.',
+          position: 'bottom'
+        });
+      }
+
+      if (this.$route.path === '/editor' && !this.$store.getters.id) {
+        discoveries.push({
+          id: 'note_type_discovery',
+          targetSelector: '#new-note-type-discovery',
+          title: 'Note type',
+          description: 'Pika Note allows you to handle simple numeric data (without formulas for now), just choose a note of a type during creation and then enter your text or numeric data, that\'s it!',
+          position: 'bottom'
+        });
+      }
+
+      return discoveries;
     }
   },
   methods: {
@@ -255,6 +284,13 @@ export default {
     workspaceLoaded(newVal) {
       // When workspace is loaded, check for unseen discoveries
       if (newVal) {
+        this.$nextTick(() => {
+          this.checkForUnseenDiscoveries();
+        });
+      }
+    },
+    discoveryStateKey() {
+      if (this.workspaceLoaded) {
         this.$nextTick(() => {
           this.checkForUnseenDiscoveries();
         });

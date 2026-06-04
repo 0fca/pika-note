@@ -7,7 +7,7 @@
       </div>
     </transition>
     
-    <div v-if="isNewNoteDraft" class="note-type-section">
+    <div v-if="isNewNoteDraft" id="new-note-type-discovery" class="note-type-section">
       <label class="note-type-label" for="new-note-type">Note type</label>
       <select
         id="new-note-type"
