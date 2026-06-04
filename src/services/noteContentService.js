@@ -8,6 +8,10 @@ export function normalizeNoteType(noteType) {
   return noteType === SHEET_NOTE_TYPE ? SHEET_NOTE_TYPE : DEFAULT_NOTE_TYPE;
 }
 
+export function resolveNoteType(note) {
+  return normalizeNoteType(note?.noteType ?? note?.type);
+}
+
 export function createDefaultSheetColumns() {
   return DEFAULT_SHEET_COLUMN_LABELS.map((label, index) => ({
     field: buildSheetFieldName(index + 1),

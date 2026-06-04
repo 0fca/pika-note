@@ -122,6 +122,7 @@ import {
   extractSheetRows,
   hasSheetContent,
   normalizeNoteType,
+  resolveNoteType,
   serializeSheetRows,
   stringifySheetRows
 } from '@/services/noteContentService';
@@ -404,7 +405,7 @@ export default {
         this.isLoadingNote = true;
         this.noteService.getNote(noteId)
           .then(note => {
-            const noteType = normalizeNoteType(note.noteType);
+            const noteType = resolveNoteType(note);
             this.$store.commit({type: 'updateNoteType', noteType: noteType});
             if (noteType === 'sheet') {
               this.isSheetEditable = true;

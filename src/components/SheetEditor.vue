@@ -110,6 +110,7 @@ import {
   extractSheetState,
   hasSheetContent,
   normalizeNoteType,
+  resolveNoteType,
   sanitizeSheetRows,
   serializeSheetRows,
   stringifySheetRows
@@ -318,7 +319,7 @@ export default {
       this.isLoadingNote = true;
       this.noteService.getNote(noteId)
         .then(note => {
-          this.$store.commit({ type: 'updateNoteType', noteType: normalizeNoteType(note.noteType) });
+          this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
           const sheetState = extractSheetState(note.content);
           this.sheetColumns = sheetState.columns;
           this.sheetRows = sheetState.rows.length > 0 ? sheetState.rows : [this.createEmptyRow()];

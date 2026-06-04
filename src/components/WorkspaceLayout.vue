@@ -279,7 +279,7 @@ import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
 import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
-import { normalizeNoteType } from '@/services/noteContentService';
+import { normalizeNoteType, resolveNoteType } from '@/services/noteContentService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
@@ -603,7 +603,7 @@ export default {
       }
       
       this.$store.commit({type: 'updateId', id: note.id});
-      this.$store.commit({type: 'updateNoteType', noteType: normalizeNoteType(note.noteType)});
+      this.$store.commit({type: 'updateNoteType', noteType: resolveNoteType(note)});
       this.$store.commit({type: 'updateName', name: note.humanName});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       
@@ -636,7 +636,7 @@ export default {
           
           // Set the note in the store
           this.$store.commit({type: 'updateId', id: noteId});
-          this.$store.commit({type: 'updateNoteType', noteType: normalizeNoteType(note.noteType)});
+          this.$store.commit({type: 'updateNoteType', noteType: resolveNoteType(note)});
           this.$store.commit({type: 'updateName', name: note.humanName});
           const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
           if (noteDate) {
@@ -890,7 +890,7 @@ export default {
       const note = this.notes.find(n => n.id === tabId);
       if (note) {
         this.$store.commit({type: 'updateId', id: note.id});
-        this.$store.commit({type: 'updateNoteType', noteType: normalizeNoteType(note.noteType)});
+        this.$store.commit({type: 'updateNoteType', noteType: resolveNoteType(note)});
         this.$store.commit({type: 'updateName', name: note.humanName});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       } else {
