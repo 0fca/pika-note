@@ -157,7 +157,7 @@ export default {
       return this.noteType === 'sheet' && !this.isSheetEditable;
     },
     sheetColumns() {
-      return Object.keys(this.sheetRows[0] || createEmptySheetRows()[0]);
+      return Object.keys(this.sheetRows[0] || createEmptySheetRows()[0] || {});
     },
     sheetEditorKey() {
       return this.sheetColumns.join('|');
@@ -493,7 +493,7 @@ export default {
            }
            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-           toastService.error('An unexpected error occured, reload the page');
+           toastService.error('An unexpected error occurred, reload the page');
            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         } else {
@@ -522,7 +522,7 @@ export default {
            }
            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           }).catch(() => {
-           toastService.error('An unexpected error occured, reload the page');
+           toastService.error('An unexpected error occurred, reload the page');
            this.$store.commit({type: 'updateIsSaving', isSaving: false});
           });
         }

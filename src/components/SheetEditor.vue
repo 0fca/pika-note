@@ -393,7 +393,7 @@ export default {
         this.hasUnsavedChanges = false;
         this.$emit('note-saved');
       }).catch(() => {
-        toastService.error('An unexpected error occured, reload the page');
+        toastService.error('An unexpected error occurred, reload the page');
       }).finally(() => {
         this.$store.commit({ type: 'updateIsSaving', isSaving: false });
       });
