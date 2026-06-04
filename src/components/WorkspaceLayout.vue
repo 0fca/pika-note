@@ -671,7 +671,7 @@ export default {
     createNewNote() {
       this.$store.commit('resetInactivityCounter');
       this.$store.commit({type: 'updateId', id: ''});
-      this.$store.commit({type: 'updateNoteType', noteType: 'note'});
+      this.$store.commit({type: 'updateNoteType', noteType: this.$store.getters.draftNoteType});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -876,7 +876,7 @@ export default {
     onTabSelected(tabId) {
       if (tabId === NEW_NOTE_TAB_ID) {
         this.$store.commit({type: 'updateId', id: ''});
-        this.$store.commit({type: 'updateNoteType', noteType: 'note'});
+        this.$store.commit({type: 'updateNoteType', noteType: this.$store.getters.draftNoteType});
         this.$store.commit({type: 'updateName', name: ''});
         this.$store.commit({type: 'updateContent', content: ''});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});

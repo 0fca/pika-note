@@ -262,6 +262,7 @@ export default {
 
       this.$store.commit('resetInactivityCounter');
       this.$store.commit({ type: 'updateNoteType', noteType: normalizedType });
+      this.$store.commit({ type: 'updateDraftNoteType', noteType: normalizedType });
       this.$store.commit({ type: 'updateContent', content: '' });
       this.$store.commit({ type: 'setCharactersCount', count: 0 });
       this.hasUnsavedChanges = false;
@@ -381,6 +382,7 @@ export default {
           const json = await response.json();
           const id = json.payload.id;
           this.$store.commit({ type: 'updateId', id });
+          this.$store.commit({ type: 'updateDraftNoteType', noteType: 'note' });
           this.$store.commit({ type: 'addOrReplaceTab', id, title: titleValue, pinned: false });
           if (this.$route.params.id !== id) {
             this.$router.replace('/editor/' + id);

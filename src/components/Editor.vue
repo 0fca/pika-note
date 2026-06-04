@@ -350,6 +350,7 @@ export default {
 
       this.$store.commit('resetInactivityCounter');
       this.$store.commit({type: 'updateNoteType', noteType: normalizedType});
+      this.$store.commit({type: 'updateDraftNoteType', noteType: normalizedType});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'setCharactersCount', count: 0});
       this.hasUnsavedChanges = false;
@@ -505,6 +506,7 @@ export default {
                const id = json.payload.id;
                this.$store.commit({type: 'updateId', id: id});
                this.$store.commit({type: 'updateName', name: titleValue});
+               this.$store.commit({type: 'updateDraftNoteType', noteType: 'note'});
                // Add tab for new note
                this.$store.commit({type: 'addOrReplaceTab', id: id, title: titleValue, pinned: false});
                const now = new Date();

@@ -45,6 +45,7 @@ const store = createStore({
       limit: 20000,
       id: '',
       noteType: 'note',
+      draftNoteType: 'note',
       order: localStorage.getItem('order') ?? 1,
       noteCount: localStorage.getItem('count') ?? 10,
       loggedIn: false,
@@ -98,6 +99,9 @@ const store = createStore({
     },
     updateNoteType(state, payload){
       state.noteType = payload.noteType;
+    },
+    updateDraftNoteType(state, payload){
+      state.draftNoteType = payload.noteType;
     },
     updateOrder(state, payload){
       state.order = payload.order;
@@ -269,6 +273,9 @@ const store = createStore({
     },
     noteType(state){
       return state.noteType;
+    },
+    draftNoteType(state){
+      return state.draftNoteType;
     },
     order(state){
       return state.order;

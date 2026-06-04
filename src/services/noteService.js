@@ -52,7 +52,7 @@ export default class NoteService {
             body: JSON.stringify({
                 "name": name,
                 "content": content,
-                "noteType": noteType
+                "type": noteType
             }),
             credentials: 'include'
         });
@@ -76,7 +76,7 @@ export default class NoteService {
             body: JSON.stringify({
                 "name": name,
                 "content": content,
-                "noteType": noteType
+                "type": noteType
             }),
             credentials: 'include'
         });
