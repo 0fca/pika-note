@@ -164,14 +164,14 @@ function buildHeaders(headerRow, width) {
       duplicateIndex++;
     }
 
-    function getTableWidth(headerRow, dataRows) {
-      return [headerRow.length, ...dataRows.map(row => row.length), 0]
-        .reduce((maxWidth, currentWidth) => Math.max(maxWidth, currentWidth), 0);
-    }
-
     usedHeaders.add(header);
     return header;
   });
+}
+
+function getTableWidth(headerRow, dataRows) {
+  return [headerRow.length, ...dataRows.map(row => row.length), 0]
+    .reduce((maxWidth, currentWidth) => Math.max(maxWidth, currentWidth), 0);
 }
 
 function detectDelimiter(text) {
