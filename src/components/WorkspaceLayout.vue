@@ -279,7 +279,7 @@ import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
 import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "./exceptions/UnauthorizedException";
-import { normalizeNoteType, resolveNoteType } from '@/services/noteContentService';
+import { resolveNoteType } from '@/services/noteContentService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
