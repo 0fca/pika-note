@@ -199,7 +199,6 @@ export default {
     });
   },
   mounted() {
-    this.isUnmounted = false;
     document.addEventListener('click', this.handleClickOutsideFab);
     window.addEventListener('resize', this.updateSheetEditorHeight);
     this.updateSheetEditorHeight();

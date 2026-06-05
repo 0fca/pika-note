@@ -259,7 +259,6 @@ export default {
     this.$store.commit({type: 'updateIntervalId', autoSaveJobId: 0});
   },
   mounted() {
-    this.isUnmounted = false;
     document.addEventListener('click', this.handleClickOutsideFab);
     // Initialize autoSaveEnabled from localStorage and sync with store
     const savedAutoSave = localStorage.getItem('autoSaveEnabled');
