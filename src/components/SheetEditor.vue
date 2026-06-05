@@ -153,6 +153,8 @@ export default {
       }
 
       if (newId === '') {
+        this.loadRequestId += 1;
+        this.isLoadingNote = false;
         this.resetSheetDraft();
         return;
       }
@@ -180,6 +182,8 @@ export default {
       hasUnsavedChanges: false,
       isProgrammaticTitleUpdate: false,
       isLoadingNote: false,
+      loadRequestId: 0,
+      isUnmounted: false,
       fabOpen: false,
       sheetColumns: initialState.columns,
       sheetRows: initialState.rows,
@@ -195,6 +199,7 @@ export default {
     });
   },
   mounted() {
+    this.isUnmounted = false;
     document.addEventListener('click', this.handleClickOutsideFab);
     window.addEventListener('resize', this.updateSheetEditorHeight);
     this.updateSheetEditorHeight();
@@ -212,6 +217,8 @@ export default {
     }
   },
   unmounted() {
+    this.isUnmounted = true;
+    this.loadRequestId += 1;
     document.removeEventListener('click', this.handleClickOutsideFab);
     window.removeEventListener('resize', this.updateSheetEditorHeight);
 
@@ -316,9 +323,13 @@ export default {
       this.onSheetChanged();
     },
     loadNote(noteId) {
+      const requestId = ++this.loadRequestId;
       this.isLoadingNote = true;
       this.noteService.getNote(noteId)
         .then(note => {
+          if (this.isUnmounted || requestId !== this.loadRequestId) {
+            return;
+          }
           this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
           const sheetState = extractSheetState(note.content);
           this.sheetColumns = sheetState.columns;
@@ -336,9 +347,15 @@ export default {
           this.hasUnsavedChanges = false;
         })
         .catch(() => {
+          if (this.isUnmounted || requestId !== this.loadRequestId) {
+            return;
+          }
           toastService.error('Error loading note');
         })
         .finally(() => {
+          if (this.isUnmounted || requestId !== this.loadRequestId) {
+            return;
+          }
           this.isLoadingNote = false;
           if (this.autoSaveDebounceTimer) {
             clearTimeout(this.autoSaveDebounceTimer);

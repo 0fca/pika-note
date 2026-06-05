@@ -170,6 +170,8 @@ export default {
     id(newId, oldId) {
       if (newId !== oldId && this.editor) {
         if (newId === '') {
+          this.loadRequestId += 1;
+          this.isLoadingNote = false;
           // New note - clear editor
           this.editor.setContent('', 0);
           this.$store.commit({type: 'updateContent', content: ''});
@@ -226,6 +228,8 @@ export default {
       hasUnsavedChanges: false,
       isProgrammaticTitleUpdate: false,
       isLoadingNote: false,
+      loadRequestId: 0,
+      isUnmounted: false,
       fabOpen: false,
       sheetRows: [],
       isSheetEditable: false
@@ -240,6 +244,8 @@ export default {
     })
   },
   unmounted() {
+    this.isUnmounted = true;
+    this.loadRequestId += 1;
     document.removeEventListener('click', this.handleClickOutsideFab);
     if (this.autoSaveDebounceTimer) {
       clearTimeout(this.autoSaveDebounceTimer);
@@ -253,6 +259,7 @@ export default {
     this.$store.commit({type: 'updateIntervalId', autoSaveJobId: 0});
   },
   mounted() {
+    this.isUnmounted = false;
     document.addEventListener('click', this.handleClickOutsideFab);
     // Initialize autoSaveEnabled from localStorage and sync with store
     const savedAutoSave = localStorage.getItem('autoSaveEnabled');
@@ -402,9 +409,13 @@ export default {
     },
     loadNote(noteId) {
       if (noteId && this.editor) {
+        const requestId = ++this.loadRequestId;
         this.isLoadingNote = true;
         this.noteService.getNote(noteId)
           .then(note => {
+            if (this.isUnmounted || requestId !== this.loadRequestId) {
+              return;
+            }
             const noteType = resolveNoteType(note);
             this.$store.commit({type: 'updateNoteType', noteType: noteType});
             if (noteType === 'sheet') {
@@ -434,8 +445,14 @@ export default {
             // Reset unsaved changes flag when loading a note
             this.hasUnsavedChanges = false;
           }).catch(() => {
+            if (this.isUnmounted || requestId !== this.loadRequestId) {
+              return;
+            }
             toastService.error('Error loading note');
           }).finally(() => {
+            if (this.isUnmounted || requestId !== this.loadRequestId) {
+              return;
+            }
             this.isLoadingNote = false;
             // Clear any auto-save timer that may have been triggered during load
             if (this.autoSaveDebounceTimer) {
