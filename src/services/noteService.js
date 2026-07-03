@@ -1,4 +1,3 @@
-import MlService from "@/services/mlService";
 import UnauthorizedException from "../components/exceptions/UnauthorizedException";
 import { authFetch } from "@/services/fetchClient";
 
@@ -36,13 +35,6 @@ export default class NoteService {
 
     async saveNote(id, name, content, rawContent, noteType = 'note') {
         const url = `${this.baseUrl}/notes/${id}`;
-        if (process.env.VUE_APP_ENV === 'production') {
-            const mlService = new MlService();
-            const p = await mlService.validateLanguage(name, rawContent)
-            if (p.prediction >= 2) {
-                throw new Error('Mind your language!')
-            }
-        }
         return await authFetch(url, {
             method: 'PUT',
             headers: {
@@ -60,13 +52,6 @@ export default class NoteService {
 
     async addNote(bucketId, name, content, rawContent, noteType = 'note') {
         const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
-        if (process.env.VUE_APP_ENV === 'production') {
-            const mlService = new MlService();
-            const p = await mlService.validateLanguage(name, rawContent)
-            if (p.prediction >= 2) {
-                throw new Error('Mind your language!')
-            }
-        }
         return await authFetch(url, {
             method: 'POST',
             headers: {
