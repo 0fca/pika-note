@@ -2,6 +2,9 @@ const apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'https://noteapi.lukas-bo
 
 let refreshTokenInvalid = false
 let refreshPromise = null
+const MAX_REQUEST_ATTEMPTS = 3
+const refreshableStatuses = new Set([401, 403])
+const retryableStatuses = new Set([400, 401, 403, 422, 500])
 
 async function tryRefreshToken() {
   if (refreshTokenInvalid) return false
@@ -32,14 +35,35 @@ async function tryRefreshToken() {
 }
 
 export async function authFetch(input, init) {
-  const response = await fetch(input, init)
+  const retryOnAnyFailure = init?.retryOnAnyFailure === true
+  const requestInit = { ...(init || {}) }
 
-  if (response.status === 401) {
-    const refreshed = await tryRefreshToken()
-    if (refreshed) {
-      return fetch(input, init)
+  delete requestInit.retryOnAnyFailure
+
+  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(input, requestInit)
+
+      if (response.ok) {
+        return response
+      }
+
+      if (refreshableStatuses.has(response.status) && attempt < MAX_REQUEST_ATTEMPTS) {
+        const refreshed = await tryRefreshToken()
+        if (refreshed || !refreshTokenInvalid) {
+          continue
+        }
+      } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && attempt < MAX_REQUEST_ATTEMPTS) {
+        continue
+      }
+
+      return response
+    } catch (error) {
+      if (attempt === MAX_REQUEST_ATTEMPTS) {
+        throw error
+      }
     }
   }
 
-  return response
+  throw new Error('Request failed')
 }

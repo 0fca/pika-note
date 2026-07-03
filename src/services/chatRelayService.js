@@ -95,7 +95,7 @@ export default class ChatRelayService {
         const sessionId = await this.createChatSession()
         await this.initializeChatSession(sessionId)
 
-        const response = await fetch(`${chatApiBaseUrl}/v1/ChatRelay/Message`, {
+        const response = await authFetch(`${chatApiBaseUrl}/v1/ChatRelay/Message`, {
             method: 'POST',
             credentials: 'include',
             headers: {

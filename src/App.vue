@@ -133,14 +133,6 @@ import LoadingOverlay from './components/LoadingOverlay.vue';
 import FeatureDiscovery from './components/FeatureDiscovery.vue';
 import ToastContainer from './components/ToastContainer.vue';
 
-const shouldLogInactivityDebug = process.env.NODE_ENV !== 'production' || process.env.VUE_APP_INACTIVITY_DEBUG === 'true';
-
-function logInactivityDebug(message, payload = {}) {
-  if (shouldLogInactivityDebug) {
-    console.log(message, payload);
-  }
-}
-
 export default {
   name: 'App',
   components: {
@@ -313,42 +305,6 @@ export default {
     } finally {
       this.$store.commit({type: 'setAuthLoading', authLoading: false});
     }
-    
-    setInterval(async () => {
-      try {
-        const isLoggedIn = await securityService.validateLoggedInState();
-        this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
-        if(isLoggedIn){
-          const previousCounter = this.$store.getters.inactivityCounter;
-          const previousTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
-          logInactivityDebug('[inactivity] auth refresh succeeded', {
-            counterBeforeIncrement: previousCounter,
-            hadActiveEditorSession: this.$store.getters.hasActiveEditorSession,
-            activeTabId: this.$store.getters.activeTabId,
-            route: this.$route.path
-          });
-          // Increment inactivity counter on each successful status check
-          this.$store.commit('incrementInactivityCounter');
-          const currentCounter = this.$store.getters.inactivityCounter;
-          const currentTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
-          const timeoutOccurred = currentTimeoutClearedAt > previousTimeoutClearedAt;
-          logInactivityDebug('[inactivity] counter after increment', {
-            counterAfterIncrement: currentCounter,
-            hasActiveEditorSession: this.$store.getters.hasActiveEditorSession,
-            activeTabId: this.$store.getters.activeTabId,
-            route: this.$route.path,
-            timeoutOccurred: timeoutOccurred
-          });
-          if (timeoutOccurred && this.$route.path.startsWith('/editor')) {
-            logInactivityDebug('[inactivity] editor session timed out, redirecting to home');
-            this.$router.replace('/');
-          }
-        }
-      } catch (error) {
-        console.error('Auth refresh failed', error);
-        // Silent refresh failure - keep current state
-      }
-    }, 8000);
   },
   beforeUnmount() {
   }

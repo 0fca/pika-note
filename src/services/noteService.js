@@ -109,10 +109,11 @@ export default class NoteService {
                 'Origin': this.baseUrl,
                 'Content-Type': 'application/json'
             },
-            'credentials': 'include'
+            'credentials': 'include',
+            retryOnAnyFailure: true
         });
         if (!response.ok) {
-            if (response.status === 401 || response.status === 403 || response.status === 500) {
+            if (response.status === 401 || response.status === 403) {
                 throw new UnauthorizedException();
             }
             throw new Error('Request failed');
