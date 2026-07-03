@@ -224,7 +224,7 @@
         class="editor-main"
         @keydown.capture="onEditorActivity('keyboard')"
         @mousedown.passive="onEditorActivity('pointer')"
-        @mousemove.passive="onEditorActivity('pointermove')"
+        @mousemove.passive="onEditorPointerMove"
         @touchstart.passive="onEditorActivity('touch')"
       >
         <EditorTabs 
@@ -496,27 +496,33 @@ export default {
         this.closeInactiveTab(activeTab.id);
       }, INACTIVITY_CLOSE_DELAY_MS);
     },
-    onEditorActivity(source) {
+    onEditorPointerMove() {
+      const now = Date.now();
+      if (now - this.lastPointerActivityAt < POINTER_ACTIVITY_THROTTLE_MS) {
+        return;
+      }
+
+      this.lastPointerActivityAt = now;
+      this.onEditorActivity('pointermove', now);
+    },
+    onEditorActivity(source, now = Date.now()) {
+      if (now - this.lastInactivityResetAt < ACTIVITY_RESET_THROTTLE_MS) {
+        return;
+      }
       if (!this.getClosableActiveTab()) {
         return;
       }
 
-      const now = Date.now();
-      if (source === 'pointermove' && now - this.lastPointerActivityAt < POINTER_ACTIVITY_THROTTLE_MS) {
-        return;
-      }
-      if (now - this.lastInactivityResetAt < ACTIVITY_RESET_THROTTLE_MS) {
-        return;
-      }
-
-      if (source === 'pointermove') {
-        this.lastPointerActivityAt = now;
-      }
       this.lastInactivityResetAt = now;
-
       this.scheduleInactivityAutoClose();
     },
     onExternalActivity() {
+      const now = Date.now();
+      if (now - this.lastInactivityResetAt < ACTIVITY_RESET_THROTTLE_MS || !this.getClosableActiveTab()) {
+        return;
+      }
+
+      this.lastInactivityResetAt = now;
       this.scheduleInactivityAutoClose();
     },
     closeInactiveTab(expectedTabId) {
