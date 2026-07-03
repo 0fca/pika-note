@@ -400,7 +400,7 @@ export default {
           const id = json.payload.id;
           this.$store.commit({ type: 'updateId', id });
           this.$store.commit({ type: 'updateDraftNoteType', noteType: 'note' });
-          this.$store.commit({ type: 'addOrReplaceTab', id, title: titleValue, pinned: false });
+          this.$store.commit({ type: 'finalizeNewNoteTab', id, title: titleValue });
           if (this.$route.params.id !== id) {
             this.$router.replace('/editor/' + id);
           }

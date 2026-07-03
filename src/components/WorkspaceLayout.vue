@@ -220,7 +220,13 @@
       </aside>
 
       <!-- Editor Area -->
-      <main class="editor-main">
+      <main
+        class="editor-main"
+        @keydown.capture="onEditorActivity('keyboard')"
+        @mousedown.passive="onEditorActivity('pointer')"
+        @mousemove.passive="onEditorActivity('pointermove')"
+        @touchstart.passive="onEditorActivity('touch')"
+      >
         <EditorTabs 
           v-if="this.$store.getters.loggedIn === true && !isTouchScreen"
           @tab-selected="onTabSelected"
@@ -283,6 +289,9 @@ import { resolveNoteType } from '@/services/noteContentService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
+const INACTIVITY_CLOSE_DELAY_MS = 60000;
+const POINTER_ACTIVITY_THROTTLE_MS = 1000;
+const USER_ACTIVITY_EVENT_NAME = 'pika-note:activity';
 
 export default {
   name: 'WorkspaceLayout',
@@ -327,14 +336,29 @@ export default {
     activeEditorType() {
       return this.$store.getters.noteType;
     },
+    activeTabId() {
+      return this.$store.getters.activeTabId;
+    },
+    activeTab() {
+      return this.$store.getters.editorTabs.find(tab => tab.id === this.activeTabId) ?? null;
+    },
     editorInstanceKey() {
       return `${this.$store.getters.activeTabId ?? this.$store.getters.id ?? 'draft'}-${this.$store.getters.noteType}`;
+    },
+    inactivityTrackingKey() {
+      return [
+        this.showEditor,
+        this.loggedIn,
+        this.activeTab?.id ?? '',
+        this.activeTab?.pinned === true
+      ].join('|');
     },
     getActuallyLoaded() {
       return this.actuallyLoaded;
     }
   },
   mounted: function () {
+    window.addEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
     this.loggedIn = this.$store.getters.loggedIn;
     if(this.$store.getters.bucketUuid !== ""){
       this.bucketId = this.$store.getters.bucketUuid;
@@ -380,8 +404,11 @@ export default {
     this.$nextTick(() => {
       this.isMounted = true;
     });
+    this.scheduleInactivityAutoClose();
   },
   beforeUnmount() {
+    window.removeEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
+    this.clearInactivityAutoClose();
     // Clear infinite loader timer
     if (this.infiniteLoaderTimer) {
       clearTimeout(this.infiniteLoaderTimer);
@@ -419,7 +446,9 @@ export default {
       showSearchOverlay: false,
       isTouchScreen: MobileDetectService.isTouchScreen(),
       showDeleteConfirm: false,
-      pendingDeleteNoteId: null
+      pendingDeleteNoteId: null,
+      inactivityTimeoutId: null,
+      lastPointerActivityAt: 0
     }
   },
   watch: {
@@ -429,9 +458,79 @@ export default {
       } else if (!newVal && this.isDrawerOpen) {
         this.closeDrawer();
       }
+    },
+    inactivityTrackingKey() {
+      this.scheduleInactivityAutoClose();
     }
   },
   methods: {
+    clearInactivityAutoClose() {
+      if (this.inactivityTimeoutId !== null) {
+        clearTimeout(this.inactivityTimeoutId);
+        this.inactivityTimeoutId = null;
+      }
+    },
+    getClosableActiveTab() {
+      if (this.isTouchScreen || !this.showEditor) {
+        return null;
+      }
+
+      const activeTab = this.activeTab;
+      if (!activeTab || activeTab.pinned) {
+        return null;
+      }
+
+      return activeTab;
+    },
+    scheduleInactivityAutoClose() {
+      this.clearInactivityAutoClose();
+
+      const activeTab = this.getClosableActiveTab();
+      if (!activeTab) {
+        return;
+      }
+
+      this.inactivityTimeoutId = window.setTimeout(() => {
+        this.closeInactiveTab(activeTab.id);
+      }, INACTIVITY_CLOSE_DELAY_MS);
+    },
+    onEditorActivity(source) {
+      if (!this.getClosableActiveTab()) {
+        return;
+      }
+
+      const now = Date.now();
+      if (source === 'pointermove' && now - this.lastPointerActivityAt < POINTER_ACTIVITY_THROTTLE_MS) {
+        return;
+      }
+
+      if (source === 'pointermove') {
+        this.lastPointerActivityAt = now;
+      }
+
+      this.scheduleInactivityAutoClose();
+    },
+    onExternalActivity() {
+      this.scheduleInactivityAutoClose();
+    },
+    closeInactiveTab(expectedTabId) {
+      const activeTab = this.getClosableActiveTab();
+      if (!activeTab || activeTab.id !== expectedTabId) {
+        this.scheduleInactivityAutoClose();
+        return;
+      }
+
+      this.$store.commit({type: 'closeTab', id: expectedTabId});
+
+      if (this.$store.getters.activeTabId) {
+        this.onTabSelected(this.$store.getters.activeTabId);
+      } else {
+        this.onTabsEmpty();
+      }
+
+      toastService.show('Inactive tab closed');
+      this.scheduleInactivityAutoClose();
+    },
     loadNotes() {
       this.$store.commit({type: 'setLoadingError', loadingError: ''});
       this.$store.commit({type: 'setNotesLoading', notesLoading: true});

@@ -6,6 +6,17 @@ const MAX_REQUEST_ATTEMPTS = 3
 const BASE_RETRY_DELAY_MS = 250
 const refreshableStatuses = new Set([401, 403])
 const retryableStatuses = new Set([400, 401, 403, 422, 500])
+const USER_ACTIVITY_EVENT_NAME = 'pika-note:activity'
+
+function notifyUserActivity(source) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(new CustomEvent(USER_ACTIVITY_EVENT_NAME, {
+    detail: { source }
+  }))
+}
 
 function waitForRetry(attempt) {
   const delayMs = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
@@ -18,6 +29,7 @@ async function tryRefreshToken() {
 
   refreshPromise = (async () => {
     try {
+      notifyUserActivity('request')
       const response = await fetch(`${apiBaseUrl}/Security/Refresh`, {
         method: 'POST',
         credentials: 'include',
@@ -48,6 +60,7 @@ export async function authFetch(input, init) {
 
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt++) {
     try {
+      notifyUserActivity('request')
       const response = await fetch(input, requestInit)
       const canRetry = attempt < MAX_REQUEST_ATTEMPTS
 

@@ -271,6 +271,37 @@ const store = createStore({
         persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
       }
     },
+    finalizeNewNoteTab(state, payload){
+      const newNoteIndex = state.editorTabs.findIndex(tab => tab.id === NEW_NOTE_TAB_ID);
+      if (newNoteIndex !== -1) {
+        const previousTab = state.editorTabs[newNoteIndex];
+        state.editorTabs.splice(newNoteIndex, 1, {
+          ...previousTab,
+          id: payload.id,
+          title: payload.title ?? previousTab.title,
+          pinned: false
+        });
+        if (state.activeTabId === NEW_NOTE_TAB_ID) {
+          state.activeTabId = payload.id;
+        }
+        return;
+      }
+
+      const existingIndex = state.editorTabs.findIndex(tab => tab.id === payload.id);
+      if (existingIndex !== -1) {
+        state.editorTabs[existingIndex] = {
+          ...state.editorTabs[existingIndex],
+          title: payload.title ?? state.editorTabs[existingIndex].title
+        };
+      } else {
+        state.editorTabs.push({
+          id: payload.id,
+          title: payload.title,
+          pinned: false
+        });
+      }
+      state.activeTabId = payload.id;
+    },
     restorePinnedTabs(state, payload){
       const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
       const nextPinnedIds = [...state.persistedPinnedNoteTabIds];

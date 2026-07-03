@@ -524,8 +524,8 @@ export default {
                this.$store.commit({type: 'updateId', id: id});
                this.$store.commit({type: 'updateName', name: titleValue});
                this.$store.commit({type: 'updateDraftNoteType', noteType: 'note'});
-               // Add tab for new note
-               this.$store.commit({type: 'addOrReplaceTab', id: id, title: titleValue, pinned: false});
+               // Rename the Untitled draft tab in place
+               this.$store.commit({type: 'finalizeNewNoteTab', id: id, title: titleValue});
                const now = new Date();
                this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: `${now.toISOString()}`});
                // Reset unsaved changes flag
