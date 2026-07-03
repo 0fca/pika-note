@@ -110,6 +110,7 @@ export default class NoteService {
                 'Content-Type': 'application/json'
             },
             'credentials': 'include',
+            // Buckets are required for the main workspace, so re-request on any failed response.
             retryOnAnyFailure: true
         });
         if (!response.ok) {

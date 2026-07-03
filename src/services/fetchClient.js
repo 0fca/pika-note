@@ -65,6 +65,4 @@ export async function authFetch(input, init) {
       }
     }
   }
-
-  throw new Error('Request failed')
 }
