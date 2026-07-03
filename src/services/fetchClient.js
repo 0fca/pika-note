@@ -3,8 +3,14 @@ const apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'https://noteapi.lukas-bo
 let refreshTokenInvalid = false
 let refreshPromise = null
 const MAX_REQUEST_ATTEMPTS = 3
+const BASE_RETRY_DELAY_MS = 250
 const refreshableStatuses = new Set([401, 403])
 const retryableStatuses = new Set([400, 401, 403, 422, 500])
+
+function waitForRetry(attempt) {
+  const delayMs = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
+  return new Promise(resolve => setTimeout(resolve, delayMs))
+}
 
 async function tryRefreshToken() {
   if (refreshTokenInvalid) return false
@@ -52,9 +58,12 @@ export async function authFetch(input, init) {
       if (refreshableStatuses.has(response.status) && canRetry) {
         const refreshed = await tryRefreshToken()
         if (refreshed) {
+          await waitForRetry(attempt)
           continue
         }
+        return response
       } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && canRetry) {
+        await waitForRetry(attempt)
         continue
       }
 
