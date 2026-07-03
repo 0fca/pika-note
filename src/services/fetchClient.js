@@ -64,7 +64,6 @@ export async function authFetch(input, init) {
         return response
       } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && canRetry) {
         await waitForRetry(attempt)
-        continue
       }
 
       return response
@@ -72,6 +71,7 @@ export async function authFetch(input, init) {
       if (attempt === MAX_REQUEST_ATTEMPTS) {
         throw error
       }
+      await waitForRetry(attempt)
     }
   }
 }
