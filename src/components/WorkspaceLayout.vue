@@ -516,7 +516,6 @@ export default {
     closeInactiveTab(expectedTabId) {
       const activeTab = this.getClosableActiveTab();
       if (!activeTab || activeTab.id !== expectedTabId) {
-        this.scheduleInactivityAutoClose();
         return;
       }
 
@@ -528,7 +527,7 @@ export default {
         this.onTabsEmpty();
       }
 
-      toastService.show('Inactive tab closed');
+      toastService.show('Closed inactive unpinned tab');
       this.scheduleInactivityAutoClose();
     },
     loadNotes() {
