@@ -43,17 +43,18 @@ export async function authFetch(input, init) {
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt++) {
     try {
       const response = await fetch(input, requestInit)
+      const canRetry = attempt < MAX_REQUEST_ATTEMPTS
 
       if (response.ok) {
         return response
       }
 
-      if (refreshableStatuses.has(response.status) && attempt < MAX_REQUEST_ATTEMPTS) {
+      if (refreshableStatuses.has(response.status) && canRetry) {
         const refreshed = await tryRefreshToken()
-        if (refreshed || !refreshTokenInvalid) {
+        if (refreshed) {
           continue
         }
-      } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && attempt < MAX_REQUEST_ATTEMPTS) {
+      } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && canRetry) {
         continue
       }
 

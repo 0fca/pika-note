@@ -116,6 +116,9 @@ export default class NoteService {
             if (response.status === 401 || response.status === 403) {
                 throw new UnauthorizedException();
             }
+            if (response.status === 500) {
+                throw new Error('Buckets request failed with server error');
+            }
             throw new Error('Request failed');
         }
         return response;
