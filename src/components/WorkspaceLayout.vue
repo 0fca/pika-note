@@ -290,6 +290,7 @@ import { resolveNoteType } from '@/services/noteContentService';
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
 const INACTIVITY_CLOSE_DELAY_MS = 60000;
+const ACTIVITY_RESET_THROTTLE_MS = 500;
 const POINTER_ACTIVITY_THROTTLE_MS = 1000;
 const USER_ACTIVITY_EVENT_NAME = 'pika-note:activity';
 
@@ -448,7 +449,8 @@ export default {
       showDeleteConfirm: false,
       pendingDeleteNoteId: null,
       inactivityTimeoutId: null,
-      lastPointerActivityAt: 0
+      lastPointerActivityAt: 0,
+      lastInactivityResetAt: 0
     }
   },
   watch: {
@@ -503,10 +505,14 @@ export default {
       if (source === 'pointermove' && now - this.lastPointerActivityAt < POINTER_ACTIVITY_THROTTLE_MS) {
         return;
       }
+      if (now - this.lastInactivityResetAt < ACTIVITY_RESET_THROTTLE_MS) {
+        return;
+      }
 
       if (source === 'pointermove') {
         this.lastPointerActivityAt = now;
       }
+      this.lastInactivityResetAt = now;
 
       this.scheduleInactivityAutoClose();
     },
@@ -527,7 +533,7 @@ export default {
         this.onTabsEmpty();
       }
 
-      toastService.show('Closed inactive unpinned tab');
+      toastService.show('Tab closed due to inactivity');
       this.scheduleInactivityAutoClose();
     },
     loadNotes() {
