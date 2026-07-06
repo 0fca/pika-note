@@ -64,7 +64,7 @@
     </div>
 
     <div class="row background sheet-background">
-      <div class="sheet-frame" ref="sheetFrame" @contextmenu.prevent="openContextMenu($event)">
+      <div class="sheet-frame" ref="sheetFrame" @contextmenu.capture.prevent="openContextMenu($event)">
         <vue-excel-editor
           ref="sheetEditor"
           v-model="sheetRows"
@@ -79,6 +79,8 @@
           width="100%"
           @update="onSheetChanged"
           @delete="onSheetChanged"
+          @select="onSheetRowSelection"
+          @cell-focus="onSheetCellFocus"
           @setting="onSheetSettingChange"
         >
           <vue-excel-column
@@ -97,8 +99,16 @@
           class="sheet-context-menu"
           :style="{ top: contextMenuTop + 'px', left: contextMenuLeft + 'px' }"
         >
-          <button type="button" class="sheet-context-menu-item" @click="contextMenuAddRow">Add row</button>
+          <button type="button" class="sheet-context-menu-item" :disabled="!canUndoSheetChange" @click="contextMenuUndo">Undo</button>
+          <div class="sheet-context-menu-divider"></div>
+          <button type="button" class="sheet-context-menu-item" :disabled="!canInsertRowHere" @click="contextMenuAddRowHere">Add new row here...</button>
+          <button type="button" class="sheet-context-menu-item" @click="contextMenuAddRowAtEnd">Add new row at the end</button>
           <button type="button" class="sheet-context-menu-item" @click="contextMenuAddColumn">Add column</button>
+          <template v-if="showDeleteActions">
+            <div class="sheet-context-menu-divider"></div>
+            <button v-if="hasSelectedRows" type="button" class="sheet-context-menu-item" @click="contextMenuDeleteRows">Delete selected row(s)</button>
+            <button v-if="hasSelectedColumn" type="button" class="sheet-context-menu-item" @click="contextMenuDeleteColumn">Delete selected column</button>
+          </template>
           <div class="sheet-context-menu-divider"></div>
           <button type="button" class="sheet-context-menu-item" @click="contextMenuCopy">Copy</button>
           <button type="button" class="sheet-context-menu-item" @click="contextMenuPaste">Paste</button>
@@ -136,6 +146,8 @@ const SHEET_EDITOR_OFFSET = 320;
 const SHEET_EDITOR_MIN_HEIGHT = 360;
 const AUTO_SAVE_INTERVAL_MS = 300000;
 const AUTO_SAVE_DEBOUNCE_MS = 5000;
+const SHEET_UNDO_STORAGE_KEY = 'pika-note-sheet-editor-undo-snapshots';
+const SHEET_UNDO_SNAPSHOT_LIMIT = 50;
 
 export default {
   name: 'SheetEditor',
@@ -155,8 +167,23 @@ export default {
     bucketId() {
       return this.$store.getters.bucketUuid;
     },
+    canInsertRowHere() {
+      return this.resolveContextRowIndex() >= 0;
+    },
+    canUndoSheetChange() {
+      return this.undoSnapshots.length > 1;
+    },
+    hasSelectedColumn() {
+      return Number.isInteger(this.selectedColumnIndex);
+    },
+    hasSelectedRows() {
+      return this.selectedRowIndexes.length > 0;
+    },
     noteType() {
       return this.$store.getters.noteType;
+    },
+    showDeleteActions() {
+      return this.hasSelectedRows || this.hasSelectedColumn;
     },
     isNewNoteDraft() {
       return this.id === '';
@@ -203,12 +230,17 @@ export default {
       loadRequestId: 0,
       isUnmounted: false,
       fabOpen: false,
+      isApplyingSnapshot: false,
       sheetColumns: initialState.columns,
       sheetRows: initialState.rows,
       sheetEditorHeight: '560px',
+      undoSnapshots: [],
+      selectedRowIndexes: [],
+      selectedColumnIndex: null,
       contextMenuVisible: false,
       contextMenuTop: 0,
-      contextMenuLeft: 0
+      contextMenuLeft: 0,
+      contextMenuTarget: null
     };
   },
   beforeRouteEnter(to, from, next) {
@@ -222,6 +254,7 @@ export default {
   mounted() {
     document.addEventListener('click', this.handleClickOutsideFab);
     document.addEventListener('click', this.closeContextMenu);
+    window.addEventListener('keydown', this.handleSheetKeydown, true);
     window.addEventListener('resize', this.updateSheetEditorHeight);
     this.updateSheetEditorHeight();
 
@@ -232,6 +265,7 @@ export default {
     this.noteService = new NoteService();
     this.runAutoSaveJob();
     this.syncSheetMetrics();
+    this.initializeUndoHistory();
 
     if (this.id !== '') {
       if (!this.applyPrefetchedNote(this.id)) {
@@ -249,6 +283,7 @@ export default {
     this.loadRequestId += 1;
     document.removeEventListener('click', this.handleClickOutsideFab);
     document.removeEventListener('click', this.closeContextMenu);
+    window.removeEventListener('keydown', this.handleSheetKeydown, true);
     window.removeEventListener('resize', this.updateSheetEditorHeight);
     this.detachSheetScrollListener();
     this.detachSheetPasteListener();
@@ -280,6 +315,9 @@ export default {
       this.sheetColumns = trimmedColumns;
       this.sheetRows = trimmedRows.length > 0 ? trimmedRows : [this.createEmptyRow()];
       this.syncSheetMetrics();
+      this.selectedColumnIndex = null;
+      this.selectedRowIndexes = [];
+      this.initializeUndoHistory();
       this.$store.commit({ type: 'updateIfError', error: false });
       this.$store.commit({ type: 'updateName', name: note.humanName });
       const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
@@ -325,11 +363,14 @@ export default {
       const initialState = createEmptySheetState();
       this.sheetColumns = initialState.columns;
       this.sheetRows = initialState.rows;
+      this.selectedColumnIndex = null;
+      this.selectedRowIndexes = [];
       this.noteTitle = '';
       this.hasUnsavedChanges = false;
       this.$store.commit({ type: 'updateContent', content: '' });
       this.$store.commit({ type: 'setCharactersCount', count: 0 });
       this.$store.commit({ type: 'updateLastSavedAt', lastSavedAt: null });
+      this.initializeUndoHistory();
     },
     syncSheetMetrics() {
       const normalizedRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns);
@@ -337,11 +378,136 @@ export default {
       this.$store.commit({ type: 'updateContent', content: serializeSheetRows(this.sheetRows, this.sheetColumns) });
       this.$store.commit({ type: 'setCharactersCount', count: countSheetCellCharacters(this.sheetRows, this.sheetColumns) });
     },
+    initializeUndoHistory() {
+      this.undoSnapshots = [];
+      localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
+      this.recordUndoSnapshot(true);
+      this.$nextTick(() => {
+        this.applySelectedColumnStyles();
+      });
+    },
+    buildSheetSnapshot() {
+      return {
+        columns: this.sheetColumns.map(column => ({ ...column })),
+        rows: sanitizeSheetRows(this.sheetRows, this.sheetColumns).map(row => ({ ...row }))
+      };
+    },
+    persistUndoSnapshots() {
+      localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
+    },
+    recordUndoSnapshot(force = false) {
+      if (this.isApplyingSnapshot) return;
+      const snapshot = this.buildSheetSnapshot();
+      const serializedSnapshot = JSON.stringify(snapshot);
+      const lastSnapshot = this.undoSnapshots[this.undoSnapshots.length - 1];
+      if (!force && lastSnapshot && JSON.stringify(lastSnapshot) === serializedSnapshot) {
+        return;
+      }
+      this.undoSnapshots = [...this.undoSnapshots, snapshot].slice(-SHEET_UNDO_SNAPSHOT_LIMIT);
+      this.persistUndoSnapshots();
+    },
+    restoreUndoSnapshot(snapshot) {
+      if (!snapshot) return;
+      this.isApplyingSnapshot = true;
+      this.selectedColumnIndex = null;
+      this.sheetColumns = (snapshot.columns || []).map(column => ({ ...column }));
+      this.sheetRows = (snapshot.rows || []).map(row => ({ ...row }));
+      this.syncSheetMetrics();
+      this.hasUnsavedChanges = true;
+      this.clearSheetRowSelection();
+      this.triggerDebouncedAutoSave();
+      this.$nextTick(() => {
+        this.isApplyingSnapshot = false;
+        this.applySelectedColumnStyles();
+      });
+    },
+    undoSheetChange() {
+      if (!this.canUndoSheetChange) {
+        return;
+      }
+      this.undoSnapshots = this.undoSnapshots.slice(0, -1);
+      this.persistUndoSnapshots();
+      this.restoreUndoSnapshot(this.undoSnapshots[this.undoSnapshots.length - 1]);
+    },
+    handleSheetKeydown(event) {
+      const editor = this.$refs.sheetEditor;
+      const frame = this.$refs.sheetFrame;
+      if (!editor || !frame) return;
+      const target = event.target;
+      const isSheetTarget = target instanceof Node && frame.contains(target);
+      if (!isSheetTarget && !editor.focused && !this.contextMenuVisible) {
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        event.stopPropagation();
+        this.undoSheetChange();
+        return;
+      }
+
+      if (editor.inputBoxShow && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+        event.stopPropagation();
+        return;
+      }
+
+      if (editor.inputBoxShow || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (this.hasSelectedColumn) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.deleteSelectedColumn();
+          return;
+        }
+        if (this.hasSelectedRows) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.deleteSelectedRows();
+        }
+      }
+    },
     createEmptyRow() {
       return this.sheetColumns.reduce((record, column) => {
         record[column.field] = '';
         return record;
       }, {});
+    },
+    applySelectedColumnStyles() {
+      const table = this.getSheetTableElement();
+      if (!table) return;
+      table.querySelectorAll('.sheet-selected-column').forEach(cell => {
+        cell.classList.remove('sheet-selected-column');
+      });
+      if (!Number.isInteger(this.selectedColumnIndex)) {
+        return;
+      }
+      const columnNumber = this.selectedColumnIndex + 2;
+      table.querySelectorAll(`tr > *:nth-child(${columnNumber})`).forEach(cell => {
+        cell.classList.add('sheet-selected-column');
+      });
+    },
+    onSheetCellFocus() {
+      if (this.selectedColumnIndex !== null) {
+        this.selectedColumnIndex = null;
+        this.$nextTick(() => {
+          this.applySelectedColumnStyles();
+        });
+      }
+    },
+    onSheetRowSelection() {
+      const editor = this.$refs.sheetEditor;
+      this.selectedRowIndexes = editor?.selected
+        ? Object.keys(editor.selected).map(index => Number(index)).sort((a, b) => a - b)
+        : [];
+      if (this.selectedRowIndexes.length > 0 && this.selectedColumnIndex !== null) {
+        this.selectedColumnIndex = null;
+      }
+      this.$nextTick(() => {
+        this.applySelectedColumnStyles();
+      });
     },
     onNewNoteTypeChange(noteType) {
       const normalizedType = normalizeNoteType(noteType);
@@ -360,13 +526,21 @@ export default {
       if (this.isLoadingNote) {
         return;
       }
-
+      this.finalizeSheetMutation();
+    },
+    finalizeSheetMutation({ checkRowExpansion = true } = {}) {
       this.sheetRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns);
       this.$store.commit('resetInactivityCounter');
       this.syncSheetMetrics();
-      this.checkRowExpansion();
+      if (checkRowExpansion) {
+        this.checkRowExpansion();
+      }
+      this.recordUndoSnapshot();
       this.hasUnsavedChanges = true;
       this.triggerDebouncedAutoSave();
+      this.$nextTick(() => {
+        this.applySelectedColumnStyles();
+      });
     },
     onSheetSettingChange(setting) {
       if (!setting || !Array.isArray(setting.fields) || setting.fields.length === 0) {
@@ -384,13 +558,28 @@ export default {
       }
 
       this.sheetColumns = nextColumns;
-      this.syncSheetMetrics();
-      this.hasUnsavedChanges = true;
-      this.triggerDebouncedAutoSave();
+      this.finalizeSheetMutation({ checkRowExpansion: false });
     },
     addSheetRow() {
       this.sheetRows = [...sanitizeSheetRows(this.sheetRows, this.sheetColumns), this.createEmptyRow()];
-      this.onSheetChanged();
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+    },
+    addSheetRowHere() {
+      const targetRowIndex = this.resolveContextRowIndex();
+      if (targetRowIndex < 0) {
+        this.addSheetRow();
+        return;
+      }
+      const targetColumnIndex = this.resolveContextColumnIndex();
+      const sanitizedRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns);
+      const insertIndex = Math.min(targetRowIndex + 1, sanitizedRows.length);
+      this.sheetRows = [
+        ...sanitizedRows.slice(0, insertIndex),
+        this.createEmptyRow(),
+        ...sanitizedRows.slice(insertIndex)
+      ];
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+      this.focusSheetCell(insertIndex, targetColumnIndex);
     },
     addSheetColumn() {
       if (this.sheetColumns.length >= SHEET_MAX_COLUMN_COUNT) return;
@@ -403,7 +592,14 @@ export default {
       this.sheetColumns = [...this.sheetColumns, nextColumn];
       this.sheetRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns)
         .map(row => ({ ...row, [nextColumn.field]: '' }));
-      this.onSheetChanged();
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+    },
+    focusSheetCell(rowIndex, columnIndex = 0) {
+      this.$nextTick(() => {
+        const editor = this.$refs.sheetEditor;
+        if (!editor || typeof editor.moveTo !== 'function') return;
+        editor.moveTo(Math.max(rowIndex, 0), Math.max(columnIndex, 0));
+      });
     },
     loadNote(noteId) {
       const requestId = ++this.loadRequestId;
@@ -498,7 +694,7 @@ export default {
     clearAll() {
       const initialState = createEmptySheetState(this.sheetColumns);
       this.sheetRows = initialState.rows;
-      this.onSheetChanged();
+      this.finalizeSheetMutation({ checkRowExpansion: false });
       toastService.show('Cleared!');
     },
     runAutoSaveJob() {
@@ -684,21 +880,70 @@ export default {
         rows.push(emptyRow());
       }
       this.sheetRows = rows;
-      this.hasUnsavedChanges = true;
-      this.syncSheetMetrics();
+      this.finalizeSheetMutation({ checkRowExpansion: false });
     },
     openContextMenu(event) {
       const frame = this.$refs.sheetFrame;
       if (!frame) return;
+      event.stopPropagation();
+      this.contextMenuTarget = this.resolveContextMenuTarget(event);
+      if (this.contextMenuTarget?.type === 'column') {
+        this.selectSheetColumn(this.contextMenuTarget.columnIndex);
+      } else if (this.contextMenuTarget?.type === 'row') {
+        this.selectSheetRow(this.contextMenuTarget.rowIndex);
+      } else if (this.contextMenuTarget?.type === 'cell' && this.selectedColumnIndex !== null) {
+        this.selectedColumnIndex = null;
+        this.$nextTick(() => {
+          this.applySelectedColumnStyles();
+        });
+      }
       const rect = frame.getBoundingClientRect();
       this.contextMenuTop = event.clientY - rect.top;
       this.contextMenuLeft = event.clientX - rect.left;
       this.contextMenuVisible = true;
     },
+    resolveContextMenuTarget(event) {
+      const table = this.getSheetTableElement();
+      if (!table || !(event.target instanceof Element)) return null;
+      const rowRibbon = event.target.closest('tbody td.first-col');
+      if (rowRibbon) {
+        const rowIndex = Number(rowRibbon.getAttribute('pos'));
+        return Number.isInteger(rowIndex) ? { type: 'row', rowIndex } : null;
+      }
+      const columnRibbon = event.target.closest('thead th');
+      if (columnRibbon && !columnRibbon.classList.contains('first-col')) {
+        const columnIndex = Array.from(columnRibbon.parentElement.children).indexOf(columnRibbon) - 1;
+        if (columnIndex >= 0) {
+          return { type: 'column', columnIndex };
+        }
+      }
+      const bodyCell = event.target.closest('tbody td');
+      if (!bodyCell || bodyCell.classList.contains('first-col')) return null;
+      const rowElement = bodyCell.closest('tr');
+      const tbody = table.querySelector('tbody');
+      if (!rowElement || !tbody) return null;
+      const rowIndex = Array.from(tbody.children).indexOf(rowElement);
+      const columnIndex = Array.from(rowElement.children).indexOf(bodyCell) - 1;
+      if (rowIndex < 0 || columnIndex < 0 || columnIndex >= this.sheetColumns.length) return null;
+      return {
+        type: 'cell',
+        rowIndex,
+        columnIndex,
+        field: this.sheetColumns[columnIndex].field
+      };
+    },
     closeContextMenu() {
       this.contextMenuVisible = false;
     },
-    contextMenuAddRow() {
+    contextMenuUndo() {
+      this.undoSheetChange();
+      this.closeContextMenu();
+    },
+    contextMenuAddRowHere() {
+      this.addSheetRowHere();
+      this.closeContextMenu();
+    },
+    contextMenuAddRowAtEnd() {
       this.addSheetRow();
       this.closeContextMenu();
     },
@@ -706,12 +951,17 @@ export default {
       this.addSheetColumn();
       this.closeContextMenu();
     },
+    contextMenuDeleteRows() {
+      this.deleteSelectedRows();
+      this.closeContextMenu();
+    },
+    contextMenuDeleteColumn() {
+      this.deleteSelectedColumn();
+      this.closeContextMenu();
+    },
     contextMenuCopy() {
       this.closeContextMenu();
-      const editor = this.$refs.sheetEditor;
-      if (!editor) return;
-
-      const selectedCells = this.getSelectedCells(editor);
+      const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
       if (!selectedCells || selectedCells.length === 0) return;
 
       let textToCopy;
@@ -728,13 +978,11 @@ export default {
         const sortedRows = [...rowMap.entries()].sort((a, b) => a[0] - b[0]);
         textToCopy = sortedRows.map(([, cells]) => cells.join(';')).join('\n');
       }
-
       navigator.clipboard.writeText(textToCopy).catch(() => {
         toastService.error('Failed to copy to clipboard');
       });
     },
     async contextMenuPaste() {
-      this.closeContextMenu();
       try {
         const text = await navigator.clipboard.readText();
         if (!text) return;
@@ -756,23 +1004,97 @@ export default {
               rows.push(emptyRow());
             }
             this.sheetRows = rows;
-            this.hasUnsavedChanges = true;
-            this.syncSheetMetrics();
+            this.finalizeSheetMutation({ checkRowExpansion: false });
+            this.closeContextMenu();
             return;
           }
         }
-        const editor = this.$refs.sheetEditor;
-        if (editor) {
-          const selectedCells = this.getSelectedCells(editor);
-          if (selectedCells && selectedCells.length === 1) {
-            const cell = selectedCells[0];
-            this.sheetRows[cell.rowIndex][cell.field] = text;
-            this.onSheetChanged();
-          }
+        const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
+        if (selectedCells && selectedCells.length === 1) {
+          const cell = selectedCells[0];
+          this.sheetRows[cell.rowIndex][cell.field] = text;
+          this.finalizeSheetMutation();
         }
+        this.closeContextMenu();
       } catch {
         toastService.error('Failed to read clipboard');
       }
+    },
+    resolveContextRowIndex() {
+      if (Number.isInteger(this.contextMenuTarget?.rowIndex)) {
+        return this.contextMenuTarget.rowIndex;
+      }
+      const focusedRowIndex = this.getFocusedSheetRowIndex();
+      return focusedRowIndex >= 0 ? focusedRowIndex : -1;
+    },
+    resolveContextColumnIndex() {
+      if (Number.isInteger(this.contextMenuTarget?.columnIndex)) {
+        return this.contextMenuTarget.columnIndex;
+      }
+      const editor = this.$refs.sheetEditor;
+      return Number.isInteger(editor?.currentColPos) ? editor.currentColPos : 0;
+    },
+    clearSheetRowSelection() {
+      const editor = this.$refs.sheetEditor;
+      if (typeof editor?.clearAllSelected === 'function') {
+        editor.clearAllSelected();
+      }
+      this.selectedRowIndexes = [];
+    },
+    selectSheetColumn(columnIndex) {
+      if (!Number.isInteger(columnIndex) || columnIndex < 0 || columnIndex >= this.sheetColumns.length) {
+        return;
+      }
+      this.selectedColumnIndex = columnIndex;
+      this.clearSheetRowSelection();
+      this.$nextTick(() => {
+        this.applySelectedColumnStyles();
+      });
+    },
+    selectSheetRow(rowIndex) {
+      if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+        return;
+      }
+      const editor = this.$refs.sheetEditor;
+      if (typeof editor?.clearAllSelected === 'function') {
+        editor.clearAllSelected();
+      }
+      if (typeof editor?.selectRecord === 'function') {
+        editor.selectRecord(rowIndex);
+      }
+      this.selectedColumnIndex = null;
+      this.onSheetRowSelection();
+    },
+    deleteSelectedRows() {
+      const rowIndexes = this.selectedRowIndexes.length > 0
+        ? this.selectedRowIndexes
+        : (Number.isInteger(this.contextMenuTarget?.rowIndex) ? [this.contextMenuTarget.rowIndex] : []);
+      if (rowIndexes.length === 0) {
+        return;
+      }
+      const rowsToDelete = new Set(rowIndexes);
+      const remainingRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns)
+        .filter((_, index) => !rowsToDelete.has(index));
+      this.sheetRows = remainingRows.length > 0 ? remainingRows : [this.createEmptyRow()];
+      this.clearSheetRowSelection();
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+      this.focusSheetCell(Math.min(rowIndexes[0], this.sheetRows.length - 1), this.resolveContextColumnIndex());
+    },
+    deleteSelectedColumn() {
+      if (!Number.isInteger(this.selectedColumnIndex)) {
+        return;
+      }
+      if (this.sheetColumns.length <= 1) {
+        toastService.warning('Keep at least one column in the sheet');
+        return;
+      }
+      const nextColumns = this.sheetColumns.filter((_, index) => index !== this.selectedColumnIndex);
+      this.sheetColumns = nextColumns;
+      this.sheetRows = sanitizeSheetRows(this.sheetRows, nextColumns);
+      const nextColumnIndex = Math.min(this.selectedColumnIndex, nextColumns.length - 1);
+      this.selectedColumnIndex = null;
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+      this.focusSheetCell(this.resolveContextRowIndex(), nextColumnIndex);
     },
     getFocusedSheetRowIndex() {
       const table = this.getSheetTableElement();
@@ -786,10 +1108,27 @@ export default {
       return Array.from(tbody.children).indexOf(rowEl);
     },
     getSelectedCells(editor) {
+      if (this.contextMenuTarget?.type === 'cell') {
+        return [{
+          rowIndex: this.contextMenuTarget.rowIndex,
+          field: this.contextMenuTarget.field,
+          value: this.sheetRows[this.contextMenuTarget.rowIndex]?.[this.contextMenuTarget.field] ?? ''
+        }];
+      }
       if (!editor) return [];
       if (typeof editor.getSelectedContent === 'function') {
         const content = editor.getSelectedContent();
         if (content && Array.isArray(content)) return content;
+      }
+      if (Number.isInteger(editor.currentRowPos) && Number.isInteger(editor.currentColPos) && editor.currentColPos >= 0) {
+        const field = this.sheetColumns[editor.currentColPos]?.field;
+        if (field) {
+          return [{
+            rowIndex: editor.currentRowPos,
+            field,
+            value: editor.inputBoxShow ? editor.inputBox.value : (this.sheetRows[editor.currentRowPos]?.[field] ?? '')
+          }];
+        }
       }
       const table = this.getSheetTableElement();
       if (!table) return [];
@@ -803,11 +1142,11 @@ export default {
       const cellIndex = Array.from(rowEl.children).indexOf(focusedCell) - 1;
       if (rowIndex < 0 || cellIndex < 0 || cellIndex >= this.sheetColumns.length) return [];
       const field = this.sheetColumns[cellIndex].field;
-      return [{
+      return field ? [{
         rowIndex,
         field,
         value: this.sheetRows[rowIndex]?.[field] ?? ''
-      }];
+      }] : [];
     }
   }
 };
@@ -1031,6 +1370,10 @@ export default {
 
 .sheet-editor-shell :deep(.systable tr.select td),
 .sheet-editor-shell :deep(.systable tbody td.focus) {
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface, var(--color-background))) !important;
+}
+
+.sheet-editor-shell :deep(.systable .sheet-selected-column) {
   background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface, var(--color-background))) !important;
 }
 
