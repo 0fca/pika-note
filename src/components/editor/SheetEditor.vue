@@ -129,6 +129,7 @@ import {
   hasSheetContent,
   normalizeNoteType,
   parseDelimitedText,
+  parseDelimitedTextMatrix,
   resolveNoteType,
   sanitizeSheetRows,
   serializeSheetRows,
@@ -476,8 +477,8 @@ export default {
         }
       }
     },
-    createEmptyRow() {
-      return this.sheetColumns.reduce((record, column) => {
+    createEmptyRow(columns = this.sheetColumns) {
+      return columns.reduce((record, column) => {
         record[column.field] = '';
         return record;
       }, {});
@@ -600,6 +601,13 @@ export default {
       this.sheetRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns)
         .map(row => ({ ...row, [nextColumn.field]: '' }));
       this.finalizeSheetMutation({ checkRowExpansion: false });
+    },
+    buildSheetColumn(columnIndex) {
+      const nextIndex = columnIndex + 1;
+      return {
+        field: `column_${nextIndex}`,
+        label: `Column ${nextIndex}`
+      };
     },
     focusSheetCell(rowIndex, columnIndex = 0) {
       this.$nextTick(() => {
@@ -869,25 +877,10 @@ export default {
       if (!text || !text.includes('\n') && !text.includes('\t') && !text.includes(',') && !text.includes(';') && !text.includes(':')) {
         return;
       }
-      const parsed = parseDelimitedText(text);
-      if (!parsed || !parsed.rows || parsed.rows.length === 0) return;
+      const matrix = parseDelimitedTextMatrix(text);
+      if (matrix.length === 0) return;
       event.preventDefault();
-
-      this.sheetColumns = parsed.columns;
-      const totalRows = Math.min(
-        Math.max(parsed.rows.length, SHEET_INITIAL_ROW_COUNT),
-        SHEET_MAX_ROW_COUNT
-      );
-      const emptyRow = () => this.sheetColumns.reduce((row, col) => {
-        row[col.field] = '';
-        return row;
-      }, {});
-      const rows = [...parsed.rows];
-      while (rows.length < totalRows) {
-        rows.push(emptyRow());
-      }
-      this.sheetRows = rows;
-      this.finalizeSheetMutation({ checkRowExpansion: false });
+      this.applyDelimitedPaste(text, matrix);
     },
     openContextMenu(event) {
       const frame = this.$refs.sheetFrame;
@@ -995,23 +988,9 @@ export default {
         if (!text) return;
         const hasDelimiter = text.includes('\n') || text.includes('\t') || text.includes(',') || text.includes(';') || text.includes(':');
         if (hasDelimiter) {
-          const parsed = parseDelimitedText(text);
-          if (parsed && parsed.rows && parsed.rows.length > 0) {
-            this.sheetColumns = parsed.columns;
-            const totalRows = Math.min(
-              Math.max(parsed.rows.length, SHEET_INITIAL_ROW_COUNT),
-              SHEET_MAX_ROW_COUNT
-            );
-            const emptyRow = () => this.sheetColumns.reduce((row, col) => {
-              row[col.field] = '';
-              return row;
-            }, {});
-            const rows = [...parsed.rows];
-            while (rows.length < totalRows) {
-              rows.push(emptyRow());
-            }
-            this.sheetRows = rows;
-            this.finalizeSheetMutation({ checkRowExpansion: false });
+          const matrix = parseDelimitedTextMatrix(text);
+          if (matrix.length > 0) {
+            this.applyDelimitedPaste(text, matrix);
             return;
           }
         }
@@ -1163,6 +1142,84 @@ export default {
         field,
         value: this.sheetRows[rowIndex]?.[field] ?? ''
       }] : [];
+    },
+    applyDelimitedPaste(text, matrix) {
+      const anchorCell = this.getSelectedCells(this.$refs.sheetEditor)[0] || null;
+      if (this.shouldReplaceSheetFromPaste(anchorCell)) {
+        const parsed = parseDelimitedText(text);
+        if (parsed && parsed.rows && parsed.rows.length > 0) {
+          this.replaceSheetFromPaste(parsed);
+          return;
+        }
+      }
+
+      this.pasteMatrixIntoSheet(matrix, anchorCell);
+    },
+    shouldReplaceSheetFromPaste(anchorCell) {
+      return anchorCell
+        && anchorCell.rowIndex === 0
+        && this.resolvePasteColumnIndex(anchorCell) === 0
+        && !hasSheetContent(this.sheetRows, this.sheetColumns);
+    },
+    resolvePasteColumnIndex(anchorCell) {
+      const fieldIndex = anchorCell?.field
+        ? this.sheetColumns.findIndex(column => column.field === anchorCell.field)
+        : -1;
+      if (fieldIndex >= 0) {
+        return fieldIndex;
+      }
+      if (Number.isInteger(anchorCell?.columnIndex)) {
+        return anchorCell.columnIndex;
+      }
+      const editor = this.$refs.sheetEditor;
+      return Number.isInteger(editor?.currentColPos) ? editor.currentColPos : 0;
+    },
+    replaceSheetFromPaste(parsed) {
+      this.sheetColumns = parsed.columns;
+      const totalRows = Math.min(
+        Math.max(parsed.rows.length, SHEET_INITIAL_ROW_COUNT),
+        SHEET_MAX_ROW_COUNT
+      );
+      const rows = [...parsed.rows];
+      while (rows.length < totalRows) {
+        rows.push(this.createEmptyRow(this.sheetColumns));
+      }
+      this.sheetRows = rows;
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+    },
+    pasteMatrixIntoSheet(matrix, anchorCell) {
+      const startRowIndex = Math.max(anchorCell?.rowIndex ?? this.getFocusedSheetRowIndex(), 0);
+      const startColumnIndex = Math.max(this.resolvePasteColumnIndex(anchorCell), 0);
+      const maxWidth = matrix.reduce((width, row) => Math.max(width, row.length), 0);
+      const requiredColumnCount = Math.min(startColumnIndex + maxWidth, SHEET_MAX_COLUMN_COUNT);
+      const requiredRowCount = Math.min(startRowIndex + matrix.length, SHEET_MAX_ROW_COUNT);
+      const nextColumns = [...this.sheetColumns];
+
+      while (nextColumns.length < requiredColumnCount) {
+        nextColumns.push(this.buildSheetColumn(nextColumns.length));
+      }
+
+      const nextRows = sanitizeSheetRows(this.sheetRows, nextColumns);
+      while (nextRows.length < requiredRowCount) {
+        nextRows.push(this.createEmptyRow(nextColumns));
+      }
+
+      matrix.slice(0, SHEET_MAX_ROW_COUNT - startRowIndex).forEach((row, rowOffset) => {
+        row.slice(0, SHEET_MAX_COLUMN_COUNT - startColumnIndex).forEach((cellValue, columnOffset) => {
+          const column = nextColumns[startColumnIndex + columnOffset];
+          if (column) {
+            nextRows[startRowIndex + rowOffset][column.field] = cellValue ?? '';
+          }
+        });
+      });
+
+      this.sheetColumns = nextColumns;
+      this.sheetRows = nextRows;
+      this.finalizeSheetMutation({ checkRowExpansion: false });
+      this.focusSheetCell(
+        Math.min(startRowIndex + matrix.length - 1, this.sheetRows.length - 1),
+        Math.min(startColumnIndex + maxWidth - 1, this.sheetColumns.length - 1)
+      );
     }
   }
 };

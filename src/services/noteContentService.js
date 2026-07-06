@@ -85,7 +85,7 @@ export function extractSheetRows(rawContent) {
 export function hasSheetContent(rows, columns = null) {
   return sanitizeSheetRows(rows, columns).some(row =>
     Object.values(row).some(cell => `${cell ?? ''}`.trim() !== '')
-  );
+  ) || hasMeaningfulSheetColumns(columns);
 }
 
 export function countSheetCellCharacters(rows, columns = null) {
@@ -159,7 +159,8 @@ export function trimSheetColumnsToContent(rows, columns, paddingCount = SHEET_IN
   let lastContentIndex = -1;
   for (let i = normalizedColumns.length - 1; i >= 0; i--) {
     const col = normalizedColumns[i];
-    const hasContent = safeRows.some(row => `${row?.[col.field] ?? ''}`.trim() !== '');
+    const hasContent = safeRows.some(row => `${row?.[col.field] ?? ''}`.trim() !== '')
+      || isMeaningfulSheetColumn(col, i);
     if (hasContent) {
       lastContentIndex = i;
       break;
@@ -181,6 +182,10 @@ export function trimSheetColumnsToContent(rows, columns, paddingCount = SHEET_IN
 
 export function parseDelimitedText(text) {
   return parseCsvText(text);
+}
+
+export function parseDelimitedTextMatrix(text) {
+  return parseDelimitedRecords(text);
 }
 
 function createEmptySheetRow(columns) {
@@ -284,11 +289,22 @@ function normalizeArraySheetState(rows) {
 }
 
 function parseCsvText(rawText) {
-  if (typeof rawText !== 'string' || rawText.trim() === '') {
+  const records = parseDelimitedRecords(rawText);
+  if (records.length === 0) {
     return {
       columns: createDefaultSheetColumns(),
       rows: []
     };
+  }
+
+  const [headerRow = [], ...dataRows] = records;
+  const headers = buildHeaders(headerRow, getTableWidth(headerRow, dataRows));
+  return buildSheetStateFromMatrix(headers, dataRows);
+}
+
+function parseDelimitedRecords(rawText) {
+  if (typeof rawText !== 'string' || rawText.trim() === '') {
+    return [];
   }
 
   const records = [];
@@ -323,7 +339,9 @@ function parseCsvText(rawText) {
         index++;
       }
       currentRow.push(currentField);
-      records.push(currentRow);
+      if (currentRow.some(cell => `${cell ?? ''}`.trim() !== '')) {
+        records.push(currentRow);
+      }
       currentField = '';
       currentRow = [];
       continue;
@@ -333,20 +351,11 @@ function parseCsvText(rawText) {
   }
 
   currentRow.push(currentField);
-  if (currentRow.some(cell => `${cell}`.trim() !== '')) {
+  if (currentRow.some(cell => `${cell ?? ''}`.trim() !== '')) {
     records.push(currentRow);
   }
 
-  if (records.length === 0) {
-    return {
-      columns: createDefaultSheetColumns(),
-      rows: []
-    };
-  }
-
-  const [headerRow = [], ...dataRows] = records;
-  const headers = buildHeaders(headerRow, getTableWidth(headerRow, dataRows));
-  return buildSheetStateFromMatrix(headers, dataRows);
+  return records;
 }
 
 function buildSheetStateFromMatrix(headers, dataRows) {
@@ -489,6 +498,19 @@ function makeUniqueField(field, index, usedFields) {
 
   usedFields.add(nextField);
   return nextField;
+}
+
+function hasMeaningfulSheetColumns(columns) {
+  return (Array.isArray(columns) ? columns : []).some((column, index) => isMeaningfulSheetColumn(column, index));
+}
+
+function isMeaningfulSheetColumn(column, index) {
+  if (!column) {
+    return false;
+  }
+
+  return index >= SHEET_INITIAL_COLUMN_COUNT
+    || `${column.label ?? ''}`.trim() !== DEFAULT_SHEET_COLUMN_LABELS[index];
 }
 
 function buildSheetFieldName(index) {
