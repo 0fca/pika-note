@@ -74,6 +74,7 @@
           no-mass-update
           disable-panel-setting
           disable-panel-filter
+          enter-to-south
           :height="sheetEditorHeight"
           width="100%"
           @update="onSheetChanged"
@@ -117,6 +118,9 @@ import {
   SHEET_INITIAL_ROW_COUNT,
   SHEET_MAX_ROW_COUNT,
   SHEET_ROW_EXPANSION_THRESHOLD,
+  SHEET_INITIAL_COLUMN_COUNT,
+  SHEET_MAX_COLUMN_COUNT,
+  SHEET_COLUMN_EXPANSION_THRESHOLD,
   stringifySheetRows
 } from '@/services/noteContentService';
 
@@ -373,6 +377,7 @@ export default {
       this.onSheetChanged();
     },
     addSheetColumn() {
+      if (this.sheetColumns.length >= SHEET_MAX_COLUMN_COUNT) return;
       const nextColumnIndex = this.sheetColumns.length + 1;
       const nextColumn = {
         field: `column_${nextColumnIndex}`,
@@ -551,6 +556,7 @@ export default {
       scrollable.scrollTop += event.deltaY;
       scrollable.scrollLeft += event.deltaX;
       this.checkRowExpansion(scrollable);
+      this.checkColumnExpansion(scrollable);
     },
     handleSheetTouchStart(event) {
       if (event.touches.length === 1) {
@@ -572,11 +578,12 @@ export default {
       scrollable.scrollTop += deltaY;
       scrollable.scrollLeft += deltaX;
       this.checkRowExpansion(scrollable);
+      this.checkColumnExpansion(scrollable);
     },
     getSheetScrollContainer() {
       const frame = this.$refs.sheetFrame;
       if (!frame) return null;
-      return frame.querySelector('.systable') || frame.querySelector('table')?.parentElement || null;
+      return frame.querySelector('.table-content') || frame.querySelector('.systable')?.parentElement || null;
     },
     checkRowExpansion(scrollable) {
       if (!scrollable || this.sheetRows.length >= SHEET_MAX_ROW_COUNT) return;
@@ -585,6 +592,15 @@ export default {
       const rowsFromEnd = distanceFromBottom / rowHeight;
       if (rowsFromEnd <= SHEET_ROW_EXPANSION_THRESHOLD) {
         this.expandSheetRows();
+      }
+    },
+    checkColumnExpansion(scrollable) {
+      if (!scrollable || this.sheetColumns.length >= SHEET_MAX_COLUMN_COUNT) return;
+      const distanceFromRight = scrollable.scrollWidth - scrollable.scrollLeft - scrollable.clientWidth;
+      const columnWidth = scrollable.scrollWidth / Math.max(this.sheetColumns.length, 1);
+      const columnsFromEnd = distanceFromRight / columnWidth;
+      if (columnsFromEnd <= SHEET_COLUMN_EXPANSION_THRESHOLD) {
+        this.expandSheetColumns();
       }
     },
     expandSheetRows() {
@@ -598,6 +614,21 @@ export default {
       for (let i = currentCount; i < newCount; i++) {
         this.sheetRows.push(emptyRow());
       }
+    },
+    expandSheetColumns() {
+      const currentCount = this.sheetColumns.length;
+      if (currentCount >= SHEET_MAX_COLUMN_COUNT) return;
+      const newCount = Math.min(currentCount + SHEET_INITIAL_COLUMN_COUNT, SHEET_MAX_COLUMN_COUNT);
+      const newColumns = [];
+      for (let i = currentCount + 1; i <= newCount; i++) {
+        newColumns.push({ field: `column_${i}`, label: `Column ${i}` });
+      }
+      this.sheetColumns = [...this.sheetColumns, ...newColumns];
+      this.sheetRows = this.sheetRows.map(row => {
+        const updatedRow = { ...row };
+        newColumns.forEach(col => { updatedRow[col.field] = ''; });
+        return updatedRow;
+      });
     },
     attachSheetPasteListener() {
       const frame = this.$refs.sheetFrame;

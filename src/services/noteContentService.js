@@ -3,8 +3,11 @@ export const SHEET_NOTE_TYPE = 'sheet';
 export const SHEET_INITIAL_ROW_COUNT = 20;
 export const SHEET_MAX_ROW_COUNT = 2000;
 export const SHEET_ROW_EXPANSION_THRESHOLD = 3;
+export const SHEET_INITIAL_COLUMN_COUNT = 20;
+export const SHEET_MAX_COLUMN_COUNT = 200;
+export const SHEET_COLUMN_EXPANSION_THRESHOLD = 3;
 
-const DEFAULT_SHEET_COLUMN_LABELS = ['Column 1', 'Column 2', 'Column 3'];
+const DEFAULT_SHEET_COLUMN_LABELS = Array.from({ length: SHEET_INITIAL_COLUMN_COUNT }, (_, i) => `Column ${i + 1}`);
 const SAFE_SHEET_FIELD_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const MAX_NESTED_SHEET_CONTENT_DEPTH = 10;
 
