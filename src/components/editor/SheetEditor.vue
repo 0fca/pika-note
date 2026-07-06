@@ -365,6 +365,7 @@ export default {
       this.sheetRows = sanitizeSheetRows(this.sheetRows, this.sheetColumns);
       this.$store.commit('resetInactivityCounter');
       this.syncSheetMetrics();
+      this.checkRowExpansion();
       this.hasUnsavedChanges = true;
       this.triggerDebouncedAutoSave();
     },
@@ -601,12 +602,12 @@ export default {
       if (!frame) return null;
       return frame.querySelector('.table-content') || frame.querySelector('.systable') || null;
     },
-    checkRowExpansion(scrollable) {
-      if (!scrollable || this.sheetRows.length >= SHEET_MAX_ROW_COUNT) return;
-      const distanceFromBottom = scrollable.scrollHeight - scrollable.scrollTop - scrollable.clientHeight;
-      const rowHeight = scrollable.scrollHeight / Math.max(this.sheetRows.length, 1);
-      const rowsFromEnd = distanceFromBottom / rowHeight;
-      if (rowsFromEnd <= SHEET_ROW_EXPANSION_THRESHOLD) {
+    checkRowExpansion() {
+      if (this.sheetRows.length >= SHEET_MAX_ROW_COUNT) return;
+      const focusedRowIndex = this.getFocusedSheetRowIndex();
+      if (focusedRowIndex < 0) return;
+      const rowPositionFromBottom = this.sheetRows.length - focusedRowIndex;
+      if (rowPositionFromBottom >= 2 && rowPositionFromBottom <= SHEET_ROW_EXPANSION_THRESHOLD) {
         this.expandSheetRows();
       }
     },
@@ -768,6 +769,19 @@ export default {
       } catch {
         toastService.error('Failed to read clipboard');
       }
+    },
+    getFocusedSheetRowIndex() {
+      const editor = this.$refs.sheetEditor;
+      if (!editor) return -1;
+      const table = editor.$el?.querySelector('.systable');
+      if (!table) return -1;
+      const focusedCell = table.querySelector('td.focus');
+      if (!focusedCell) return -1;
+      const rowEl = focusedCell.closest('tr');
+      if (!rowEl) return -1;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return -1;
+      return Array.from(tbody.children).indexOf(rowEl);
     },
     getSelectedCells(editor) {
       if (!editor) return [];
