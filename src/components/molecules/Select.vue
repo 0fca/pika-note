@@ -1,6 +1,6 @@
 <template>
-      <select id="bucket-select" class="browser-default custom-select" :value="bucketId" @change="handleChange">
-        <option value="" disabled selected>Choose a bucket</option>
+      <select ref="bucketSelect" id="bucket-select" class="browser-default custom-select" :value="bucketId" @change="handleChange">
+        <option value="" disabled>Choose a bucket</option>
           <option :value="entry.id" v-for="entry in entries" :key="entry.id">
             {{ entry.text }}
           </option>
@@ -19,9 +19,28 @@ export default {
         return this.$store.getters.bucketUuid;
       }
     },
+    watch: {
+      bucketId() {
+        this.syncSelectedBucket();
+      },
+      entries: {
+        handler() {
+          this.syncSelectedBucket();
+        },
+        deep: true
+      }
+    },
+    mounted() {
+      this.syncSelectedBucket();
+    },
     methods: {
       handleChange(event) {
         this.$emit('change', event);
+      },
+      syncSelectedBucket() {
+        if (this.$refs.bucketSelect) {
+          this.$refs.bucketSelect.value = this.bucketId ?? '';
+        }
       }
     }
 }
