@@ -583,7 +583,7 @@ export default {
     getSheetScrollContainer() {
       const frame = this.$refs.sheetFrame;
       if (!frame) return null;
-      return frame.querySelector('.table-content') || frame.querySelector('.systable')?.parentElement || null;
+      return frame.querySelector('.table-content') || frame.querySelector('.systable') || null;
     },
     checkRowExpansion(scrollable) {
       if (!scrollable || this.sheetRows.length >= SHEET_MAX_ROW_COUNT) return;
