@@ -16,13 +16,16 @@ export default {
     ],
     data() {
       return {
-        selectedBucketId: this.$store.getters.bucketUuid ?? ''
+        selectedBucketId: ''
       };
     },
     computed: {
       bucketId() {
         return this.$store.getters.bucketUuid;
       }
+    },
+    created() {
+      this.selectedBucketId = this.bucketId ?? '';
     },
     watch: {
       bucketId(newBucketId) {
