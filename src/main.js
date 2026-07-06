@@ -42,6 +42,13 @@ function persistPinnedNoteTabIds(ids) {
   localStorage.setItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY, JSON.stringify(sanitizedIds));
 }
 
+function loadInitialBucketState() {
+  return {
+    bucketName: localStorage.getItem('bucketName') ?? "",
+    bucketUuid: localStorage.getItem('bucketUuid') ?? ""
+  };
+}
+
 function hasActiveEditorSession(state) {
   // `count` tracks editor character count so untitled drafts still count as an active editor session.
   return state.id !== '' || state.activeTabId !== null || state.name !== '' || state.content !== '' || state.count > 0;
@@ -67,6 +74,7 @@ const router = createRouter({routes: routes, history: history});
 const app = createApp(App);
 app.use(router)
 app.use(VueExcelEditor)
+const initialBucketState = loadInitialBucketState();
 // Create a new store instance.
 const store = createStore({
   state () {
@@ -82,8 +90,8 @@ const store = createStore({
       order: localStorage.getItem('order') ?? 1,
       noteCount: localStorage.getItem('count') ?? 10,
       loggedIn: false,
-      bucketName: localStorage.getItem('bucketName') ?? "",
-      bucketUuid: localStorage.getItem('bucketUuid') ?? "",
+      bucketName: initialBucketState.bucketName,
+      bucketUuid: initialBucketState.bucketUuid,
       lastSavedAt: null,
       isSaving: false,
       errorLoadingNote: false,
@@ -153,6 +161,12 @@ const store = createStore({
       // Update localStorage when bucket changes
       localStorage.setItem('bucketUuid', payload.bucketUuid);
       localStorage.setItem('bucketName', payload.bucketName);
+    },
+    clearCurrentBucket(state){
+      state.bucketUuid = '';
+      state.bucketName = '';
+      localStorage.removeItem('bucketUuid');
+      localStorage.removeItem('bucketName');
     },
     updateLastSavedAt(state, payload){
       state.lastSavedAt = payload.lastSavedAt;

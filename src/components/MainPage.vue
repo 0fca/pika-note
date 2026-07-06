@@ -2,7 +2,7 @@
   <div class="container">
     <div class="row card-panel filter-bar z-depth-0">
       <div class="col s12 m10 l6">
-          <Select dropdownText="Choose bucket" :entries="buckets" :onchange="onBucketSelectChange"  v-if="this.$store.getters.loggedIn === true"/>
+          <Select dropdownText="Choose bucket" :entries="buckets" @change="onBucketSelectChange"  v-if="this.$store.getters.loggedIn === true"/>
       </div>
       <div class="col s12 m2 l6">
         <div class="right"> 
@@ -101,14 +101,14 @@ export default {
     getActuallyLoaded()
     {
       return this.actuallyLoaded;
+    },
+    bucketId() {
+      return this.$store.getters.bucketUuid;
     }
   },
   mounted: function () {
     this.loggedIn = this.$store.getters.loggedIn;
     let order = this.$store.getters.order;
-    if(this.$store.getters.bucketUuid !== ""){
-      this.bucketId = this.$store.getters.bucketUuid;
-    }
     this.noteService = new NoteService();
     this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId=" + this.bucketId)
         .then(data => {
@@ -129,7 +129,6 @@ export default {
     return {
       notes: [],
       buckets: [],
-      bucketId: "",
       orderString: "ASC",
       overallCount: localStorage.overallCount,
       loaded: false,
@@ -199,7 +198,6 @@ export default {
       const select = e.target;
       const bucketName = select.options[select.selectedIndex].text;
       const bucketUuid = select.value;
-      this.bucketId = bucketUuid;
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
       let order = this.$store.getters.order;
       this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId="+this.bucketId)

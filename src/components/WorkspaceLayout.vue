@@ -84,7 +84,7 @@
           <Select 
             dropdownText="Choose bucket" 
             :entries="buckets" 
-            :onchange="onBucketSelectChange" 
+            @change="onBucketSelectChange" 
             v-if="this.$store.getters.loggedIn === true"
           />
         </div>
@@ -164,7 +164,7 @@
             <Select 
               dropdownText="Choose bucket" 
               :entries="buckets" 
-              :onchange="onBucketSelectChange" 
+              @change="onBucketSelectChange" 
               v-if="this.$store.getters.loggedIn === true"
             />
           </div>
@@ -346,6 +346,9 @@ export default {
     activeTab() {
       return this.$store.getters.editorTabs.find(tab => tab.id === this.activeTabId) ?? null;
     },
+    bucketId() {
+      return this.$store.getters.bucketUuid;
+    },
     editorInstanceKey() {
       return `${this.$store.getters.activeTabId ?? this.$store.getters.id ?? 'draft'}-${this.$store.getters.noteType}`;
     },
@@ -365,9 +368,6 @@ export default {
     window.addEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
     this.loggedIn = this.$store.getters.loggedIn;
     const routeId = this.routeNoteId;
-    if(this.$store.getters.bucketUuid !== "" && !routeId){
-      this.bucketId = this.$store.getters.bucketUuid;
-    }
     this.noteService = new NoteService();
     this.$store.commit({type: 'setBucketsLoading', bucketsLoading: true});
     this.noteService.getBuckets()
@@ -422,7 +422,6 @@ export default {
     return {
       notes: [],
       buckets: [],
-      bucketId: "",
       orderString: "ASC",
       overallCount: localStorage.overallCount,
       loaded: false,
@@ -661,19 +660,23 @@ export default {
           return;
         }
 
-        // After buckets are loaded, check if we have a selected bucket
-        const storedBucketUuid = localStorage.getItem('bucketUuid');
-        const storedBucketName = localStorage.getItem('bucketName');
-        
-        if (storedBucketUuid && storedBucketName) {
-          // Update store with current bucket
-          this.$store.commit({
-            type: 'updateCurrentBucket', 
-            bucketName: storedBucketName, 
-            bucketUuid: storedBucketUuid
-          });
-        } else {
-          // No bucket selected - show prompt toast
+        const currentBucketUuid = this.$store.getters.bucketUuid;
+        if (currentBucketUuid) {
+          const matchingBucket = this.buckets.find(bucket => bucket.id === currentBucketUuid);
+
+          if (matchingBucket) {
+            this.$store.commit({
+              type: 'updateCurrentBucket',
+              bucketName: matchingBucket.text,
+              bucketUuid: matchingBucket.id
+            });
+            return;
+          }
+
+          this.$store.commit({type: 'clearCurrentBucket'});
+        }
+
+        if (!this.$store.getters.bucketUuid) {
           this.showBucketPromptToast();
         }
       }
@@ -682,8 +685,6 @@ export default {
       const select = e.target;
       const bucketName = select.options[select.selectedIndex].text;
       const bucketUuid = select.value;
-      this.bucketId = bucketUuid;
-      // Update store - this will also update localStorage via mutation
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
       
       // Reset editor panes when switching buckets
@@ -709,7 +710,6 @@ export default {
       
       // Switch bucket if note is in a different bucket
       if (note.bucketId && note.bucketId !== this.bucketId) {
-        this.bucketId = note.bucketId;
         const bucket = this.buckets.find(b => b.id === note.bucketId);
         if (bucket) {
           this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
@@ -747,7 +747,6 @@ export default {
 
           // Switch to the note's bucket if different from current
           if (note.bucketId && note.bucketId !== this.bucketId) {
-            this.bucketId = note.bucketId;
             const bucket = this.buckets.find(b => b.id === note.bucketId);
             if (bucket) {
               this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
