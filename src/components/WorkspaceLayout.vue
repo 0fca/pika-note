@@ -665,10 +665,13 @@ export default {
           const matchingBucket = this.buckets.find(bucket => bucket.id === currentBucketUuid);
 
           if (matchingBucket) {
-            if (this.$store.getters.bucketName !== matchingBucket.text) {
+            const nextBucketName = matchingBucket.text;
+            const bucketNeedsSync = this.$store.getters.bucketName !== nextBucketName;
+
+            if (bucketNeedsSync) {
               this.$store.commit({
                 type: 'updateCurrentBucket',
-                bucketName: matchingBucket.text,
+                bucketName: nextBucketName,
                 bucketUuid: matchingBucket.id
               });
             }

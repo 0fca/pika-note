@@ -162,7 +162,7 @@ const store = createStore({
       localStorage.setItem('bucketUuid', payload.bucketUuid);
       localStorage.setItem('bucketName', payload.bucketName);
     },
-    clearCurrentBucket(state){
+    clearCurrentBucket (state) {
       state.bucketUuid = '';
       state.bucketName = '';
       localStorage.removeItem('bucketUuid');
