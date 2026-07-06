@@ -602,6 +602,11 @@ export default {
       if (!frame) return null;
       return frame.querySelector('.table-content') || frame.querySelector('.systable') || null;
     },
+    getSheetTableElement() {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return null;
+      return frame.querySelector('.systable');
+    },
     checkRowExpansion() {
       if (this.sheetRows.length >= SHEET_MAX_ROW_COUNT) return;
       const focusedRowIndex = this.getFocusedSheetRowIndex();
@@ -771,9 +776,7 @@ export default {
       }
     },
     getFocusedSheetRowIndex() {
-      const editor = this.$refs.sheetEditor;
-      if (!editor) return -1;
-      const table = editor.$el?.querySelector('.systable');
+      const table = this.getSheetTableElement();
       if (!table) return -1;
       const focusedCell = table.querySelector('td.focus');
       if (!focusedCell) return -1;
@@ -789,7 +792,7 @@ export default {
         const content = editor.getSelectedContent();
         if (content && Array.isArray(content)) return content;
       }
-      const table = editor.$el?.querySelector('.systable');
+      const table = this.getSheetTableElement();
       if (!table) return [];
       const focusedCell = table.querySelector('td.focus');
       if (!focusedCell) return [];
