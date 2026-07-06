@@ -380,7 +380,6 @@ export default {
     },
     initializeUndoHistory() {
       this.undoSnapshots = [];
-      localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
       this.recordUndoSnapshot(true);
       this.$nextTick(() => {
         this.applySelectedColumnStyles();
@@ -403,7 +402,10 @@ export default {
       if (!force && lastSnapshot && JSON.stringify(lastSnapshot) === serializedSnapshot) {
         return;
       }
-      this.undoSnapshots = [...this.undoSnapshots, snapshot].slice(-SHEET_UNDO_SNAPSHOT_LIMIT);
+      this.undoSnapshots.push(snapshot);
+      if (this.undoSnapshots.length > SHEET_UNDO_SNAPSHOT_LIMIT) {
+        this.undoSnapshots.shift();
+      }
       this.persistUndoSnapshots();
     },
     restoreUndoSnapshot(snapshot) {
@@ -1005,7 +1007,6 @@ export default {
             }
             this.sheetRows = rows;
             this.finalizeSheetMutation({ checkRowExpansion: false });
-            this.closeContextMenu();
             return;
           }
         }
@@ -1015,9 +1016,10 @@ export default {
           this.sheetRows[cell.rowIndex][cell.field] = text;
           this.finalizeSheetMutation();
         }
-        this.closeContextMenu();
       } catch {
         toastService.error('Failed to read clipboard');
+      } finally {
+        this.closeContextMenu();
       }
     },
     resolveContextRowIndex() {
