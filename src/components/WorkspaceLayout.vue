@@ -334,6 +334,9 @@ export default {
     showEmptyEditorState() {
       return this.$store.getters.loggedIn === true && this.$store.getters.id === '' && this.$route.path !== '/editor';
     },
+    routeNoteId() {
+      return this.$route.params.id ?? '';
+    },
     activeEditorType() {
       return this.$store.getters.noteType;
     },
@@ -361,7 +364,7 @@ export default {
   mounted: function () {
     window.addEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
     this.loggedIn = this.$store.getters.loggedIn;
-    const routeId = this.$route.params.id;
+    const routeId = this.routeNoteId;
     if(this.$store.getters.bucketUuid !== "" && !routeId){
       this.bucketId = this.$store.getters.bucketUuid;
     }
@@ -653,7 +656,7 @@ export default {
           });
         }
         
-        const routeId = this.$route.params.id;
+        const routeId = this.routeNoteId;
         if (routeId) {
           return;
         }
