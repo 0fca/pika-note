@@ -124,7 +124,6 @@ import {
   serializeSheetRows,
   SHEET_INITIAL_ROW_COUNT,
   SHEET_MAX_ROW_COUNT,
-  SHEET_ROW_EXPANSION_THRESHOLD,
   SHEET_INITIAL_COLUMN_COUNT,
   SHEET_MAX_COLUMN_COUNT,
   SHEET_COLUMN_EXPANSION_THRESHOLD,
@@ -612,7 +611,7 @@ export default {
       const focusedRowIndex = this.getFocusedSheetRowIndex();
       if (focusedRowIndex < 0) return;
       const rowPositionFromBottom = this.sheetRows.length - focusedRowIndex;
-      if (rowPositionFromBottom >= 2 && rowPositionFromBottom <= SHEET_ROW_EXPANSION_THRESHOLD) {
+      if (rowPositionFromBottom === 2 || rowPositionFromBottom === 3) {
         this.expandSheetRows();
       }
     },
