@@ -267,24 +267,24 @@
 </template>
 
 <script>
-import Note from '@/components/Note';
-import Editor from '@/components/Editor';
-import SheetEditor from '@/components/SheetEditor';
-import EditorTabs from '@/components/EditorTabs';
-import EmptyEditorState from '@/components/EmptyEditorState';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import Preloader from "@/components/Preloader";
-import Error from "@/components/Error";
-import Info from "@/components/Info";
+import Note from '@/components/molecules/Note';
+import Editor from '@/components/editor/Editor';
+import SheetEditor from '@/components/editor/SheetEditor';
+import EditorTabs from '@/components/editor/EditorTabs';
+import EmptyEditorState from '@/components/editor/EmptyEditorState';
+import ConfirmDialog from '@/components/molecules/ConfirmDialog';
+import Preloader from "@/components/molecules/Preloader";
+import Error from "@/components/molecules/Error";
+import Info from "@/components/molecules/Info";
 import NoteService from "@/services/noteService";
 import MobileDetectService from '@/services/mobileDetectService';
-import Select from './molecules/Select.vue';
-import OrderSwitch from './molecules/OrderSwitch.vue';
-import SearchOverlay from './molecules/SearchOverlay.vue';
-import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
+import Select from '../molecules/Select.vue';
+import OrderSwitch from '../molecules/OrderSwitch.vue';
+import SearchOverlay from '../molecules/SearchOverlay.vue';
+import InfiniteScrollLoader from '../molecules/InfiniteScrollLoader.vue';
 import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
-import UnauthorizedException from "./exceptions/UnauthorizedException";
+import UnauthorizedException from "../exceptions/UnauthorizedException";
 import { resolveNoteType } from '@/services/noteContentService';
 
 const pageSize = 15;

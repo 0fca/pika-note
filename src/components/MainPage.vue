@@ -49,9 +49,9 @@
 </template>
 
 <script>
-import Note from '@/components/Note';
-import Error from "@/components/Error";
-import Info from "@/components/Info";
+import Note from '@/components/molecules/Note';
+import Error from "@/components/molecules/Error";
+import Info from "@/components/molecules/Info";
 import NoteService from "@/services/noteService";
 import Select from './molecules/Select.vue';
 import NoteCountDropdown from './molecules/NoteCountDropdown.vue';

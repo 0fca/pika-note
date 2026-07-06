@@ -114,7 +114,7 @@
 <script>
 import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
-import Preloader from "@/components/Preloader";
+import Preloader from "@/components/molecules/Preloader";
 import { toastService } from '@/services/toastService';
 import {
   createEmptySheetRows,
@@ -383,11 +383,16 @@ export default {
 
       this.isLoadingNote = true;
       this.applyLoadedNote(prefetchedNote);
-      this.isLoadingNote = false;
-      if (this.autoSaveDebounceTimer) {
-        clearTimeout(this.autoSaveDebounceTimer);
-        this.autoSaveDebounceTimer = null;
-      }
+      // Defer clearing the loading flag so that async MediumEditor
+      // MutationObserver events still see isLoadingNote === true.
+      this.$nextTick(() => {
+        this.isLoadingNote = false;
+        this.hasUnsavedChanges = false;
+        if (this.autoSaveDebounceTimer) {
+          clearTimeout(this.autoSaveDebounceTimer);
+          this.autoSaveDebounceTimer = null;
+        }
+      });
       return true;
     },
     handleClickOutsideFab(event) {
@@ -485,12 +490,15 @@ export default {
             if (this.isUnmounted || requestId !== this.loadRequestId) {
               return;
             }
-            this.isLoadingNote = false;
-            // Clear any auto-save timer that may have been triggered during load
-            if (this.autoSaveDebounceTimer) {
-              clearTimeout(this.autoSaveDebounceTimer);
-              this.autoSaveDebounceTimer = null;
-            }
+            // Defer so async MediumEditor events still see isLoadingNote === true
+            this.$nextTick(() => {
+              this.isLoadingNote = false;
+              this.hasUnsavedChanges = false;
+              if (this.autoSaveDebounceTimer) {
+                clearTimeout(this.autoSaveDebounceTimer);
+                this.autoSaveDebounceTimer = null;
+              }
+            });
           });
       }
     },

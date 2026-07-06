@@ -2,7 +2,7 @@ import {createApp} from 'vue'
 import {createRouter,createWebHistory} from 'vue-router'
 import App from './App'
 import About from './components/About'
-import WorkspaceLayout from "@/components/WorkspaceLayout"
+import WorkspaceLayout from "@/components/workspace/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
 import VueExcelEditor from 'vue3-excel-editor'

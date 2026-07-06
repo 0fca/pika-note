@@ -129,9 +129,9 @@
 import AppMenuDropdown from '@/components/AppMenuDropdown';
 import SecurityService from '@/services/securityService';
 import MobileDetectService from './services/mobileDetectService';
-import LoadingOverlay from './components/LoadingOverlay.vue';
-import FeatureDiscovery from './components/FeatureDiscovery.vue';
-import ToastContainer from './components/ToastContainer.vue';
+import LoadingOverlay from './components/workspace/LoadingOverlay.vue';
+import FeatureDiscovery from './components/molecules/FeatureDiscovery.vue';
+import ToastContainer from './components/molecules/ToastContainer.vue';
 
 export default {
   name: 'App',

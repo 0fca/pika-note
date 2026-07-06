@@ -102,7 +102,7 @@
 
 <script>
 import NoteService from '@/services/noteService';
-import Preloader from '@/components/Preloader';
+import Preloader from '@/components/molecules/Preloader';
 import { toastService } from '@/services/toastService';
 import {
   countSheetCellCharacters,
@@ -273,11 +273,14 @@ export default {
 
       this.isLoadingNote = true;
       this.applyLoadedNote(prefetchedNote);
-      this.isLoadingNote = false;
-      if (this.autoSaveDebounceTimer) {
-        clearTimeout(this.autoSaveDebounceTimer);
-        this.autoSaveDebounceTimer = null;
-      }
+      this.$nextTick(() => {
+        this.isLoadingNote = false;
+        this.hasUnsavedChanges = false;
+        if (this.autoSaveDebounceTimer) {
+          clearTimeout(this.autoSaveDebounceTimer);
+          this.autoSaveDebounceTimer = null;
+        }
+      });
       return true;
     },
     handleClickOutsideFab(event) {
@@ -390,11 +393,14 @@ export default {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
             return;
           }
-          this.isLoadingNote = false;
-          if (this.autoSaveDebounceTimer) {
-            clearTimeout(this.autoSaveDebounceTimer);
-            this.autoSaveDebounceTimer = null;
-          }
+          this.$nextTick(() => {
+            this.isLoadingNote = false;
+            this.hasUnsavedChanges = false;
+            if (this.autoSaveDebounceTimer) {
+              clearTimeout(this.autoSaveDebounceTimer);
+              this.autoSaveDebounceTimer = null;
+            }
+          });
         });
     },
     save() {
