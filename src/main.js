@@ -95,6 +95,7 @@ const store = createStore({
       notesLoading: false,
       loadingError: '',
       drawerOpen: false,
+      prefetchedNote: null,
       // Inactivity counter: counts consecutive successful status checks
       inactivityCounter: 0,
       inactivityThreshold: 100,
@@ -185,6 +186,12 @@ const store = createStore({
     },
     setDrawerOpen(state, payload){
       state.drawerOpen = payload.drawerOpen;
+    },
+    setPrefetchedNote(state, payload){
+      state.prefetchedNote = payload.note ?? null;
+    },
+    clearPrefetchedNote(state){
+      state.prefetchedNote = null;
     },
     incrementInactivityCounter(state){
       state.inactivityCounter++;
@@ -440,6 +447,9 @@ const store = createStore({
     },
     drawerOpen(state){
       return state.drawerOpen;
+    },
+    prefetchedNote(state){
+      return state.prefetchedNote;
     },
     inactivityCounter(state){
       return state.inactivityCounter;

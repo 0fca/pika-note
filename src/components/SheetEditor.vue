@@ -159,7 +159,9 @@ export default {
         return;
       }
 
-      this.loadNote(newId);
+      if (!this.applyPrefetchedNote(newId)) {
+        this.loadNote(newId);
+      }
       this.isProgrammaticTitleUpdate = true;
       this.noteTitle = this.$store.getters.name;
       this.isProgrammaticTitleUpdate = false;
@@ -212,7 +214,9 @@ export default {
     this.syncSheetMetrics();
 
     if (this.id !== '') {
-      this.loadNote(this.id);
+      if (!this.applyPrefetchedNote(this.id)) {
+        this.loadNote(this.id);
+      }
     }
   },
   unmounted() {
@@ -231,6 +235,51 @@ export default {
     this.$store.commit({ type: 'updateIntervalId', autoSaveJobId: 0 });
   },
   methods: {
+    consumePrefetchedNote(noteId) {
+      const prefetchedNote = this.$store.getters.prefetchedNote;
+      if (!prefetchedNote || prefetchedNote.id !== noteId) {
+        return null;
+      }
+
+      this.$store.commit({ type: 'clearPrefetchedNote' });
+      return prefetchedNote;
+    },
+    applyLoadedNote(note) {
+      this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
+      const sheetState = extractSheetState(note.content);
+      this.sheetColumns = sheetState.columns;
+      this.sheetRows = sheetState.rows.length > 0 ? sheetState.rows : [this.createEmptyRow()];
+      this.syncSheetMetrics();
+      this.$store.commit({ type: 'updateIfError', error: false });
+      this.$store.commit({ type: 'updateName', name: note.humanName });
+      const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
+      if (noteDate) {
+        this.$store.commit({ type: 'updateLastSavedAt', lastSavedAt: noteDate });
+      }
+      this.isProgrammaticTitleUpdate = true;
+      this.noteTitle = note.humanName;
+      this.isProgrammaticTitleUpdate = false;
+      this.hasUnsavedChanges = false;
+    },
+    applyPrefetchedNote(noteId) {
+      if (!noteId) {
+        return false;
+      }
+
+      const prefetchedNote = this.consumePrefetchedNote(noteId);
+      if (!prefetchedNote) {
+        return false;
+      }
+
+      this.isLoadingNote = true;
+      this.applyLoadedNote(prefetchedNote);
+      this.isLoadingNote = false;
+      if (this.autoSaveDebounceTimer) {
+        clearTimeout(this.autoSaveDebounceTimer);
+        this.autoSaveDebounceTimer = null;
+      }
+      return true;
+    },
     handleClickOutsideFab(event) {
       if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
         this.fabOpen = false;
@@ -329,21 +378,7 @@ export default {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
             return;
           }
-          this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
-          const sheetState = extractSheetState(note.content);
-          this.sheetColumns = sheetState.columns;
-          this.sheetRows = sheetState.rows.length > 0 ? sheetState.rows : [this.createEmptyRow()];
-          this.syncSheetMetrics();
-          this.$store.commit({ type: 'updateIfError', error: false });
-          this.$store.commit({ type: 'updateName', name: note.humanName });
-          const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
-          if (noteDate) {
-            this.$store.commit({ type: 'updateLastSavedAt', lastSavedAt: noteDate });
-          }
-          this.isProgrammaticTitleUpdate = true;
-          this.noteTitle = note.humanName;
-          this.isProgrammaticTitleUpdate = false;
-          this.hasUnsavedChanges = false;
+          this.applyLoadedNote(note);
         })
         .catch(() => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {

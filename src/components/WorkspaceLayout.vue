@@ -361,7 +361,8 @@ export default {
   mounted: function () {
     window.addEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
     this.loggedIn = this.$store.getters.loggedIn;
-    if(this.$store.getters.bucketUuid !== ""){
+    const routeId = this.$route.params.id;
+    if(this.$store.getters.bucketUuid !== "" && !routeId){
       this.bucketId = this.$store.getters.bucketUuid;
     }
     this.noteService = new NoteService();
@@ -380,7 +381,6 @@ export default {
         this.loading = false;
         
         // After buckets are loaded, handle route-based note loading
-        const routeId = this.$route.params.id;
         if (routeId) {
           this.loadNoteFromUrl(routeId);
         } else {
@@ -653,6 +653,11 @@ export default {
           });
         }
         
+        const routeId = this.$route.params.id;
+        if (routeId) {
+          return;
+        }
+
         // After buckets are loaded, check if we have a selected bucket
         const storedBucketUuid = localStorage.getItem('bucketUuid');
         const storedBucketName = localStorage.getItem('bucketName');
@@ -735,6 +740,8 @@ export default {
       // Fetch the note to determine its bucket and metadata
       this.noteService.getNote(noteId)
         .then(note => {
+          this.$store.commit({type: 'setPrefetchedNote', note: { ...note, id: note.id || noteId }});
+
           // Switch to the note's bucket if different from current
           if (note.bucketId && note.bucketId !== this.bucketId) {
             this.bucketId = note.bucketId;
@@ -773,6 +780,7 @@ export default {
           });
         })
         .catch(() => {
+          this.$store.commit({type: 'clearPrefetchedNote'});
           // If note fetch fails, fall back to just setting the ID and loading notes normally
           this.$store.commit({type: 'updateId', id: noteId});
           this.$store.commit({type: 'updateNoteType', noteType: 'note'});

@@ -186,7 +186,9 @@ export default {
           this.hasUnsavedChanges = false;
         } else {
           // Load existing note
-          this.loadNote(newId);
+          if (!this.applyPrefetchedNote(newId)) {
+            this.loadNote(newId);
+          }
           this.isProgrammaticTitleUpdate = true;
           this.noteTitle = this.$store.getters.name;
           this.isProgrammaticTitleUpdate = false;
@@ -326,10 +328,68 @@ export default {
     
     // Load note if ID exists
     if(this.id !== ''){
-      this.loadNote(this.id);
+      if (!this.applyPrefetchedNote(this.id)) {
+        this.loadNote(this.id);
+      }
     }
   },
   methods: {
+    consumePrefetchedNote(noteId) {
+      const prefetchedNote = this.$store.getters.prefetchedNote;
+      if (!prefetchedNote || prefetchedNote.id !== noteId) {
+        return null;
+      }
+
+      this.$store.commit({type: 'clearPrefetchedNote'});
+      return prefetchedNote;
+    },
+    applyLoadedNote(note) {
+      const noteType = resolveNoteType(note);
+      this.$store.commit({type: 'updateNoteType', noteType: noteType});
+      if (noteType === 'sheet') {
+        this.isSheetEditable = true;
+        this.sheetRows = extractSheetRows(note.content);
+        this.$store.commit({type: 'updateContent', content: ''});
+        this.editor.setContent('', 0);
+        this.$store.commit({type: 'setCharactersCount', count: 0});
+      } else {
+        this.isSheetEditable = false;
+        const content = extractNoteTextContent(note.content);
+        this.sheetRows = [];
+        this.$store.commit({type: 'updateContent', content: content});
+        this.editor.setContent(content, 0);
+        this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
+      }
+      this.$store.commit({type: "updateIfError", error: false});
+      this.$store.commit({type: 'updateName', name: note.humanName});
+      const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
+      if (noteDate) {
+        this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
+      }
+      this.isProgrammaticTitleUpdate = true;
+      this.noteTitle = note.humanName;
+      this.isProgrammaticTitleUpdate = false;
+      this.hasUnsavedChanges = false;
+    },
+    applyPrefetchedNote(noteId) {
+      if (!noteId || !this.editor) {
+        return false;
+      }
+
+      const prefetchedNote = this.consumePrefetchedNote(noteId);
+      if (!prefetchedNote) {
+        return false;
+      }
+
+      this.isLoadingNote = true;
+      this.applyLoadedNote(prefetchedNote);
+      this.isLoadingNote = false;
+      if (this.autoSaveDebounceTimer) {
+        clearTimeout(this.autoSaveDebounceTimer);
+        this.autoSaveDebounceTimer = null;
+      }
+      return true;
+    },
     handleClickOutsideFab(event) {
       if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
         this.fabOpen = false;
@@ -415,34 +475,7 @@ export default {
             if (this.isUnmounted || requestId !== this.loadRequestId) {
               return;
             }
-            const noteType = resolveNoteType(note);
-            this.$store.commit({type: 'updateNoteType', noteType: noteType});
-            if (noteType === 'sheet') {
-              this.isSheetEditable = true;
-              this.sheetRows = extractSheetRows(note.content);
-              this.$store.commit({type: 'updateContent', content: ''});
-              this.editor.setContent('', 0);
-              this.$store.commit({type: 'setCharactersCount', count: 0});
-            } else {
-              this.isSheetEditable = false;
-              const content = extractNoteTextContent(note.content);
-              this.sheetRows = [];
-              this.$store.commit({type: 'updateContent', content: content});
-              this.editor.setContent(content, 0);
-              this.$store.commit({type: 'setCharactersCount', count: this.editor.elements[0].innerText.length});
-            }
-            this.$store.commit({type: "updateIfError", error: false});
-            this.$store.commit({type: 'updateName', name: note.humanName});
-            // Set Last Saved At to the note's last modified date from the API
-            const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
-            if (noteDate) {
-              this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
-            }
-            this.isProgrammaticTitleUpdate = true;
-            this.noteTitle = note.humanName;
-            this.isProgrammaticTitleUpdate = false;
-            // Reset unsaved changes flag when loading a note
-            this.hasUnsavedChanges = false;
+            this.applyLoadedNote(note);
           }).catch(() => {
             if (this.isUnmounted || requestId !== this.loadRequestId) {
               return;
