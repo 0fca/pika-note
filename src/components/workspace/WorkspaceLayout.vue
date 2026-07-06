@@ -286,6 +286,7 @@ import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "../exceptions/UnauthorizedException";
 import { resolveNoteType } from '@/services/noteContentService';
+import { createBootStrategy } from '@/services/bootStrategy';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
@@ -383,12 +384,27 @@ export default {
         this.loaded = true;
         this.loading = false;
         
-        // After buckets are loaded, handle route-based note loading
-        if (routeId) {
-          this.loadNoteFromUrl(routeId);
-        } else {
-          this.loadNotes();
-        }
+        this.bootStrategy = createBootStrategy(routeId, {
+          store: this.$store,
+          noteService: this.noteService,
+          buckets: this.buckets,
+          isTouchScreen: this.isTouchScreen
+        });
+
+        this.bootStrategy.onBucketsReady({
+          syncCurrentBucketSelection: () => this.syncCurrentBucketSelection()
+        });
+
+        this.bootStrategy.execute({
+          loadNotes: () => {
+            this.notes = [];
+            this.currentPage = 0;
+            this.hasMoreNotes = true;
+            this.loadNotes();
+          },
+          scrollToNote: (noteId) => this.scrollToNote(noteId),
+          restorePinnedTabs: (noteId) => this.restorePinnedTabs(noteId)
+        });
       })
       .catch((err) => {
         const wasLoggedIn = this.$store.getters.loggedIn;
@@ -452,7 +468,8 @@ export default {
       pendingDeleteNoteId: null,
       inactivityTimeoutId: null,
       lastPointerActivityAt: 0,
-      lastInactivityResetAt: 0
+      lastInactivityResetAt: 0,
+      bootStrategy: null
     }
   },
   watch: {
@@ -677,13 +694,6 @@ export default {
             text: bucketsPayload.payload[i].bucketName
           });
         }
-        
-        const routeId = this.routeNoteId;
-        if (routeId) {
-          return;
-        }
-
-        this.syncCurrentBucketSelection();
       }
     },
     onBucketSelectChange: function(e){
@@ -743,56 +753,6 @@ export default {
       this.$nextTick(() => {
         this.scrollToNote(note.id);
       });
-    },
-    loadNoteFromUrl(noteId) {
-      // Fetch the note to determine its bucket and metadata
-      this.noteService.getNote(noteId)
-        .then(note => {
-          this.$store.commit({type: 'setPrefetchedNote', note: { ...note, id: note.id || noteId }});
-
-          // Switch to the note's bucket if different from current
-          if (note.bucketId && note.bucketId !== this.bucketId) {
-            const bucket = this.buckets.find(b => b.id === note.bucketId);
-            if (bucket) {
-              this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
-            }
-          }
-          
-          // Set the note in the store
-          this.$store.commit({type: 'updateId', id: noteId});
-          this.$store.commit({type: 'updateNoteType', noteType: resolveNoteType(note)});
-          this.$store.commit({type: 'updateName', name: note.humanName});
-          const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
-          if (noteDate) {
-            this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
-          }
-          
-          // Add tab (desktop only)
-          if (!this.isTouchScreen) {
-            this.$store.commit({type: 'addOrReplaceTab', id: noteId, title: note.humanName, pinned: false});
-            this.restorePinnedTabs(noteId);
-          }
-          
-          // Load notes list for the bucket, then scroll to the note
-          this.notes = [];
-          this.currentPage = 0;
-          this.hasMoreNotes = true;
-          this.loadNotes();
-          
-          // Wait for notes to render, then scroll to the note
-          this.$nextTick(() => {
-            setTimeout(() => {
-              this.scrollToNote(noteId);
-            }, 500);
-          });
-        })
-        .catch(() => {
-          this.$store.commit({type: 'clearPrefetchedNote'});
-          // If note fetch fails, fall back to just setting the ID and loading notes normally
-          this.$store.commit({type: 'updateId', id: noteId});
-          this.$store.commit({type: 'updateNoteType', noteType: 'note'});
-          this.loadNotes();
-        });
     },
     restorePinnedTabs(activeNoteId) {
       if (this.isTouchScreen || !activeNoteId) {
