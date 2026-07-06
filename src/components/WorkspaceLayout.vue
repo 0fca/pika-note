@@ -646,6 +646,29 @@ export default {
       this.loaded = true;
       this.actuallyLoaded = this.notes.length;
     },
+    syncCurrentBucketSelection() {
+      const currentBucketUuid = this.$store.getters.bucketUuid;
+      if (!currentBucketUuid) {
+        this.showBucketPromptToast();
+        return;
+      }
+
+      const matchingBucket = this.buckets.find(bucket => bucket.id === currentBucketUuid);
+      if (!matchingBucket) {
+        this.$store.commit({type: 'clearCurrentBucket'});
+        this.showBucketPromptToast();
+        return;
+      }
+
+      const nextBucketName = matchingBucket.text;
+      if (this.$store.getters.bucketName !== nextBucketName) {
+        this.$store.commit({
+          type: 'updateCurrentBucket',
+          bucketName: nextBucketName,
+          bucketUuid: matchingBucket.id
+        });
+      }
+    },
     onBucketsPayloadReceived: function(bucketsPayload) {
       if(bucketsPayload.success === true){
         for(let i in bucketsPayload.payload){
@@ -660,30 +683,7 @@ export default {
           return;
         }
 
-        const currentBucketUuid = this.$store.getters.bucketUuid;
-        if (currentBucketUuid) {
-          const matchingBucket = this.buckets.find(bucket => bucket.id === currentBucketUuid);
-
-          if (matchingBucket) {
-            const nextBucketName = matchingBucket.text;
-            const bucketNeedsSync = this.$store.getters.bucketName !== nextBucketName;
-
-            if (bucketNeedsSync) {
-              this.$store.commit({
-                type: 'updateCurrentBucket',
-                bucketName: nextBucketName,
-                bucketUuid: matchingBucket.id
-              });
-            }
-            return;
-          }
-
-          this.$store.commit({type: 'clearCurrentBucket'});
-        }
-
-        if (!this.$store.getters.bucketUuid) {
-          this.showBucketPromptToast();
-        }
+        this.syncCurrentBucketSelection();
       }
     },
     onBucketSelectChange: function(e){
