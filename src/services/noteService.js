@@ -1,4 +1,3 @@
-import MlService from "@/services/mlService";
 import UnauthorizedException from "../components/exceptions/UnauthorizedException";
 import { authFetch } from "@/services/fetchClient";
 
@@ -34,15 +33,8 @@ export default class NoteService {
         return rawJson.payload;
     }
 
-    async saveNote(id, name, content, rawContent) {
+    async saveNote(id, name, content, rawContent, noteType = 'note') {
         const url = `${this.baseUrl}/notes/${id}`;
-        if (process.env.VUE_APP_ENV === 'production') {
-            const mlService = new MlService();
-            const p = await mlService.validateLanguage(name, rawContent)
-            if (p.prediction >= 2) {
-                throw new Error('Mind your language!')
-            }
-        }
         return await authFetch(url, {
             method: 'PUT',
             headers: {
@@ -51,21 +43,15 @@ export default class NoteService {
             },
             body: JSON.stringify({
                 "name": name,
-                "content": content
+                "content": content,
+                "type": noteType
             }),
             credentials: 'include'
         });
     }
 
-    async addNote(bucketId, name, content, rawContent) {
+    async addNote(bucketId, name, content, rawContent, noteType = 'note') {
         const url = `${this.baseUrl}/notes?bucketId=${bucketId}`;
-        if (process.env.VUE_APP_ENV === 'production') {
-            const mlService = new MlService();
-            const p = await mlService.validateLanguage(name, rawContent)
-            if (p.prediction >= 2) {
-                throw new Error('Mind your language!')
-            }
-        }
         return await authFetch(url, {
             method: 'POST',
             headers: {
@@ -74,7 +60,8 @@ export default class NoteService {
             },
             body: JSON.stringify({
                 "name": name,
-                "content": content
+                "content": content,
+                "type": noteType
             }),
             credentials: 'include'
         });
@@ -107,11 +94,16 @@ export default class NoteService {
                 'Origin': this.baseUrl,
                 'Content-Type': 'application/json'
             },
-            'credentials': 'include'
+            'credentials': 'include',
+            // Buckets are required for the main workspace, so re-request on any failed response.
+            retryOnAnyFailure: true
         });
         if (!response.ok) {
-            if (response.status === 401 || response.status === 403 || response.status === 500) {
+            if (response.status === 401 || response.status === 403) {
                 throw new UnauthorizedException();
+            }
+            if (response.status === 500) {
+                throw new Error('Buckets request failed with server error');
             }
             throw new Error('Request failed');
         }

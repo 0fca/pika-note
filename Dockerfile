@@ -14,4 +14,7 @@ FROM nginx:1.27-bookworm as production-stage
 RUN mkdir /app
 COPY --from=build-stage /app/dist /app
 COPY nginx.conf /etc/nginx/nginx.conf
+
 EXPOSE 443
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl --fail --silent https://127.0.0.1/healthz >/dev/null || exit 1

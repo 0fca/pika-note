@@ -7,7 +7,7 @@
     </div>
     <!-- Mobile view -->
     <div v-else class="empty-mobile">
-      <span class="material-symbols-outlined empty-mobile-icon">edit_note</span>
+      <span class="material-symbols-outlined empty-mobile-icon">note_stack</span>
       <p class="empty-mobile-text">Tap a note from the menu or create a new one</p>
     </div>
   </div>

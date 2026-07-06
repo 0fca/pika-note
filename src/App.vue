@@ -129,17 +129,9 @@
 import AppMenuDropdown from '@/components/AppMenuDropdown';
 import SecurityService from '@/services/securityService';
 import MobileDetectService from './services/mobileDetectService';
-import LoadingOverlay from './components/LoadingOverlay.vue';
-import FeatureDiscovery from './components/FeatureDiscovery.vue';
-import ToastContainer from './components/ToastContainer.vue';
-
-const shouldLogInactivityDebug = process.env.NODE_ENV !== 'production' || process.env.VUE_APP_INACTIVITY_DEBUG === 'true';
-
-function logInactivityDebug(message, payload = {}) {
-  if (shouldLogInactivityDebug) {
-    console.log(message, payload);
-  }
-}
+import LoadingOverlay from './components/workspace/LoadingOverlay.vue';
+import FeatureDiscovery from './components/molecules/FeatureDiscovery.vue';
+import ToastContainer from './components/molecules/ToastContainer.vue';
 
 export default {
   name: 'App',
@@ -186,13 +178,20 @@ export default {
              !this.$store.getters.notesLoading &&
              !this.$store.getters.loadingError;
     },
+    discoveryStateKey() {
+      return [
+        this.$route.path,
+        this.$store.getters.id,
+        this.$store.getters.editorTabs.length
+      ].join('|');
+    },
     showFeatureDiscovery() {
       // Show feature discovery when workspace is loaded and there are discoveries to show
       return this.workspaceLoaded && this.hasUnseenDiscoveries;
     },
     featureDiscoveries() {
       // Computed property to access component instance properties
-      return [
+      const discoveries = [
         {
           id: 'login_discovery',
           targetSelector: this.isTouchScreen ? '#hamburger' : '#login',
@@ -210,6 +209,28 @@ export default {
           position: 'left'
         }
       ];
+
+      if (this.$store.getters.editorTabs.length > 0) {
+        discoveries.push({
+          id: 'tabs_discovery',
+          targetSelector: '#editor-tabs-discovery',
+          title: 'Pinned tabs',
+          description: 'Pika Note allows you to easily open a note using a single tab, but if you need more opened at the same time - double click the tab header to pin the tab.',
+          position: 'bottom'
+        });
+      }
+
+      if (this.$route.path === '/editor' && !this.$store.getters.id) {
+        discoveries.push({
+          id: 'note_type_discovery',
+          targetSelector: '#new-note-type-discovery',
+          title: 'Note type',
+          description: 'Pika Note allows you to handle simple numeric data (without formulas for now), just choose a note of a type during creation and then enter your text or numeric data, that\'s it!',
+          position: 'bottom'
+        });
+      }
+
+      return discoveries;
     }
   },
   methods: {
@@ -259,6 +280,13 @@ export default {
           this.checkForUnseenDiscoveries();
         });
       }
+    },
+    discoveryStateKey() {
+      if (this.workspaceLoaded) {
+        this.$nextTick(() => {
+          this.checkForUnseenDiscoveries();
+        });
+      }
     }
   },
   mounted: async function() {
@@ -277,42 +305,6 @@ export default {
     } finally {
       this.$store.commit({type: 'setAuthLoading', authLoading: false});
     }
-    
-    setInterval(async () => {
-      try {
-        const isLoggedIn = await securityService.validateLoggedInState();
-        this.$store.commit({type: 'updateLoggedInState', loggedIn: isLoggedIn});
-        if(isLoggedIn){
-          const previousCounter = this.$store.getters.inactivityCounter;
-          const previousTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
-          logInactivityDebug('[inactivity] auth refresh succeeded', {
-            counterBeforeIncrement: previousCounter,
-            hadActiveEditorSession: this.$store.getters.hasActiveEditorSession,
-            activeTabId: this.$store.getters.activeTabId,
-            route: this.$route.path
-          });
-          // Increment inactivity counter on each successful status check
-          this.$store.commit('incrementInactivityCounter');
-          const currentCounter = this.$store.getters.inactivityCounter;
-          const currentTimeoutClearedAt = this.$store.getters.lastTimeoutClearedAt;
-          const timeoutOccurred = currentTimeoutClearedAt > previousTimeoutClearedAt;
-          logInactivityDebug('[inactivity] counter after increment', {
-            counterAfterIncrement: currentCounter,
-            hasActiveEditorSession: this.$store.getters.hasActiveEditorSession,
-            activeTabId: this.$store.getters.activeTabId,
-            route: this.$route.path,
-            timeoutOccurred: timeoutOccurred
-          });
-          if (timeoutOccurred && this.$route.path.startsWith('/editor')) {
-            logInactivityDebug('[inactivity] editor session timed out, redirecting to home');
-            this.$router.replace('/');
-          }
-        }
-      } catch (error) {
-        console.error('Auth refresh failed', error);
-        // Silent refresh failure - keep current state
-      }
-    }, 8000);
   },
   beforeUnmount() {
   }

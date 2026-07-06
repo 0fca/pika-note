@@ -1,5 +1,5 @@
 <template>
-  <div class="editor-tabs-bar" v-if="tabs.length > 0">
+  <div id="editor-tabs-discovery" class="editor-tabs-bar" v-if="tabs.length > 0">
     <div 
       v-for="tab in tabs" 
       :key="tab.id"

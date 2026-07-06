@@ -84,7 +84,7 @@
           <Select 
             dropdownText="Choose bucket" 
             :entries="buckets" 
-            :onchange="onBucketSelectChange" 
+            @change="onBucketSelectChange" 
             v-if="this.$store.getters.loggedIn === true"
           />
         </div>
@@ -164,7 +164,7 @@
             <Select 
               dropdownText="Choose bucket" 
               :entries="buckets" 
-              :onchange="onBucketSelectChange" 
+              @change="onBucketSelectChange" 
               v-if="this.$store.getters.loggedIn === true"
             />
           </div>
@@ -220,7 +220,13 @@
       </aside>
 
       <!-- Editor Area -->
-      <main class="editor-main">
+      <main
+        class="editor-main"
+        @keydown.capture="onEditorActivity('keyboard')"
+        @mousedown.passive="onEditorActivity('pointer')"
+        @mousemove.passive="onEditorPointerMove"
+        @touchstart.passive="onEditorActivity('touch')"
+      >
         <EditorTabs 
           v-if="this.$store.getters.loggedIn === true && !isTouchScreen"
           @tab-selected="onTabSelected"
@@ -230,8 +236,14 @@
           v-if="showEmptyEditorState"
         />
         <Editor 
-          v-if="showEditor"
+          v-if="showEditor && activeEditorType !== 'sheet'"
+          :key="editorInstanceKey"
           ref="editor"
+          @note-saved="onNoteSaved"
+        />
+        <SheetEditor
+          v-else-if="showEditor"
+          :key="editorInstanceKey"
           @note-saved="onNoteSaved"
         />
       </main>
@@ -255,26 +267,33 @@
 </template>
 
 <script>
-import Note from '@/components/Note';
-import Editor from '@/components/Editor';
-import EditorTabs from '@/components/EditorTabs';
-import EmptyEditorState from '@/components/EmptyEditorState';
-import ConfirmDialog from '@/components/ConfirmDialog';
-import Preloader from "@/components/Preloader";
-import Error from "@/components/Error";
-import Info from "@/components/Info";
+import Note from '@/components/molecules/Note';
+import Editor from '@/components/editor/Editor';
+import SheetEditor from '@/components/editor/SheetEditor';
+import EditorTabs from '@/components/editor/EditorTabs';
+import EmptyEditorState from '@/components/editor/EmptyEditorState';
+import ConfirmDialog from '@/components/molecules/ConfirmDialog';
+import Preloader from "@/components/molecules/Preloader";
+import Error from "@/components/molecules/Error";
+import Info from "@/components/molecules/Info";
 import NoteService from "@/services/noteService";
 import MobileDetectService from '@/services/mobileDetectService';
-import Select from './molecules/Select.vue';
-import OrderSwitch from './molecules/OrderSwitch.vue';
-import SearchOverlay from './molecules/SearchOverlay.vue';
-import InfiniteScrollLoader from './InfiniteScrollLoader.vue';
+import Select from '../molecules/Select.vue';
+import OrderSwitch from '../molecules/OrderSwitch.vue';
+import SearchOverlay from '../molecules/SearchOverlay.vue';
+import InfiniteScrollLoader from '../molecules/InfiniteScrollLoader.vue';
 import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
-import UnauthorizedException from "./exceptions/UnauthorizedException";
+import UnauthorizedException from "../exceptions/UnauthorizedException";
+import { resolveNoteType } from '@/services/noteContentService';
+import { createBootStrategy } from '@/services/bootStrategy';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
+const INACTIVITY_CLOSE_DELAY_MS = 60000;
+const ACTIVITY_RESET_THROTTLE_MS = 500;
+const POINTER_ACTIVITY_THROTTLE_MS = 1000;
+const USER_ACTIVITY_EVENT_NAME = 'pika-note:activity';
 
 export default {
   name: 'WorkspaceLayout',
@@ -282,6 +301,7 @@ export default {
     Error,
     Note,
     Editor,
+    SheetEditor,
     EditorTabs,
     EmptyEditorState,
     ConfirmDialog,
@@ -315,15 +335,40 @@ export default {
     showEmptyEditorState() {
       return this.$store.getters.loggedIn === true && this.$store.getters.id === '' && this.$route.path !== '/editor';
     },
+    routeNoteId() {
+      return this.$route.params.id ?? '';
+    },
+    activeEditorType() {
+      return this.$store.getters.noteType;
+    },
+    activeTabId() {
+      return this.$store.getters.activeTabId;
+    },
+    activeTab() {
+      return this.$store.getters.editorTabs.find(tab => tab.id === this.activeTabId) ?? null;
+    },
+    bucketId() {
+      return this.$store.getters.bucketUuid;
+    },
+    editorInstanceKey() {
+      return `${this.$store.getters.activeTabId ?? this.$store.getters.id ?? 'draft'}-${this.$store.getters.noteType}`;
+    },
+    inactivityTrackingKey() {
+      return [
+        this.showEditor,
+        this.loggedIn,
+        this.activeTab?.id ?? '',
+        this.activeTab?.pinned === true
+      ].join('|');
+    },
     getActuallyLoaded() {
       return this.actuallyLoaded;
     }
   },
   mounted: function () {
+    window.addEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
     this.loggedIn = this.$store.getters.loggedIn;
-    if(this.$store.getters.bucketUuid !== ""){
-      this.bucketId = this.$store.getters.bucketUuid;
-    }
+    const routeId = this.routeNoteId;
     this.noteService = new NoteService();
     this.$store.commit({type: 'setBucketsLoading', bucketsLoading: true});
     this.noteService.getBuckets()
@@ -339,13 +384,27 @@ export default {
         this.loaded = true;
         this.loading = false;
         
-        // After buckets are loaded, handle route-based note loading
-        const routeId = this.$route.params.id;
-        if (routeId) {
-          this.loadNoteFromUrl(routeId);
-        } else {
-          this.loadNotes();
-        }
+        this.bootStrategy = createBootStrategy(routeId, {
+          store: this.$store,
+          noteService: this.noteService,
+          buckets: this.buckets,
+          isTouchScreen: this.isTouchScreen
+        });
+
+        this.bootStrategy.onBucketsReady({
+          syncCurrentBucketSelection: () => this.syncCurrentBucketSelection()
+        });
+
+        this.bootStrategy.execute({
+          loadNotes: () => {
+            this.notes = [];
+            this.currentPage = 0;
+            this.hasMoreNotes = true;
+            this.loadNotes();
+          },
+          scrollToNote: (noteId) => this.scrollToNote(noteId),
+          restorePinnedTabs: (noteId) => this.restorePinnedTabs(noteId)
+        });
       })
       .catch((err) => {
         const wasLoggedIn = this.$store.getters.loggedIn;
@@ -365,8 +424,11 @@ export default {
     this.$nextTick(() => {
       this.isMounted = true;
     });
+    this.scheduleInactivityAutoClose();
   },
   beforeUnmount() {
+    window.removeEventListener(USER_ACTIVITY_EVENT_NAME, this.onExternalActivity);
+    this.clearInactivityAutoClose();
     // Clear infinite loader timer
     if (this.infiniteLoaderTimer) {
       clearTimeout(this.infiniteLoaderTimer);
@@ -376,7 +438,6 @@ export default {
     return {
       notes: [],
       buckets: [],
-      bucketId: "",
       orderString: "ASC",
       overallCount: localStorage.overallCount,
       loaded: false,
@@ -404,7 +465,11 @@ export default {
       showSearchOverlay: false,
       isTouchScreen: MobileDetectService.isTouchScreen(),
       showDeleteConfirm: false,
-      pendingDeleteNoteId: null
+      pendingDeleteNoteId: null,
+      inactivityTimeoutId: null,
+      lastPointerActivityAt: 0,
+      lastInactivityResetAt: 0,
+      bootStrategy: null
     }
   },
   watch: {
@@ -414,9 +479,88 @@ export default {
       } else if (!newVal && this.isDrawerOpen) {
         this.closeDrawer();
       }
+    },
+    inactivityTrackingKey() {
+      this.scheduleInactivityAutoClose();
     }
   },
   methods: {
+    clearInactivityAutoClose() {
+      if (this.inactivityTimeoutId !== null) {
+        clearTimeout(this.inactivityTimeoutId);
+        this.inactivityTimeoutId = null;
+      }
+    },
+    getClosableActiveTab() {
+      if (this.isTouchScreen || !this.showEditor) {
+        return null;
+      }
+
+      const activeTab = this.activeTab;
+      if (!activeTab || activeTab.pinned) {
+        return null;
+      }
+
+      return activeTab;
+    },
+    scheduleInactivityAutoClose() {
+      this.clearInactivityAutoClose();
+
+      const activeTab = this.getClosableActiveTab();
+      if (!activeTab) {
+        return;
+      }
+
+      this.inactivityTimeoutId = window.setTimeout(() => {
+        this.closeInactiveTab(activeTab.id);
+      }, INACTIVITY_CLOSE_DELAY_MS);
+    },
+    onEditorPointerMove() {
+      const now = Date.now();
+      if (now - this.lastPointerActivityAt < POINTER_ACTIVITY_THROTTLE_MS) {
+        return;
+      }
+
+      this.lastPointerActivityAt = now;
+      this.onEditorActivity('pointermove', now);
+    },
+    onEditorActivity(source, now = Date.now()) {
+      if (now - this.lastInactivityResetAt < ACTIVITY_RESET_THROTTLE_MS) {
+        return;
+      }
+      if (!this.getClosableActiveTab()) {
+        return;
+      }
+
+      this.lastInactivityResetAt = now;
+      this.scheduleInactivityAutoClose();
+    },
+    onExternalActivity() {
+      const now = Date.now();
+      if (now - this.lastInactivityResetAt < ACTIVITY_RESET_THROTTLE_MS || !this.getClosableActiveTab()) {
+        return;
+      }
+
+      this.lastInactivityResetAt = now;
+      this.scheduleInactivityAutoClose();
+    },
+    closeInactiveTab(expectedTabId) {
+      const activeTab = this.getClosableActiveTab();
+      if (!activeTab || activeTab.id !== expectedTabId) {
+        return;
+      }
+
+      this.$store.commit({type: 'closeTab', id: expectedTabId});
+
+      if (this.$store.getters.activeTabId) {
+        this.onTabSelected(this.$store.getters.activeTabId);
+      } else {
+        this.onTabsEmpty();
+      }
+
+      toastService.show('Tab closed due to inactivity');
+      this.scheduleInactivityAutoClose();
+    },
     loadNotes() {
       this.$store.commit({type: 'setLoadingError', loadingError: ''});
       this.$store.commit({type: 'setNotesLoading', notesLoading: true});
@@ -519,6 +663,29 @@ export default {
       this.loaded = true;
       this.actuallyLoaded = this.notes.length;
     },
+    syncCurrentBucketSelection() {
+      const currentBucketUuid = this.$store.getters.bucketUuid;
+      if (!currentBucketUuid) {
+        this.showBucketPromptToast();
+        return;
+      }
+
+      const matchingBucket = this.buckets.find(bucket => bucket.id === currentBucketUuid);
+      if (!matchingBucket) {
+        this.$store.commit({type: 'clearCurrentBucket'});
+        this.showBucketPromptToast();
+        return;
+      }
+
+      const nextBucketName = matchingBucket.text;
+      if (this.$store.getters.bucketName !== nextBucketName) {
+        this.$store.commit({
+          type: 'updateCurrentBucket',
+          bucketName: nextBucketName,
+          bucketUuid: matchingBucket.id
+        });
+      }
+    },
     onBucketsPayloadReceived: function(bucketsPayload) {
       if(bucketsPayload.success === true){
         for(let i in bucketsPayload.payload){
@@ -527,35 +694,18 @@ export default {
             text: bucketsPayload.payload[i].bucketName
           });
         }
-        
-        // After buckets are loaded, check if we have a selected bucket
-        const storedBucketUuid = localStorage.getItem('bucketUuid');
-        const storedBucketName = localStorage.getItem('bucketName');
-        
-        if (storedBucketUuid && storedBucketName) {
-          // Update store with current bucket
-          this.$store.commit({
-            type: 'updateCurrentBucket', 
-            bucketName: storedBucketName, 
-            bucketUuid: storedBucketUuid
-          });
-        } else {
-          // No bucket selected - show prompt toast
-          this.showBucketPromptToast();
-        }
       }
     },
     onBucketSelectChange: function(e){
       const select = e.target;
       const bucketName = select.options[select.selectedIndex].text;
       const bucketUuid = select.value;
-      this.bucketId = bucketUuid;
-      // Update store - this will also update localStorage via mutation
       this.$store.commit({type: 'updateCurrentBucket', bucketName: bucketName, bucketUuid: bucketUuid});
       
       // Reset editor panes when switching buckets
       this.$store.commit('clearAllTabs');
       this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -575,7 +725,6 @@ export default {
       
       // Switch bucket if note is in a different bucket
       if (note.bucketId && note.bucketId !== this.bucketId) {
-        this.bucketId = note.bucketId;
         const bucket = this.buckets.find(b => b.id === note.bucketId);
         if (bucket) {
           this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
@@ -587,6 +736,7 @@ export default {
       }
       
       this.$store.commit({type: 'updateId', id: note.id});
+      this.$store.commit({type: 'updateNoteType', noteType: resolveNoteType(note)});
       this.$store.commit({type: 'updateName', name: note.humanName});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       
@@ -604,54 +754,38 @@ export default {
         this.scrollToNote(note.id);
       });
     },
-    loadNoteFromUrl(noteId) {
-      // Fetch the note to determine its bucket and metadata
-      this.noteService.getNote(noteId)
-        .then(note => {
-          // Switch to the note's bucket if different from current
-          if (note.bucketId && note.bucketId !== this.bucketId) {
-            this.bucketId = note.bucketId;
-            const bucket = this.buckets.find(b => b.id === note.bucketId);
-            if (bucket) {
-              this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: note.bucketId});
-            }
-          }
-          
-          // Set the note in the store
-          this.$store.commit({type: 'updateId', id: noteId});
-          this.$store.commit({type: 'updateName', name: note.humanName});
-          const noteDate = note.timestamp || note.lastModifiedDate || note.dateModified || note.modifiedAt || note.updatedAt || note.date;
-          if (noteDate) {
-            this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: noteDate});
-          }
-          
-          // Add tab (desktop only)
-          if (!this.isTouchScreen) {
-            this.$store.commit({type: 'addOrReplaceTab', id: noteId, title: note.humanName, pinned: false});
-          }
-          
-          // Load notes list for the bucket, then scroll to the note
-          this.notes = [];
-          this.currentPage = 0;
-          this.hasMoreNotes = true;
-          this.loadNotes();
-          
-          // Wait for notes to render, then scroll to the note
-          this.$nextTick(() => {
-            setTimeout(() => {
-              this.scrollToNote(noteId);
-            }, 500);
-          });
-        })
-        .catch(() => {
-          // If note fetch fails, fall back to just setting the ID and loading notes normally
-          this.$store.commit({type: 'updateId', id: noteId});
-          this.loadNotes();
-        });
+    restorePinnedTabs(activeNoteId) {
+      if (this.isTouchScreen || !activeNoteId) {
+        return;
+      }
+
+      const pinnedNoteIds = this.$store.getters.persistedPinnedNoteTabIds
+        .filter(noteId => noteId !== activeNoteId);
+
+      if (pinnedNoteIds.length === 0) {
+        return;
+      }
+
+      Promise.allSettled(
+        pinnedNoteIds.map(noteId => this.noteService.getNote(noteId)
+          .then(note => ({
+            id: noteId,
+            title: note.humanName
+          })))
+      ).then(results => {
+        const restoredTabs = results
+          .filter(result => result.status === 'fulfilled')
+          .map(result => result.value);
+
+        if (restoredTabs.length > 0) {
+          this.$store.commit({ type: 'restorePinnedTabs', tabs: restoredTabs });
+        }
+      });
     },
     createNewNote() {
       this.$store.commit('resetInactivityCounter');
       this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateNoteType', noteType: this.$store.getters.draftNoteType});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -818,6 +952,7 @@ export default {
       // If the deleted note is currently loaded, clear it
       if (this.$store.getters.id === noteId) {
         this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateNoteType', noteType: 'note'});
         this.$store.commit({type: 'updateName', name: ''});
         this.$store.commit({type: 'updateContent', content: ''});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -855,6 +990,7 @@ export default {
     onTabSelected(tabId) {
       if (tabId === NEW_NOTE_TAB_ID) {
         this.$store.commit({type: 'updateId', id: ''});
+        this.$store.commit({type: 'updateNoteType', noteType: this.$store.getters.draftNoteType});
         this.$store.commit({type: 'updateName', name: ''});
         this.$store.commit({type: 'updateContent', content: ''});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
@@ -868,11 +1004,13 @@ export default {
       const note = this.notes.find(n => n.id === tabId);
       if (note) {
         this.$store.commit({type: 'updateId', id: note.id});
+        this.$store.commit({type: 'updateNoteType', noteType: resolveNoteType(note)});
         this.$store.commit({type: 'updateName', name: note.humanName});
         this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: note.timestamp});
       } else {
         // Note not in current list, load by ID
         this.$store.commit({type: 'updateId', id: tabId});
+        this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       }
       if (this.$route.params.id !== tabId) {
         this.$router.push('/editor/' + tabId);
@@ -881,6 +1019,7 @@ export default {
     onTabsEmpty() {
       // All tabs closed, show empty state
       this.$store.commit({type: 'updateId', id: ''});
+      this.$store.commit({type: 'updateNoteType', noteType: 'note'});
       this.$store.commit({type: 'updateName', name: ''});
       this.$store.commit({type: 'updateContent', content: ''});
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});

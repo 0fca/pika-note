@@ -2,11 +2,54 @@ import {createApp} from 'vue'
 import {createRouter,createWebHistory} from 'vue-router'
 import App from './App'
 import About from './components/About'
-import WorkspaceLayout from "@/components/WorkspaceLayout"
+import WorkspaceLayout from "@/components/workspace/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
+import VueExcelEditor from 'vue3-excel-editor'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
+const PINNED_NOTE_TAB_IDS_STORAGE_KEY = 'pinnedNoteTabIds';
+const BUCKET_NAME_STORAGE_KEY = 'bucketName';
+const BUCKET_UUID_STORAGE_KEY = 'bucketUuid';
+
+function isPersistablePinnedTabId(id) {
+  return typeof id === 'string' && id !== '' && id !== NEW_NOTE_TAB_ID;
+}
+
+function sanitizePinnedNoteTabIds(ids) {
+  return [...new Set((Array.isArray(ids) ? ids : []).filter(isPersistablePinnedTabId))];
+}
+
+function loadPersistedPinnedNoteTabIds() {
+  const storedValue = localStorage.getItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY);
+  if (!storedValue) {
+    return [];
+  }
+
+  try {
+    return sanitizePinnedNoteTabIds(JSON.parse(storedValue));
+  } catch (error) {
+    return [];
+  }
+}
+
+function persistPinnedNoteTabIds(ids) {
+  const sanitizedIds = sanitizePinnedNoteTabIds(ids);
+
+  if (sanitizedIds.length === 0) {
+    localStorage.removeItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(PINNED_NOTE_TAB_IDS_STORAGE_KEY, JSON.stringify(sanitizedIds));
+}
+
+function loadInitialBucketState() {
+  return {
+    bucketName: localStorage.getItem(BUCKET_NAME_STORAGE_KEY) ?? "",
+    bucketUuid: localStorage.getItem(BUCKET_UUID_STORAGE_KEY) ?? ""
+  };
+}
 
 function hasActiveEditorSession(state) {
   // `count` tracks editor character count so untitled drafts still count as an active editor session.
@@ -32,6 +75,8 @@ const router = createRouter({routes: routes, history: history});
 
 const app = createApp(App);
 app.use(router)
+app.use(VueExcelEditor)
+const initialBucketState = loadInitialBucketState();
 // Create a new store instance.
 const store = createStore({
   state () {
@@ -42,11 +87,13 @@ const store = createStore({
       name: '',
       limit: 20000,
       id: '',
+      noteType: 'note',
+      draftNoteType: 'note',
       order: localStorage.getItem('order') ?? 1,
       noteCount: localStorage.getItem('count') ?? 10,
       loggedIn: false,
-      bucketName: localStorage.getItem('bucketName') ?? "",
-      bucketUuid: localStorage.getItem('bucketUuid') ?? "",
+      bucketName: initialBucketState.bucketName,
+      bucketUuid: initialBucketState.bucketUuid,
       lastSavedAt: null,
       isSaving: false,
       errorLoadingNote: false,
@@ -58,13 +105,15 @@ const store = createStore({
       notesLoading: false,
       loadingError: '',
       drawerOpen: false,
+      prefetchedNote: null,
       // Inactivity counter: counts consecutive successful status checks
       inactivityCounter: 0,
       inactivityThreshold: 100,
       lastTimeoutClearedAt: 0,
       // Multi-tab state
       editorTabs: [],
-      activeTabId: null
+      activeTabId: null,
+      persistedPinnedNoteTabIds: loadPersistedPinnedNoteTabIds()
     }
   },
   mutations: {
@@ -93,6 +142,12 @@ const store = createStore({
     updateId(state, payload){
       state.id = payload.id; 
     },
+    updateNoteType(state, payload){
+      state.noteType = payload.noteType;
+    },
+    updateDraftNoteType(state, payload){
+      state.draftNoteType = payload.noteType;
+    },
     updateOrder(state, payload){
       state.order = payload.order;
     },
@@ -106,8 +161,14 @@ const store = createStore({
       state.bucketUuid = payload.bucketUuid;
       state.bucketName = payload.bucketName;
       // Update localStorage when bucket changes
-      localStorage.setItem('bucketUuid', payload.bucketUuid);
-      localStorage.setItem('bucketName', payload.bucketName);
+      localStorage.setItem(BUCKET_UUID_STORAGE_KEY, payload.bucketUuid);
+      localStorage.setItem(BUCKET_NAME_STORAGE_KEY, payload.bucketName);
+    },
+    clearCurrentBucket (state) {
+      state.bucketUuid = '';
+      state.bucketName = '';
+      localStorage.removeItem(BUCKET_UUID_STORAGE_KEY);
+      localStorage.removeItem(BUCKET_NAME_STORAGE_KEY);
     },
     updateLastSavedAt(state, payload){
       state.lastSavedAt = payload.lastSavedAt;
@@ -142,6 +203,12 @@ const store = createStore({
     setDrawerOpen(state, payload){
       state.drawerOpen = payload.drawerOpen;
     },
+    setPrefetchedNote(state, payload){
+      state.prefetchedNote = payload.note ?? null;
+    },
+    clearPrefetchedNote(state){
+      state.prefetchedNote = null;
+    },
     incrementInactivityCounter(state){
       state.inactivityCounter++;
       const hasActiveSession = hasActiveEditorSession(state);
@@ -162,6 +229,7 @@ const store = createStore({
         });
         // Unload current note
         state.id = '';
+        state.noteType = 'note';
         state.name = '';
         state.content = '';
         state.count = 0;
@@ -174,6 +242,8 @@ const store = createStore({
         // Close all tabs
         state.editorTabs = [];
         state.activeTabId = null;
+        state.persistedPinnedNoteTabIds = [];
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
         logInactivityDebug('[inactivity] active editor session cleared', {
           lastTimeoutClearedAt: state.lastTimeoutClearedAt
         });
@@ -185,9 +255,14 @@ const store = createStore({
     // Tab mutations
     addOrReplaceTab(state, payload){
       // payload: { id, title, pinned }
+      const shouldPin = payload.pinned === true || state.persistedPinnedNoteTabIds.includes(payload.id);
       const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
       if(existingIndex !== -1){
-        // Already exists, just activate
+        state.editorTabs[existingIndex] = {
+          ...state.editorTabs[existingIndex],
+          title: payload.title ?? state.editorTabs[existingIndex].title,
+          pinned: state.editorTabs[existingIndex].pinned || shouldPin
+        };
         state.activeTabId = payload.id;
         return;
       }
@@ -195,24 +270,97 @@ const store = createStore({
       const unpinnedIndex = state.editorTabs.findIndex(t => !t.pinned && t.id !== NEW_NOTE_TAB_ID && t.id === state.activeTabId);
       if(unpinnedIndex !== -1){
         // Replace the active unpinned tab
-        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: false });
+        state.editorTabs.splice(unpinnedIndex, 1, { id: payload.id, title: payload.title, pinned: shouldPin });
       } else {
         // Add new tab (pinned and unsaved notes stay open)
-        state.editorTabs.push({ id: payload.id, title: payload.title, pinned: false });
+        state.editorTabs.push({ id: payload.id, title: payload.title, pinned: shouldPin });
+      }
+      if (shouldPin) {
+        state.persistedPinnedNoteTabIds = sanitizePinnedNoteTabIds([...state.persistedPinnedNoteTabIds, payload.id]);
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
       }
       state.activeTabId = payload.id;
     },
     addPinnedTab(state, payload){
       // Add as a new pinned tab (from double-click on tab)
+      if (!isPersistablePinnedTabId(payload.id)) {
+        return;
+      }
+
       const existingIndex = state.editorTabs.findIndex(t => t.id === payload.id);
       if(existingIndex !== -1){
         state.editorTabs[existingIndex].pinned = true;
+        state.persistedPinnedNoteTabIds = sanitizePinnedNoteTabIds([...state.persistedPinnedNoteTabIds, payload.id]);
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
       }
+    },
+    finalizeNewNoteTab(state, payload){
+      const newNoteIndex = state.editorTabs.findIndex(tab => tab.id === NEW_NOTE_TAB_ID);
+      if (newNoteIndex !== -1) {
+        const previousTab = state.editorTabs[newNoteIndex];
+        state.editorTabs.splice(newNoteIndex, 1, {
+          ...previousTab,
+          id: payload.id,
+          title: payload.title ?? previousTab.title,
+          pinned: false
+        });
+        if (state.activeTabId === NEW_NOTE_TAB_ID) {
+          state.activeTabId = payload.id;
+        }
+        return;
+      }
+
+      const existingIndex = state.editorTabs.findIndex(tab => tab.id === payload.id);
+      if (existingIndex !== -1) {
+        state.editorTabs[existingIndex] = {
+          ...state.editorTabs[existingIndex],
+          title: payload.title ?? state.editorTabs[existingIndex].title
+        };
+      } else {
+        state.editorTabs.push({
+          id: payload.id,
+          title: payload.title,
+          pinned: false
+        });
+      }
+      state.activeTabId = payload.id;
+    },
+    restorePinnedTabs(state, payload){
+      const tabs = Array.isArray(payload.tabs) ? payload.tabs : [];
+      const nextPinnedIds = [...state.persistedPinnedNoteTabIds];
+
+      tabs.forEach(tab => {
+        if (!isPersistablePinnedTabId(tab?.id)) {
+          return;
+        }
+
+        const existingIndex = state.editorTabs.findIndex(existingTab => existingTab.id === tab.id);
+        if (existingIndex !== -1) {
+          state.editorTabs[existingIndex] = {
+            ...state.editorTabs[existingIndex],
+            title: tab.title ?? state.editorTabs[existingIndex].title,
+            pinned: true
+          };
+        } else {
+          state.editorTabs.push({
+            id: tab.id,
+            title: tab.title,
+            pinned: true
+          });
+        }
+
+        nextPinnedIds.push(tab.id);
+      });
+
+      state.persistedPinnedNoteTabIds = sanitizePinnedNoteTabIds(nextPinnedIds);
+      persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
     },
     closeTab(state, payload){
       const index = state.editorTabs.findIndex(t => t.id === payload.id);
       if(index !== -1){
         state.editorTabs.splice(index, 1);
+        state.persistedPinnedNoteTabIds = state.persistedPinnedNoteTabIds.filter(id => id !== payload.id);
+        persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
         // If we closed the active tab, activate another
         if(state.activeTabId === payload.id){
           if(state.editorTabs.length > 0){
@@ -221,6 +369,7 @@ const store = createStore({
           } else {
             state.activeTabId = null;
             state.id = '';
+            state.noteType = 'note';
             state.name = '';
             state.content = '';
             state.count = 0;
@@ -241,6 +390,8 @@ const store = createStore({
     clearAllTabs(state){
       state.editorTabs = [];
       state.activeTabId = null;
+      state.persistedPinnedNoteTabIds = [];
+      persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
     }
   },
   getters: {
@@ -258,6 +409,12 @@ const store = createStore({
     },
     id(state){
       return state.id;
+    },
+    noteType(state){
+      return state.noteType;
+    },
+    draftNoteType(state){
+      return state.draftNoteType;
     },
     order(state){
       return state.order;
@@ -307,6 +464,9 @@ const store = createStore({
     drawerOpen(state){
       return state.drawerOpen;
     },
+    prefetchedNote(state){
+      return state.prefetchedNote;
+    },
     inactivityCounter(state){
       return state.inactivityCounter;
     },
@@ -321,6 +481,9 @@ const store = createStore({
     },
     activeTabId(state){
       return state.activeTabId;
+    },
+    persistedPinnedNoteTabIds(state){
+      return state.persistedPinnedNoteTabIds;
     }
   }
 });
