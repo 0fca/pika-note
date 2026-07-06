@@ -64,7 +64,7 @@
     </div>
 
     <div class="row background sheet-background">
-      <div class="sheet-frame" ref="sheetFrame">
+      <div class="sheet-frame" ref="sheetFrame" @contextmenu.prevent="openContextMenu($event)">
         <vue-excel-editor
           ref="sheetEditor"
           v-model="sheetRows"
@@ -92,9 +92,16 @@
           />
         </vue-excel-editor>
 
-        <div class="sheet-actions">
-          <button type="button" class="btn-action sheet-action-btn" @click="addSheetRow">Add row</button>
-          <button type="button" class="btn-action sheet-action-btn" @click="addSheetColumn">Add column</button>
+        <div
+          v-if="contextMenuVisible"
+          class="sheet-context-menu"
+          :style="{ top: contextMenuTop + 'px', left: contextMenuLeft + 'px' }"
+        >
+          <button type="button" class="sheet-context-menu-item" @click="contextMenuAddRow">Add row</button>
+          <button type="button" class="sheet-context-menu-item" @click="contextMenuAddColumn">Add column</button>
+          <div class="sheet-context-menu-divider"></div>
+          <button type="button" class="sheet-context-menu-item" @click="contextMenuCopy">Copy</button>
+          <button type="button" class="sheet-context-menu-item" @click="contextMenuPaste">Paste</button>
         </div>
       </div>
     </div>
@@ -121,7 +128,9 @@ import {
   SHEET_INITIAL_COLUMN_COUNT,
   SHEET_MAX_COLUMN_COUNT,
   SHEET_COLUMN_EXPANSION_THRESHOLD,
-  stringifySheetRows
+  stringifySheetRows,
+  trimSheetRowsToContent,
+  trimSheetColumnsToContent
 } from '@/services/noteContentService';
 
 const SHEET_EDITOR_OFFSET = 320;
@@ -197,7 +206,10 @@ export default {
       fabOpen: false,
       sheetColumns: initialState.columns,
       sheetRows: initialState.rows,
-      sheetEditorHeight: '560px'
+      sheetEditorHeight: '560px',
+      contextMenuVisible: false,
+      contextMenuTop: 0,
+      contextMenuLeft: 0
     };
   },
   beforeRouteEnter(to, from, next) {
@@ -210,6 +222,7 @@ export default {
   },
   mounted() {
     document.addEventListener('click', this.handleClickOutsideFab);
+    document.addEventListener('click', this.closeContextMenu);
     window.addEventListener('resize', this.updateSheetEditorHeight);
     this.updateSheetEditorHeight();
 
@@ -236,6 +249,7 @@ export default {
     this.isUnmounted = true;
     this.loadRequestId += 1;
     document.removeEventListener('click', this.handleClickOutsideFab);
+    document.removeEventListener('click', this.closeContextMenu);
     window.removeEventListener('resize', this.updateSheetEditorHeight);
     this.detachSheetScrollListener();
     this.detachSheetPasteListener();
@@ -262,8 +276,10 @@ export default {
     applyLoadedNote(note) {
       this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
       const sheetState = extractSheetState(note.content);
-      this.sheetColumns = sheetState.columns;
-      this.sheetRows = sheetState.rows.length > 0 ? sheetState.rows : [this.createEmptyRow()];
+      const trimmedColumns = trimSheetColumnsToContent(sheetState.rows, sheetState.columns);
+      const trimmedRows = trimSheetRowsToContent(sheetState.rows, trimmedColumns);
+      this.sheetColumns = trimmedColumns;
+      this.sheetRows = trimmedRows.length > 0 ? trimmedRows : [this.createEmptyRow()];
       this.syncSheetMetrics();
       this.$store.commit({ type: 'updateIfError', error: false });
       this.$store.commit({ type: 'updateName', name: note.humanName });
@@ -665,6 +681,117 @@ export default {
       this.sheetRows = rows;
       this.hasUnsavedChanges = true;
       this.syncSheetMetrics();
+    },
+    openContextMenu(event) {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return;
+      const rect = frame.getBoundingClientRect();
+      this.contextMenuTop = event.clientY - rect.top;
+      this.contextMenuLeft = event.clientX - rect.left;
+      this.contextMenuVisible = true;
+    },
+    closeContextMenu() {
+      this.contextMenuVisible = false;
+    },
+    contextMenuAddRow() {
+      this.addSheetRow();
+      this.closeContextMenu();
+    },
+    contextMenuAddColumn() {
+      this.addSheetColumn();
+      this.closeContextMenu();
+    },
+    contextMenuCopy() {
+      this.closeContextMenu();
+      const editor = this.$refs.sheetEditor;
+      if (!editor) return;
+
+      const selectedCells = this.getSelectedCells(editor);
+      if (!selectedCells || selectedCells.length === 0) return;
+
+      let textToCopy;
+      if (selectedCells.length === 1) {
+        textToCopy = `${selectedCells[0].value ?? ''}`;
+      } else {
+        const rowMap = new Map();
+        for (const cell of selectedCells) {
+          if (!rowMap.has(cell.rowIndex)) {
+            rowMap.set(cell.rowIndex, []);
+          }
+          rowMap.get(cell.rowIndex).push(`${cell.value ?? ''}`);
+        }
+        const sortedRows = [...rowMap.entries()].sort((a, b) => a[0] - b[0]);
+        textToCopy = sortedRows.map(([, cells]) => cells.join(';')).join('\n');
+      }
+
+      navigator.clipboard.writeText(textToCopy).catch(() => {
+        toastService.error('Failed to copy to clipboard');
+      });
+    },
+    async contextMenuPaste() {
+      this.closeContextMenu();
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) return;
+        const hasDelimiter = text.includes('\n') || text.includes('\t') || text.includes(',') || text.includes(';') || text.includes(':');
+        if (hasDelimiter) {
+          const parsed = parseDelimitedText(text);
+          if (parsed && parsed.rows && parsed.rows.length > 0) {
+            this.sheetColumns = parsed.columns;
+            const totalRows = Math.min(
+              Math.max(parsed.rows.length, SHEET_INITIAL_ROW_COUNT),
+              SHEET_MAX_ROW_COUNT
+            );
+            const emptyRow = () => this.sheetColumns.reduce((row, col) => {
+              row[col.field] = '';
+              return row;
+            }, {});
+            const rows = [...parsed.rows];
+            while (rows.length < totalRows) {
+              rows.push(emptyRow());
+            }
+            this.sheetRows = rows;
+            this.hasUnsavedChanges = true;
+            this.syncSheetMetrics();
+            return;
+          }
+        }
+        const editor = this.$refs.sheetEditor;
+        if (editor) {
+          const selectedCells = this.getSelectedCells(editor);
+          if (selectedCells && selectedCells.length === 1) {
+            const cell = selectedCells[0];
+            this.sheetRows[cell.rowIndex][cell.field] = text;
+            this.onSheetChanged();
+          }
+        }
+      } catch {
+        toastService.error('Failed to read clipboard');
+      }
+    },
+    getSelectedCells(editor) {
+      if (!editor) return [];
+      if (typeof editor.getSelectedContent === 'function') {
+        const content = editor.getSelectedContent();
+        if (content && Array.isArray(content)) return content;
+      }
+      const table = editor.$el?.querySelector('.systable');
+      if (!table) return [];
+      const focusedCell = table.querySelector('td.focus');
+      if (!focusedCell) return [];
+      const rowEl = focusedCell.closest('tr');
+      if (!rowEl) return [];
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return [];
+      const rowIndex = Array.from(tbody.children).indexOf(rowEl);
+      const cellIndex = Array.from(rowEl.children).indexOf(focusedCell) - 1;
+      if (rowIndex < 0 || cellIndex < 0 || cellIndex >= this.sheetColumns.length) return [];
+      const field = this.sheetColumns[cellIndex].field;
+      return [{
+        rowIndex,
+        field,
+        value: this.sheetRows[rowIndex]?.[field] ?? ''
+      }];
     }
   }
 };
@@ -757,16 +884,41 @@ export default {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  position: relative;
 }
 
-.sheet-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
+.sheet-context-menu {
+  position: absolute;
+  z-index: 200;
+  background: var(--color-surface, var(--color-background));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 140px;
 }
 
-.sheet-action-btn {
-  min-width: 120px;
+.sheet-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  font-size: var(--font-size-sm, 14px);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sheet-context-menu-item:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface, var(--color-background)));
+}
+
+.sheet-context-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-border);
 }
 
 .fixed-action-btn {

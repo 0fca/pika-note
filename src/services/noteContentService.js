@@ -129,6 +129,56 @@ export function sanitizeSheetRows(rows, columns = null) {
   }, {}));
 }
 
+export function trimSheetRowsToContent(rows, columns, paddingCount = SHEET_INITIAL_ROW_COUNT) {
+  const normalizedColumns = columns ? normalizeSheetColumnsInput(columns) : deriveSheetColumns(rows);
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  let lastContentIndex = -1;
+  for (let i = safeRows.length - 1; i >= 0; i--) {
+    const row = safeRows[i];
+    const hasContent = normalizedColumns.some(col => `${row?.[col.field] ?? ''}`.trim() !== '');
+    if (hasContent) {
+      lastContentIndex = i;
+      break;
+    }
+  }
+
+  const contentRows = safeRows.slice(0, lastContentIndex + 1);
+  const totalRows = Math.min(contentRows.length + paddingCount, SHEET_MAX_ROW_COUNT);
+  const result = [...contentRows];
+  while (result.length < totalRows) {
+    result.push(createEmptySheetRow(normalizedColumns));
+  }
+  return result;
+}
+
+export function trimSheetColumnsToContent(rows, columns, paddingCount = SHEET_INITIAL_COLUMN_COUNT) {
+  const normalizedColumns = columns ? normalizeSheetColumnsInput(columns) : deriveSheetColumns(rows);
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  let lastContentIndex = -1;
+  for (let i = normalizedColumns.length - 1; i >= 0; i--) {
+    const col = normalizedColumns[i];
+    const hasContent = safeRows.some(row => `${row?.[col.field] ?? ''}`.trim() !== '');
+    if (hasContent) {
+      lastContentIndex = i;
+      break;
+    }
+  }
+
+  const contentColumnCount = lastContentIndex + 1;
+  const totalColumns = Math.min(
+    Math.max(contentColumnCount + paddingCount, SHEET_INITIAL_COLUMN_COUNT),
+    SHEET_MAX_COLUMN_COUNT
+  );
+
+  if (normalizedColumns.length <= totalColumns) {
+    return normalizedColumns;
+  }
+
+  return normalizedColumns.slice(0, totalColumns);
+}
+
 export function parseDelimitedText(text) {
   return parseCsvText(text);
 }
