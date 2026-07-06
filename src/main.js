@@ -9,6 +9,8 @@ import VueExcelEditor from 'vue3-excel-editor'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
 const PINNED_NOTE_TAB_IDS_STORAGE_KEY = 'pinnedNoteTabIds';
+const BUCKET_NAME_STORAGE_KEY = 'bucketName';
+const BUCKET_UUID_STORAGE_KEY = 'bucketUuid';
 
 function isPersistablePinnedTabId(id) {
   return typeof id === 'string' && id !== '' && id !== NEW_NOTE_TAB_ID;
@@ -44,8 +46,8 @@ function persistPinnedNoteTabIds(ids) {
 
 function loadInitialBucketState() {
   return {
-    bucketName: localStorage.getItem('bucketName') ?? "",
-    bucketUuid: localStorage.getItem('bucketUuid') ?? ""
+    bucketName: localStorage.getItem(BUCKET_NAME_STORAGE_KEY) ?? "",
+    bucketUuid: localStorage.getItem(BUCKET_UUID_STORAGE_KEY) ?? ""
   };
 }
 
@@ -159,14 +161,14 @@ const store = createStore({
       state.bucketUuid = payload.bucketUuid;
       state.bucketName = payload.bucketName;
       // Update localStorage when bucket changes
-      localStorage.setItem('bucketUuid', payload.bucketUuid);
-      localStorage.setItem('bucketName', payload.bucketName);
+      localStorage.setItem(BUCKET_UUID_STORAGE_KEY, payload.bucketUuid);
+      localStorage.setItem(BUCKET_NAME_STORAGE_KEY, payload.bucketName);
     },
     clearCurrentBucket (state) {
       state.bucketUuid = '';
       state.bucketName = '';
-      localStorage.removeItem('bucketUuid');
-      localStorage.removeItem('bucketName');
+      localStorage.removeItem(BUCKET_UUID_STORAGE_KEY);
+      localStorage.removeItem(BUCKET_NAME_STORAGE_KEY);
     },
     updateLastSavedAt(state, payload){
       state.lastSavedAt = payload.lastSavedAt;
