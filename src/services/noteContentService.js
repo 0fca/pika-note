@@ -509,8 +509,12 @@ function isMeaningfulSheetColumn(column, index) {
     return false;
   }
 
+  const defaultLabel = index < DEFAULT_SHEET_COLUMN_LABELS.length
+    ? DEFAULT_SHEET_COLUMN_LABELS[index]
+    : null;
+
   return index >= SHEET_INITIAL_COLUMN_COUNT
-    || `${column.label ?? ''}`.trim() !== DEFAULT_SHEET_COLUMN_LABELS[index];
+    || `${column.label ?? ''}`.trim() !== defaultLabel;
 }
 
 function buildSheetFieldName(index) {

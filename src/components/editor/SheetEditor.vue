@@ -602,8 +602,8 @@ export default {
         .map(row => ({ ...row, [nextColumn.field]: '' }));
       this.finalizeSheetMutation({ checkRowExpansion: false });
     },
-    buildSheetColumn(columnIndex) {
-      const nextIndex = columnIndex + 1;
+    buildSheetColumn(columnCount) {
+      const nextIndex = columnCount + 1;
       return {
         field: `column_${nextIndex}`,
         label: `Column ${nextIndex}`
