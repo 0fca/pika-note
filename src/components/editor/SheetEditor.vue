@@ -254,6 +254,7 @@ export default {
   mounted() {
     document.addEventListener('click', this.handleClickOutsideFab);
     document.addEventListener('click', this.closeContextMenu);
+    // Capture phase lets the sheet override vue3-excel-editor's window-level shortcuts when needed.
     window.addEventListener('keydown', this.handleSheetKeydown, true);
     window.addEventListener('resize', this.updateSheetEditorHeight);
     this.updateSheetEditorHeight();
@@ -392,7 +393,11 @@ export default {
       };
     },
     persistUndoSnapshots() {
-      localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
+      try {
+        localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
+      } catch {
+        // Ignore storage quota issues; undo remains available in memory for the current boot.
+      }
     },
     recordUndoSnapshot(force = false) {
       if (this.isApplyingSnapshot) return;
@@ -1111,6 +1116,9 @@ export default {
     },
     getSelectedCells(editor) {
       if (this.contextMenuTarget?.type === 'cell') {
+        if (this.contextMenuTarget.rowIndex < 0 || this.contextMenuTarget.rowIndex >= this.sheetRows.length) {
+          return [];
+        }
         return [{
           rowIndex: this.contextMenuTarget.rowIndex,
           field: this.contextMenuTarget.field,
@@ -1122,7 +1130,13 @@ export default {
         const content = editor.getSelectedContent();
         if (content && Array.isArray(content)) return content;
       }
-      if (Number.isInteger(editor.currentRowPos) && Number.isInteger(editor.currentColPos) && editor.currentColPos >= 0) {
+      if (
+        Number.isInteger(editor.currentRowPos)
+        && editor.currentRowPos >= 0
+        && editor.currentRowPos < this.sheetRows.length
+        && Number.isInteger(editor.currentColPos)
+        && editor.currentColPos >= 0
+      ) {
         const field = this.sheetColumns[editor.currentColPos]?.field;
         if (field) {
           return [{
