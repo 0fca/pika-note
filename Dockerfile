@@ -17,4 +17,4 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 443
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl --fail --silent https://127.0.0.1/healthz >/dev/null || exit 1
+  CMD curl --insecure --fail --silent https://127.0.0.1/healthz >/dev/null || exit 1
