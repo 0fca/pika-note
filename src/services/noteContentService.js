@@ -1,5 +1,8 @@
 export const DEFAULT_NOTE_TYPE = 'note';
 export const SHEET_NOTE_TYPE = 'sheet';
+export const SHEET_INITIAL_ROW_COUNT = 20;
+export const SHEET_MAX_ROW_COUNT = 2000;
+export const SHEET_ROW_EXPANSION_THRESHOLD = 3;
 
 const DEFAULT_SHEET_COLUMN_LABELS = ['Column 1', 'Column 2', 'Column 3'];
 const SAFE_SHEET_FIELD_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -20,16 +23,16 @@ export function createDefaultSheetColumns() {
   }));
 }
 
-export function createEmptySheetRows(columnDefinitions = createDefaultSheetColumns()) {
+export function createEmptySheetRows(columnDefinitions = createDefaultSheetColumns(), count = 1) {
   const columns = normalizeSheetColumnsInput(columnDefinitions);
-  return [createEmptySheetRow(columns)];
+  return Array.from({ length: count }, () => createEmptySheetRow(columns));
 }
 
 export function createEmptySheetState(columnDefinitions = createDefaultSheetColumns()) {
   const columns = normalizeSheetColumnsInput(columnDefinitions);
   return {
     columns,
-    rows: [createEmptySheetRow(columns)]
+    rows: Array.from({ length: SHEET_INITIAL_ROW_COUNT }, () => createEmptySheetRow(columns))
   };
 }
 
@@ -121,6 +124,10 @@ export function sanitizeSheetRows(rows, columns = null) {
     record[column.field] = row?.[column.field] ?? '';
     return record;
   }, {}));
+}
+
+export function parseDelimitedText(text) {
+  return parseCsvText(text);
 }
 
 function createEmptySheetRow(columns) {
@@ -442,7 +449,7 @@ function getTableWidth(headerRow, dataRows) {
 
 function detectDelimiter(text) {
   const sample = text.split(/\r?\n/).slice(0, 5).join('\n');
-  const candidates = [',', ';', '\t'];
+  const candidates = [',', ';', '\t', ':'];
 
   return candidates.reduce((selectedDelimiter, candidate) => {
     const selectedCount = countDelimiter(sample, selectedDelimiter);

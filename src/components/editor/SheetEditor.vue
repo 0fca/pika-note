@@ -64,7 +64,7 @@
     </div>
 
     <div class="row background sheet-background">
-      <div class="sheet-frame">
+      <div class="sheet-frame" ref="sheetFrame">
         <vue-excel-editor
           ref="sheetEditor"
           v-model="sheetRows"
@@ -110,9 +110,13 @@ import {
   extractSheetState,
   hasSheetContent,
   normalizeNoteType,
+  parseDelimitedText,
   resolveNoteType,
   sanitizeSheetRows,
   serializeSheetRows,
+  SHEET_INITIAL_ROW_COUNT,
+  SHEET_MAX_ROW_COUNT,
+  SHEET_ROW_EXPANSION_THRESHOLD,
   stringifySheetRows
 } from '@/services/noteContentService';
 
@@ -218,12 +222,19 @@ export default {
         this.loadNote(this.id);
       }
     }
+
+    this.$nextTick(() => {
+      this.attachSheetScrollListener();
+      this.attachSheetPasteListener();
+    });
   },
   unmounted() {
     this.isUnmounted = true;
     this.loadRequestId += 1;
     document.removeEventListener('click', this.handleClickOutsideFab);
     window.removeEventListener('resize', this.updateSheetEditorHeight);
+    this.detachSheetScrollListener();
+    this.detachSheetPasteListener();
 
     if (this.autoSaveDebounceTimer) {
       clearTimeout(this.autoSaveDebounceTimer);
@@ -518,6 +529,111 @@ export default {
       }
 
       toastService.show(this.autoSaveEnabled ? 'Auto-save enabled' : 'Auto-save disabled');
+    },
+    attachSheetScrollListener() {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return;
+      frame.addEventListener('wheel', this.handleSheetWheel, { passive: false });
+      frame.addEventListener('touchstart', this.handleSheetTouchStart, { passive: true });
+      frame.addEventListener('touchmove', this.handleSheetTouchMove, { passive: false });
+    },
+    detachSheetScrollListener() {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return;
+      frame.removeEventListener('wheel', this.handleSheetWheel);
+      frame.removeEventListener('touchstart', this.handleSheetTouchStart);
+      frame.removeEventListener('touchmove', this.handleSheetTouchMove);
+    },
+    handleSheetWheel(event) {
+      const scrollable = this.getSheetScrollContainer();
+      if (!scrollable) return;
+      event.preventDefault();
+      scrollable.scrollTop += event.deltaY;
+      scrollable.scrollLeft += event.deltaX;
+      this.checkRowExpansion(scrollable);
+    },
+    handleSheetTouchStart(event) {
+      if (event.touches.length === 1) {
+        this._lastTouchY = event.touches[0].clientY;
+        this._lastTouchX = event.touches[0].clientX;
+      }
+    },
+    handleSheetTouchMove(event) {
+      if (event.touches.length !== 1) return;
+      const scrollable = this.getSheetScrollContainer();
+      if (!scrollable) return;
+      const touchY = event.touches[0].clientY;
+      const touchX = event.touches[0].clientX;
+      const deltaY = this._lastTouchY - touchY;
+      const deltaX = this._lastTouchX - touchX;
+      this._lastTouchY = touchY;
+      this._lastTouchX = touchX;
+      event.preventDefault();
+      scrollable.scrollTop += deltaY;
+      scrollable.scrollLeft += deltaX;
+      this.checkRowExpansion(scrollable);
+    },
+    getSheetScrollContainer() {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return null;
+      return frame.querySelector('.systable') || frame.querySelector('table')?.parentElement || null;
+    },
+    checkRowExpansion(scrollable) {
+      if (!scrollable || this.sheetRows.length >= SHEET_MAX_ROW_COUNT) return;
+      const distanceFromBottom = scrollable.scrollHeight - scrollable.scrollTop - scrollable.clientHeight;
+      const rowHeight = scrollable.scrollHeight / Math.max(this.sheetRows.length, 1);
+      const rowsFromEnd = distanceFromBottom / rowHeight;
+      if (rowsFromEnd <= SHEET_ROW_EXPANSION_THRESHOLD) {
+        this.expandSheetRows();
+      }
+    },
+    expandSheetRows() {
+      const currentCount = this.sheetRows.length;
+      if (currentCount >= SHEET_MAX_ROW_COUNT) return;
+      const newCount = Math.min(currentCount + SHEET_INITIAL_ROW_COUNT, SHEET_MAX_ROW_COUNT);
+      const emptyRow = () => this.sheetColumns.reduce((row, col) => {
+        row[col.field] = '';
+        return row;
+      }, {});
+      for (let i = currentCount; i < newCount; i++) {
+        this.sheetRows.push(emptyRow());
+      }
+    },
+    attachSheetPasteListener() {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return;
+      frame.addEventListener('paste', this.handleSheetPaste);
+    },
+    detachSheetPasteListener() {
+      const frame = this.$refs.sheetFrame;
+      if (!frame) return;
+      frame.removeEventListener('paste', this.handleSheetPaste);
+    },
+    handleSheetPaste(event) {
+      const text = (event.clipboardData || window.clipboardData)?.getData('text');
+      if (!text || !text.includes('\n') && !text.includes('\t') && !text.includes(',') && !text.includes(';') && !text.includes(':')) {
+        return;
+      }
+      const parsed = parseDelimitedText(text);
+      if (!parsed || !parsed.rows || parsed.rows.length === 0) return;
+      event.preventDefault();
+
+      this.sheetColumns = parsed.columns;
+      const totalRows = Math.min(
+        Math.max(parsed.rows.length, SHEET_INITIAL_ROW_COUNT),
+        SHEET_MAX_ROW_COUNT
+      );
+      const emptyRow = () => this.sheetColumns.reduce((row, col) => {
+        row[col.field] = '';
+        return row;
+      }, {});
+      const rows = [...parsed.rows];
+      while (rows.length < totalRows) {
+        rows.push(emptyRow());
+      }
+      this.sheetRows = rows;
+      this.hasUnsavedChanges = true;
+      this.syncSheetMetrics();
     }
   }
 };
