@@ -85,7 +85,6 @@ export async function authFetch(input, init) {
         throw error
       }
       await waitForRetry(attempt)
-      window.location.reload(true);
     }
   }
 }
