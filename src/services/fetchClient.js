@@ -78,18 +78,15 @@ export async function authFetch(input, init) {
         return response
       } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && canRetry) {
         await waitForRetry(attempt)
-      } else if((retryOnAnyFailure || reloadableStatuses.has(response.status)) && canRetry) {
-          window.location.reload(true);
-          break;
       }
 
       return response
     } catch (error) {
       if (attempt === MAX_REQUEST_ATTEMPTS) {
+        window.location.reload(true);
         throw error
       }
       await waitForRetry(attempt)
-      window.location.reload(true);
     }
   }
 }
