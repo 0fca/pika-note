@@ -4,7 +4,8 @@ let refreshTokenInvalid = false
 let refreshPromise = null
 const MAX_REQUEST_ATTEMPTS = 3
 const BASE_RETRY_DELAY_MS = 250
-const refreshableStatuses = new Set([401, 403, 500]) // FIXME: 500 code is to be removed after PikaCore starts returning 403 when the token is null instead of 500
+const reloadableStatuses = new Set([500, 502])
+const refreshableStatuses = new Set([401, 403])
 const retryableStatuses = new Set([400, 401, 403, 422, 500])
 const USER_ACTIVITY_EVENT_NAME = 'pika-note:activity'
 
@@ -77,6 +78,8 @@ export async function authFetch(input, init) {
         return response
       } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && canRetry) {
         await waitForRetry(attempt)
+      } else if((retryOnAnyFailure || reloadableStatuses.has(response.status)) && canRetry) {
+          reload(true);
       }
 
       return response
