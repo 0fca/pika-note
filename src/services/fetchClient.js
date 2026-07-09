@@ -79,7 +79,7 @@ export async function authFetch(input, init) {
       } else if ((retryOnAnyFailure || retryableStatuses.has(response.status)) && canRetry) {
         await waitForRetry(attempt)
       } else if((retryOnAnyFailure || reloadableStatuses.has(response.status)) && canRetry) {
-          reload(true);
+          window.location.reload(true);
       }
 
       return response
