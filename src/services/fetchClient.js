@@ -80,6 +80,7 @@ export async function authFetch(input, init) {
         await waitForRetry(attempt)
       } else if((retryOnAnyFailure || reloadableStatuses.has(response.status)) && canRetry) {
           window.location.reload(true);
+          break;
       }
 
       return response
