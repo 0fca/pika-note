@@ -4,7 +4,6 @@ let refreshTokenInvalid = false
 let refreshPromise = null
 const MAX_REQUEST_ATTEMPTS = 3
 const BASE_RETRY_DELAY_MS = 750
-const reloadableStatuses = new Set([500, 502])
 const refreshableStatuses = new Set([401, 403])
 const retryableStatuses = new Set([400, 401, 403, 422])
 const USER_ACTIVITY_EVENT_NAME = 'pika-note:activity'
