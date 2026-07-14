@@ -114,6 +114,10 @@ export default {
       .then(buckets => {
         this.onBucketsReceived(buckets);
       });
+    if(this.buckets.length > 0 && (this.bucketId === undefined || this.bucketId === null || this.bucketId === '')){
+      const bucket = this.buckets[0];
+      this.$store.commit({type: 'updateCurrentBucket', bucketName: bucket.text, bucketUuid: bucket.id});
+    }
     this.noteService.readData('/notes?order=' + order + "&pageSize=" + count + "&bucketId=" + this.bucketId)
         .then(data => {
           this.onDataReceived(data);
