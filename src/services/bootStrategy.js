@@ -61,7 +61,7 @@ export class URLBasedBootStrategy {
 
 /**
  * CleanBootStrategy – used when the app is loaded without a note id in the URL.
- * It syncs the bucket from localStorage/store and loads the notes list.
+ * It syncs the bucket from localStorage/store and falls back to the first available bucket when none is set.
  */
 export class CleanBootStrategy {
   constructor({ store, buckets }) {
@@ -70,6 +70,18 @@ export class CleanBootStrategy {
   }
 
   onBucketsReady({ syncCurrentBucketSelection }) {
+    const currentBucketUuid = this.store.getters.bucketUuid;
+
+    if (!currentBucketUuid && this.buckets.length > 0) {
+      const firstBucket = this.buckets[0];
+      this.store.commit({
+        type: 'updateCurrentBucket',
+        bucketName: firstBucket.text,
+        bucketUuid: firstBucket.id
+      });
+      return;
+    }
+
     syncCurrentBucketSelection();
   }
 
