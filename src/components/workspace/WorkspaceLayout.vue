@@ -288,6 +288,7 @@ import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "../exceptions/UnauthorizedException";
 import { resolveNoteType } from '@/services/noteContentService';
+import { removeCachedTabNote } from '@/services/tabCacheService';
 import { createBootStrategy } from '@/services/bootStrategy';
 
 const pageSize = 15;
@@ -1036,6 +1037,9 @@ export default {
         if (editor && typeof editor.refreshNote === 'function') {
           editor.refreshNote();
         }
+      } else {
+        // For inactive tabs, clear cache so next switch triggers a fresh load
+        removeCachedTabNote(tabId);
       }
     },
     openSearch() {

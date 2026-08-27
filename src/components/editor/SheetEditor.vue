@@ -1456,7 +1456,7 @@ export default {
         for (let c = startCol; c <= endCol && c < this.sheetColumns.length; c++) {
           cells.push(this.sheetRows[r][this.sheetColumns[c].field] ?? '');
         }
-        lines.push(cells.join(';'));
+        lines.push(cells.join('\t'));
       }
       return lines.join('\n');
     },
