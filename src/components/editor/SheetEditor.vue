@@ -1088,8 +1088,8 @@ export default {
       try {
         const text = await navigator.clipboard.readText();
         if (!text) return;
+        const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
         if (isUrl(text)) {
-          const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
           if (selectedCells && selectedCells.length >= 1) {
             const cell = selectedCells[0];
             this.sheetRows[cell.rowIndex][cell.field] = text.trim();
@@ -1105,7 +1105,6 @@ export default {
             return;
           }
         }
-        const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
         if (selectedCells && selectedCells.length === 1) {
           const cell = selectedCells[0];
           this.sheetRows[cell.rowIndex][cell.field] = text;
@@ -1382,7 +1381,8 @@ export default {
       if (this.isFillDragging) {
         const cell = this.getCellFromEvent(event);
         if (cell) {
-          this.fillDragEnd = cell;
+          // Constrain fill drag to same column as anchor
+          this.fillDragEnd = { row: cell.row, col: this.fillHandleAnchor.col };
           this.applyFillDragStyles();
         }
         return;
@@ -1410,6 +1410,9 @@ export default {
         return;
       }
       this.isMultiSelecting = false;
+      this.$nextTick(() => {
+        this.updateFillHandlePosition();
+      });
     },
     applyMultiSelectStyles() {
       const table = this.getSheetTableElement();
@@ -1504,26 +1507,31 @@ export default {
       if (!this.fillHandleAnchor || !this.fillDragEnd) return;
       const anchor = this.fillHandleAnchor;
       const end = this.fillDragEnd;
-      if (anchor.row === end.row && anchor.col === end.col) {
+      if (anchor.row === end.row) {
         this.fillHandleAnchor = null;
         this.fillDragEnd = null;
         this.clearMultiSelectStyles();
         return;
       }
-      const sourceValue = this.sheetRows[anchor.row]?.[this.sheetColumns[anchor.col]?.field] ?? '';
+      const col = anchor.col;
+      const sourceValue = this.sheetRows[anchor.row]?.[this.sheetColumns[col]?.field] ?? '';
       const startRow = Math.min(anchor.row, end.row);
       const endRow = Math.max(anchor.row, end.row);
-      const startCol = Math.min(anchor.col, end.col);
-      const endCol = Math.max(anchor.col, end.col);
       for (let r = startRow; r <= endRow && r < this.sheetRows.length; r++) {
-        for (let c = startCol; c <= endCol && c < this.sheetColumns.length; c++) {
-          if (r === anchor.row && c === anchor.col) continue;
-          this.sheetRows[r][this.sheetColumns[c].field] = sourceValue;
-        }
+        if (r === anchor.row) continue;
+        this.sheetRows[r][this.sheetColumns[col].field] = sourceValue;
       }
+      // Set multiselect range to show the filled area
+      this.multiSelectRange = {
+        startRow,
+        startCol: col,
+        endRow: Math.min(endRow, this.sheetRows.length - 1),
+        endCol: col
+      };
       this.fillHandleAnchor = null;
       this.fillDragEnd = null;
       this.clearMultiSelectStyles();
+      this.applyMultiSelectStyles();
       this.finalizeSheetMutation();
     }
   }
