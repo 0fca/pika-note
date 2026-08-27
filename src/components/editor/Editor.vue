@@ -58,7 +58,7 @@
               :title="autoSaveEnabled ? 'Auto-save: ON' : 'Auto-save: OFF'"
             >
               <span class="material-symbols-outlined fab-icon">
-                {{ autoSaveEnabled ? 'sync' : 'sync_disabled' }}
+                {{ autoSaveEnabled ? 'save_clock' : 'sync_disabled' }}
               </span>
             </button>
           </li>

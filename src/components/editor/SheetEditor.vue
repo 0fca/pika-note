@@ -50,7 +50,7 @@
               :title="autoSaveEnabled ? 'Auto-save: ON' : 'Auto-save: OFF'"
             >
               <span class="material-symbols-outlined fab-icon">
-                {{ autoSaveEnabled ? 'sync' : 'sync_disabled' }}
+                {{ autoSaveEnabled ? 'save_clock' : 'sync_disabled' }}
               </span>
             </button>
           </li>
@@ -1353,7 +1353,11 @@ export default {
     getCellFromEvent(event) {
       const table = this.getSheetTableElement();
       if (!table || !(event.target instanceof Element)) return null;
-      const td = event.target.closest('tbody td');
+      let td = event.target.closest('tbody td');
+      // If the event target is not inside a td (e.g. fill handle overlay), resolve via coordinates
+      if (!td) {
+        td = this.getCellFromCoordinates(event.clientX, event.clientY);
+      }
       if (!td || td.classList.contains('first-col')) return null;
       const row = td.closest('tr');
       if (!row) return null;
@@ -1364,9 +1368,26 @@ export default {
       if (rowIndex < 0 || colIndex < 0 || colIndex >= this.sheetColumns.length) return null;
       return { row: rowIndex, col: colIndex };
     },
+    getCellFromCoordinates(x, y) {
+      const table = this.getSheetTableElement();
+      if (!table) return null;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return null;
+      for (const row of tbody.children) {
+        for (const cell of row.children) {
+          if (cell.classList.contains('first-col')) continue;
+          const rect = cell.getBoundingClientRect();
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            return cell;
+          }
+        }
+      }
+      return null;
+    },
     onSheetMouseDown(event) {
       // Don't interfere with context menu, fill handle, or input editing
       if (event.button !== 0) return;
+      if (this.isFillDragging) return;
       const editor = this.$refs.sheetEditor;
       if (editor?.inputBoxShow) return;
       const cell = this.getCellFromEvent(event);
@@ -1379,6 +1400,7 @@ export default {
     },
     onSheetMouseMove(event) {
       if (this.isFillDragging) {
+        if (!this.fillHandleAnchor) return;
         const cell = this.getCellFromEvent(event);
         if (cell) {
           // Constrain fill drag to same column as anchor
@@ -1478,6 +1500,7 @@ export default {
       this.isFillDragging = true;
       this.fillHandleAnchor = { row: rowIndex, col: colIndex };
       this.fillDragEnd = { row: rowIndex, col: colIndex };
+      this.fillHandlePosition = null; // hide handle during drag
     },
     applyFillDragStyles() {
       const table = this.getSheetTableElement();
