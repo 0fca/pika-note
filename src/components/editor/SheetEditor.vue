@@ -59,12 +59,22 @@
               <span class="material-symbols-outlined fab-icon">clear_all</span>
             </button>
           </li>
+          <li>
+            <button @click.stop="refreshNote" class="btn-floating floating-btn-orange toolbar-icon" title="Refresh note">
+              <span class="material-symbols-outlined fab-icon">sync</span>
+            </button>
+          </li>
         </ul>
       </div>
     </div>
 
     <div class="row background sheet-background">
-      <div class="sheet-frame" ref="sheetFrame" @contextmenu.capture.prevent="openContextMenu($event)">
+      <div class="sheet-frame" ref="sheetFrame"
+        @contextmenu.capture.prevent="openContextMenu($event)"
+        @mousedown="onSheetMouseDown($event)"
+        @mousemove="onSheetMouseMove($event)"
+        @mouseup="onSheetMouseUp($event)"
+      >
         <vue-excel-editor
           ref="sheetEditor"
           v-model="sheetRows"
@@ -94,6 +104,14 @@
           />
         </vue-excel-editor>
 
+        <!-- Fill handle -->
+        <div
+          v-if="fillHandlePosition"
+          class="sheet-fill-handle"
+          :style="fillHandlePosition"
+          @mousedown.stop.prevent="onFillHandleMouseDown"
+        ></div>
+
         <div
           v-if="contextMenuVisible"
           class="sheet-context-menu"
@@ -109,6 +127,10 @@
             <button v-if="hasSelectedRows" type="button" class="sheet-context-menu-item" @click="contextMenuDeleteRows">Delete selected row(s)</button>
             <button v-if="hasSelectedColumn" type="button" class="sheet-context-menu-item" @click="contextMenuDeleteColumn">Delete selected column</button>
           </template>
+          <template v-if="multiSelectRange">
+            <div class="sheet-context-menu-divider"></div>
+            <button type="button" class="sheet-context-menu-item" @click="deleteMultiSelection">Delete selection</button>
+          </template>
           <div class="sheet-context-menu-divider"></div>
           <button type="button" class="sheet-context-menu-item" @click="contextMenuCopy">Copy</button>
           <button type="button" class="sheet-context-menu-item" @click="contextMenuPaste">Paste</button>
@@ -122,11 +144,13 @@
 import NoteService from '@/services/noteService';
 import Preloader from '@/components/molecules/Preloader';
 import { toastService } from '@/services/toastService';
+import { getCachedTabNote, setCachedTabNote, removeCachedTabNote } from '@/services/tabCacheService';
 import {
   countSheetCellCharacters,
   createEmptySheetState,
   extractSheetState,
   hasSheetContent,
+  isUrl,
   normalizeNoteType,
   parseDelimitedText,
   parseDelimitedTextMatrix,
@@ -204,7 +228,9 @@ export default {
       }
 
       if (!this.applyPrefetchedNote(newId)) {
-        this.loadNote(newId);
+        if (!this.applyCachedTabNote(newId)) {
+          this.loadNote(newId);
+        }
       }
       this.isProgrammaticTitleUpdate = true;
       this.noteTitle = this.$store.getters.name;
@@ -241,7 +267,16 @@ export default {
       contextMenuVisible: false,
       contextMenuTop: 0,
       contextMenuLeft: 0,
-      contextMenuTarget: null
+      contextMenuTarget: null,
+      // Multiselect state
+      multiSelectRange: null, // { startRow, startCol, endRow, endCol }
+      isMultiSelecting: false,
+      multiSelectAnchor: null, // { row, col }
+      // Fill handle state
+      isFillDragging: false,
+      fillHandleAnchor: null, // { row, col }
+      fillDragEnd: null, // { row, col }
+      fillHandlePosition: null
     };
   },
   beforeRouteEnter(to, from, next) {
@@ -271,7 +306,9 @@ export default {
 
     if (this.id !== '') {
       if (!this.applyPrefetchedNote(this.id)) {
-        this.loadNote(this.id);
+        if (!this.applyCachedTabNote(this.id)) {
+          this.loadNote(this.id);
+        }
       }
     }
 
@@ -330,6 +367,10 @@ export default {
       this.noteTitle = note.humanName;
       this.isProgrammaticTitleUpdate = false;
       this.hasUnsavedChanges = false;
+      // Cache note data for tab switching
+      if (note.id || this.id) {
+        setCachedTabNote(note.id || this.id, note);
+      }
     },
     applyPrefetchedNote(noteId) {
       if (!noteId) {
@@ -352,6 +393,29 @@ export default {
         }
       });
       return true;
+    },
+    applyCachedTabNote(noteId) {
+      if (!noteId) return false;
+      const tab = this.$store.getters.editorTabs.find(t => t.id === noteId && t.pinned);
+      if (!tab) return false;
+      const cached = getCachedTabNote(noteId);
+      if (!cached) return false;
+      this.isLoadingNote = true;
+      this.applyLoadedNote(cached);
+      this.$nextTick(() => {
+        this.isLoadingNote = false;
+        this.hasUnsavedChanges = false;
+        if (this.autoSaveDebounceTimer) {
+          clearTimeout(this.autoSaveDebounceTimer);
+          this.autoSaveDebounceTimer = null;
+        }
+      });
+      return true;
+    },
+    refreshNote() {
+      if (!this.id) return;
+      removeCachedTabNote(this.id);
+      this.loadNote(this.id);
     },
     handleClickOutsideFab(event) {
       if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
@@ -454,6 +518,14 @@ export default {
         return;
       }
 
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'c' && this.multiSelectRange) {
+        event.preventDefault();
+        event.stopPropagation();
+        const text = this.copyMultiSelection();
+        if (text) navigator.clipboard.writeText(text).catch(() => {});
+        return;
+      }
+
       if (editor.inputBoxShow && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
         event.stopPropagation();
         return;
@@ -464,6 +536,12 @@ export default {
       }
 
       if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (this.multiSelectRange) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.deleteMultiSelection();
+          return;
+        }
         if (this.hasSelectedColumn) {
           event.preventDefault();
           event.stopPropagation();
@@ -504,6 +582,9 @@ export default {
           this.applySelectedColumnStyles();
         });
       }
+      this.$nextTick(() => {
+        this.updateFillHandlePosition();
+      });
     },
     onSheetRowSelection() {
       const editor = this.$refs.sheetEditor;
@@ -874,7 +955,19 @@ export default {
     },
     handleSheetPaste(event) {
       const text = (event.clipboardData || window.clipboardData)?.getData('text');
-      if (!text || !text.includes('\n') && !text.includes('\t') && !text.includes(',') && !text.includes(';') && !text.includes(':')) {
+      if (!text) return;
+      if (isUrl(text)) {
+        // Paste URL as-is into the focused cell
+        event.preventDefault();
+        const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
+        if (selectedCells && selectedCells.length >= 1) {
+          const cell = selectedCells[0];
+          this.sheetRows[cell.rowIndex][cell.field] = text.trim();
+          this.finalizeSheetMutation();
+        }
+        return;
+      }
+      if (!text.includes('\n') && !text.includes('\t') && !text.includes(',') && !text.includes(';') && !text.includes(':')) {
         return;
       }
       const matrix = parseDelimitedTextMatrix(text);
@@ -961,6 +1054,15 @@ export default {
     },
     contextMenuCopy() {
       this.closeContextMenu();
+      if (this.multiSelectRange) {
+        const textToCopy = this.copyMultiSelection();
+        if (textToCopy) {
+          navigator.clipboard.writeText(textToCopy).catch(() => {
+            toastService.error('Failed to copy to clipboard');
+          });
+        }
+        return;
+      }
       const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
       if (!selectedCells || selectedCells.length === 0) return;
 
@@ -986,6 +1088,15 @@ export default {
       try {
         const text = await navigator.clipboard.readText();
         if (!text) return;
+        if (isUrl(text)) {
+          const selectedCells = this.getSelectedCells(this.$refs.sheetEditor);
+          if (selectedCells && selectedCells.length >= 1) {
+            const cell = selectedCells[0];
+            this.sheetRows[cell.rowIndex][cell.field] = text.trim();
+            this.finalizeSheetMutation();
+          }
+          return;
+        }
         const hasDelimiter = text.includes('\n') || text.includes('\t') || text.includes(',') || text.includes(';') || text.includes(':');
         if (hasDelimiter) {
           const matrix = parseDelimitedTextMatrix(text);
@@ -1220,6 +1331,200 @@ export default {
         Math.min(startRowIndex + matrix.length - 1, this.sheetRows.length - 1),
         Math.min(startColumnIndex + maxWidth - 1, this.sheetColumns.length - 1)
       );
+    },
+    // --- Multiselect methods ---
+    updateFillHandlePosition() {
+      if (this.multiSelectRange || this.isMultiSelecting) {
+        this.fillHandlePosition = null;
+        return;
+      }
+      const table = this.getSheetTableElement();
+      if (!table) { this.fillHandlePosition = null; return; }
+      const focusedCell = table.querySelector('td.focus');
+      if (!focusedCell) { this.fillHandlePosition = null; return; }
+      const frame = this.$refs.sheetFrame;
+      if (!frame) { this.fillHandlePosition = null; return; }
+      const frameRect = frame.getBoundingClientRect();
+      const cellRect = focusedCell.getBoundingClientRect();
+      this.fillHandlePosition = {
+        top: (cellRect.bottom - frameRect.top - 4) + 'px',
+        left: (cellRect.right - frameRect.left - 4) + 'px'
+      };
+    },
+    getCellFromEvent(event) {
+      const table = this.getSheetTableElement();
+      if (!table || !(event.target instanceof Element)) return null;
+      const td = event.target.closest('tbody td');
+      if (!td || td.classList.contains('first-col')) return null;
+      const row = td.closest('tr');
+      if (!row) return null;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return null;
+      const rowIndex = Array.from(tbody.children).indexOf(row);
+      const colIndex = Array.from(row.children).indexOf(td) - 1;
+      if (rowIndex < 0 || colIndex < 0 || colIndex >= this.sheetColumns.length) return null;
+      return { row: rowIndex, col: colIndex };
+    },
+    onSheetMouseDown(event) {
+      // Don't interfere with context menu, fill handle, or input editing
+      if (event.button !== 0) return;
+      const editor = this.$refs.sheetEditor;
+      if (editor?.inputBoxShow) return;
+      const cell = this.getCellFromEvent(event);
+      if (!cell) return;
+      // Check if clicking on fill handle area (bottom-right 8px of the cell)
+      this.isMultiSelecting = true;
+      this.multiSelectAnchor = cell;
+      this.multiSelectRange = null;
+      this.clearMultiSelectStyles();
+    },
+    onSheetMouseMove(event) {
+      if (this.isFillDragging) {
+        const cell = this.getCellFromEvent(event);
+        if (cell) {
+          this.fillDragEnd = cell;
+          this.applyFillDragStyles();
+        }
+        return;
+      }
+      if (!this.isMultiSelecting || !this.multiSelectAnchor) return;
+      const cell = this.getCellFromEvent(event);
+      if (!cell) return;
+      const anchor = this.multiSelectAnchor;
+      if (cell.row === anchor.row && cell.col === anchor.col) {
+        this.multiSelectRange = null;
+        this.clearMultiSelectStyles();
+        return;
+      }
+      this.multiSelectRange = {
+        startRow: Math.min(anchor.row, cell.row),
+        startCol: Math.min(anchor.col, cell.col),
+        endRow: Math.max(anchor.row, cell.row),
+        endCol: Math.max(anchor.col, cell.col)
+      };
+      this.applyMultiSelectStyles();
+    },
+    onSheetMouseUp() {
+      if (this.isFillDragging) {
+        this.finalizeFillDrag();
+        return;
+      }
+      this.isMultiSelecting = false;
+    },
+    applyMultiSelectStyles() {
+      const table = this.getSheetTableElement();
+      if (!table) return;
+      table.querySelectorAll('.sheet-multi-selected').forEach(el => el.classList.remove('sheet-multi-selected'));
+      if (!this.multiSelectRange) return;
+      const { startRow, startCol, endRow, endCol } = this.multiSelectRange;
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      const rows = tbody.children;
+      for (let r = startRow; r <= endRow && r < rows.length; r++) {
+        const cells = rows[r].children;
+        for (let c = startCol; c <= endCol; c++) {
+          const td = cells[c + 1]; // +1 for first-col
+          if (td) td.classList.add('sheet-multi-selected');
+        }
+      }
+    },
+    clearMultiSelectStyles() {
+      const table = this.getSheetTableElement();
+      if (!table) return;
+      table.querySelectorAll('.sheet-multi-selected').forEach(el => el.classList.remove('sheet-multi-selected'));
+      table.querySelectorAll('.sheet-fill-drag-selected').forEach(el => el.classList.remove('sheet-fill-drag-selected'));
+    },
+    deleteMultiSelection() {
+      if (!this.multiSelectRange) return;
+      const { startRow, startCol, endRow, endCol } = this.multiSelectRange;
+      for (let r = startRow; r <= endRow && r < this.sheetRows.length; r++) {
+        for (let c = startCol; c <= endCol && c < this.sheetColumns.length; c++) {
+          this.sheetRows[r][this.sheetColumns[c].field] = '';
+        }
+      }
+      this.multiSelectRange = null;
+      this.clearMultiSelectStyles();
+      this.finalizeSheetMutation();
+      this.closeContextMenu();
+    },
+    copyMultiSelection() {
+      if (!this.multiSelectRange) return '';
+      const { startRow, startCol, endRow, endCol } = this.multiSelectRange;
+      const lines = [];
+      for (let r = startRow; r <= endRow && r < this.sheetRows.length; r++) {
+        const cells = [];
+        for (let c = startCol; c <= endCol && c < this.sheetColumns.length; c++) {
+          cells.push(this.sheetRows[r][this.sheetColumns[c].field] ?? '');
+        }
+        lines.push(cells.join(';'));
+      }
+      return lines.join('\n');
+    },
+    // --- Fill handle methods ---
+    onFillHandleMouseDown() {
+      const table = this.getSheetTableElement();
+      if (!table) return;
+      const focusedCell = table.querySelector('td.focus');
+      if (!focusedCell) return;
+      const row = focusedCell.closest('tr');
+      const tbody = table.querySelector('tbody');
+      if (!row || !tbody) return;
+      const rowIndex = Array.from(tbody.children).indexOf(row);
+      const colIndex = Array.from(row.children).indexOf(focusedCell) - 1;
+      if (rowIndex < 0 || colIndex < 0) return;
+      this.isFillDragging = true;
+      this.fillHandleAnchor = { row: rowIndex, col: colIndex };
+      this.fillDragEnd = { row: rowIndex, col: colIndex };
+    },
+    applyFillDragStyles() {
+      const table = this.getSheetTableElement();
+      if (!table || !this.fillHandleAnchor || !this.fillDragEnd) return;
+      table.querySelectorAll('.sheet-fill-drag-selected').forEach(el => el.classList.remove('sheet-fill-drag-selected'));
+      const anchor = this.fillHandleAnchor;
+      const end = this.fillDragEnd;
+      const startRow = Math.min(anchor.row, end.row);
+      const endRow = Math.max(anchor.row, end.row);
+      const startCol = Math.min(anchor.col, end.col);
+      const endCol = Math.max(anchor.col, end.col);
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      const rows = tbody.children;
+      for (let r = startRow; r <= endRow && r < rows.length; r++) {
+        const cells = rows[r].children;
+        for (let c = startCol; c <= endCol; c++) {
+          const td = cells[c + 1];
+          if (td && !(r === anchor.row && c === anchor.col)) {
+            td.classList.add('sheet-fill-drag-selected');
+          }
+        }
+      }
+    },
+    finalizeFillDrag() {
+      this.isFillDragging = false;
+      if (!this.fillHandleAnchor || !this.fillDragEnd) return;
+      const anchor = this.fillHandleAnchor;
+      const end = this.fillDragEnd;
+      if (anchor.row === end.row && anchor.col === end.col) {
+        this.fillHandleAnchor = null;
+        this.fillDragEnd = null;
+        this.clearMultiSelectStyles();
+        return;
+      }
+      const sourceValue = this.sheetRows[anchor.row]?.[this.sheetColumns[anchor.col]?.field] ?? '';
+      const startRow = Math.min(anchor.row, end.row);
+      const endRow = Math.max(anchor.row, end.row);
+      const startCol = Math.min(anchor.col, end.col);
+      const endCol = Math.max(anchor.col, end.col);
+      for (let r = startRow; r <= endRow && r < this.sheetRows.length; r++) {
+        for (let c = startCol; c <= endCol && c < this.sheetColumns.length; c++) {
+          if (r === anchor.row && c === anchor.col) continue;
+          this.sheetRows[r][this.sheetColumns[c].field] = sourceValue;
+        }
+      }
+      this.fillHandleAnchor = null;
+      this.fillDragEnd = null;
+      this.clearMultiSelectStyles();
+      this.finalizeSheetMutation();
     }
   }
 };
@@ -1465,5 +1770,29 @@ export default {
   .note-loading-overlay {
     background-color: rgba(20, 20, 20, 0.95);
   }
+}
+
+.sheet-fill-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary, #1a73e8);
+  border: 1px solid #fff;
+  cursor: crosshair;
+  z-index: 10;
+  pointer-events: auto;
+}
+</style>
+
+<style>
+/* Unscoped styles for dynamically added classes on library DOM */
+.sheet-multi-selected {
+  background-color: rgba(26, 115, 232, 0.15) !important;
+  outline: 1px solid rgba(26, 115, 232, 0.4);
+}
+
+.sheet-fill-drag-selected {
+  background-color: rgba(52, 168, 83, 0.15) !important;
+  outline: 1px dashed rgba(52, 168, 83, 0.6);
 }
 </style>

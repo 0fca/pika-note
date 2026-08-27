@@ -9,6 +9,9 @@
       @dblclick="pinTab(tab.id)"
     >
       <span class="tab-title" :class="{ 'tab-title-italic': !tab.pinned }">{{ tab.title || 'Untitled' }}</span>
+      <button v-if="tab.pinned" class="tab-refresh" @click.stop="refreshTab(tab.id)" title="Refresh">
+        <span class="material-symbols-outlined tab-refresh-icon">sync</span>
+      </button>
       <button class="tab-close" @click.stop="closeTab(tab.id)" title="Close tab">
         <span class="material-symbols-outlined tab-close-icon">close</span>
       </button>
@@ -19,6 +22,7 @@
 <script>
 export default {
   name: 'EditorTabs',
+  emits: ['tab-selected', 'tabs-empty', 'tab-refresh'],
   computed: {
     tabs() {
       return this.$store.getters.editorTabs;
@@ -45,6 +49,9 @@ export default {
       } else if (wasActive) {
         this.$emit('tabs-empty');
       }
+    },
+    refreshTab(id) {
+      this.$emit('tab-refresh', id);
     }
   }
 }
@@ -144,5 +151,33 @@ export default {
 
 .tab-close:hover .tab-close-icon {
   color: var(--color-error);
+}
+
+.tab-refresh {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--transition-fast), background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.editor-tab:hover .tab-refresh,
+.editor-tab-active .tab-refresh {
+  opacity: 1;
+}
+
+.tab-refresh:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.tab-refresh-icon {
+  font-size: 14px;
+  color: var(--color-text-soft);
 }
 </style>

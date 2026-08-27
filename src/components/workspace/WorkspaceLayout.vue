@@ -231,6 +231,7 @@
           v-if="this.$store.getters.loggedIn === true && !isTouchScreen"
           @tab-selected="onTabSelected"
           @tabs-empty="onTabsEmpty"
+          @tab-refresh="onTabRefresh"
         />
         <EmptyEditorState 
           v-if="showEmptyEditorState"
@@ -244,6 +245,7 @@
         <SheetEditor
           v-else-if="showEditor"
           :key="editorInstanceKey"
+          ref="editor"
           @note-saved="onNoteSaved"
         />
       </main>
@@ -1025,6 +1027,15 @@ export default {
       this.$store.commit({type: 'updateLastSavedAt', lastSavedAt: null});
       if (this.$route.path !== '/') {
         this.$router.push('/');
+      }
+    },
+    onTabRefresh(tabId) {
+      if (tabId === this.$store.getters.id) {
+        // If it's the active tab, trigger reload via editor ref
+        const editor = this.$refs.editor;
+        if (editor && typeof editor.refreshNote === 'function') {
+          editor.refreshNote();
+        }
       }
     },
     openSearch() {
