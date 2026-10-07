@@ -147,7 +147,6 @@ const SHEET_EDITOR_OFFSET = 320;
 const SHEET_EDITOR_MIN_HEIGHT = 360;
 const AUTO_SAVE_INTERVAL_MS = 300000;
 const AUTO_SAVE_DEBOUNCE_MS = 5000;
-const SHEET_UNDO_STORAGE_KEY = 'pika-note-sheet-editor-undo-snapshots';
 const SHEET_UNDO_SNAPSHOT_LIMIT = 50;
 
 export default {
@@ -393,13 +392,6 @@ export default {
         rows: sanitizeSheetRows(this.sheetRows, this.sheetColumns).map(row => ({ ...row }))
       };
     },
-    persistUndoSnapshots() {
-      try {
-        localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
-      } catch {
-        // Ignore storage quota issues; undo remains available in memory for the current boot.
-      }
-    },
     recordUndoSnapshot(force = false) {
       if (this.isApplyingSnapshot) return;
       const snapshot = this.buildSheetSnapshot();
@@ -412,7 +404,6 @@ export default {
       if (this.undoSnapshots.length > SHEET_UNDO_SNAPSHOT_LIMIT) {
         this.undoSnapshots.shift();
       }
-      this.persistUndoSnapshots();
     },
     restoreUndoSnapshot(snapshot) {
       if (!snapshot) return;
@@ -434,7 +425,6 @@ export default {
         return;
       }
       this.undoSnapshots = this.undoSnapshots.slice(0, -1);
-      this.persistUndoSnapshots();
       this.restoreUndoSnapshot(this.undoSnapshots[this.undoSnapshots.length - 1]);
     },
     handleSheetKeydown(event) {

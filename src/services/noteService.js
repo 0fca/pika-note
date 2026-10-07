@@ -1,5 +1,6 @@
 import UnauthorizedException from "../components/exceptions/UnauthorizedException";
 import { authFetch } from "@/services/fetchClient";
+import { clearStaleNoteCache } from '@/services/noteCacheService';
 
 export default class NoteService {
     constructor() {
@@ -13,7 +14,8 @@ export default class NoteService {
                 headers: {
                     'Origin': this.baseUrl,
                 },
-                credentials: 'include'
+                credentials: 'include',
+                cache: 'no-store'
             });
 
         if (response.ok) {
@@ -28,6 +30,7 @@ export default class NoteService {
     }
 
     async getNote(id) {
+        clearStaleNoteCache(id);
         const url = `/notes/${id}`;
         const rawJson = await this.readData(url);
         return rawJson.payload;

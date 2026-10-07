@@ -43,7 +43,7 @@
                   </form>
                 </li>
                 <li v-if="this.$store.getters.loggedIn === true">
-                  <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
+                  <form method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout" @submit="clearNoteCache">
                     <button id="login" class="btn-flat navlink" style="height: inherit; border: none; background: none; cursor: pointer;">
                       <span class="material-symbols-outlined rotate">exit_to_app</span>
                     </button>
@@ -132,6 +132,7 @@ import MobileDetectService from './services/mobileDetectService';
 import LoadingOverlay from './components/workspace/LoadingOverlay.vue';
 import FeatureDiscovery from './components/molecules/FeatureDiscovery.vue';
 import ToastContainer from './components/molecules/ToastContainer.vue';
+import { clearAllNoteCache, clearStaleNoteCache } from '@/services/noteCacheService';
 
 export default {
   name: 'App',
@@ -262,6 +263,9 @@ export default {
       this.hasUnseenDiscoveries = this.featureDiscoveries.some(
         d => !localStorage.getItem(d.id)
       );
+    },
+    clearNoteCache() {
+      clearAllNoteCache();
     }
   },
   data(){
@@ -290,6 +294,8 @@ export default {
     }
   },
   mounted: async function() {
+    clearStaleNoteCache(this.$store.getters.id);
+    window.addEventListener('pagehide', this.clearNoteCache);
     // Check for unseen discoveries on mount
     this.checkForUnseenDiscoveries();
     
@@ -307,6 +313,7 @@ export default {
     }
   },
   beforeUnmount() {
+    window.removeEventListener('pagehide', this.clearNoteCache);
   }
 }
 </script>

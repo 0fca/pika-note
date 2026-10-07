@@ -6,6 +6,7 @@ import WorkspaceLayout from "@/components/workspace/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
 import VueExcelEditor from 'vue3-excel-editor'
+import { clearAllNoteCache, clearNoteCache } from '@/services/noteCacheService'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
 const PINNED_NOTE_TAB_IDS_STORAGE_KEY = 'pinnedNoteTabIds';
@@ -83,7 +84,7 @@ const store = createStore({
     return {
       rawText: '',
       count: 0,
-      content: localStorage.getItem('content') ?? "",
+      content: '',
       name: '',
       limit: 20000,
       id: '',
@@ -134,7 +135,6 @@ const store = createStore({
     },
     updateContent(state, payload){
       state.content = payload.content;
-      localStorage.setItem("content", state.content);
     },
     updateName(state, payload){
       state.name = payload.name;
@@ -238,7 +238,7 @@ const store = createStore({
         state.updateLock = false;
         state.inactivityCounter = 0;
         state.lastTimeoutClearedAt = Date.now();
-        localStorage.removeItem('content');
+        clearAllNoteCache();
         // Close all tabs
         state.editorTabs = [];
         state.activeTabId = null;
@@ -356,6 +356,7 @@ const store = createStore({
       persistPinnedNoteTabIds(state.persistedPinnedNoteTabIds);
     },
     closeTab(state, payload){
+      clearNoteCache(payload.id);
       const index = state.editorTabs.findIndex(t => t.id === payload.id);
       if(index !== -1){
         state.editorTabs.splice(index, 1);
@@ -388,6 +389,7 @@ const store = createStore({
       }
     },
     clearAllTabs(state){
+      clearAllNoteCache();
       state.editorTabs = [];
       state.activeTabId = null;
       state.persistedPinnedNoteTabIds = [];

@@ -35,7 +35,7 @@
               LOG IN
             </button>
           </form>
-          <form v-else method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
+          <form v-else method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout" @submit="clearNoteCache">
             <button class="btn-action drawer-auth-btn" type="submit">
               LOG OUT
             </button>
@@ -287,6 +287,7 @@ import packageJson from '/package.json';
 import UnauthorizedException from "../exceptions/UnauthorizedException";
 import { resolveNoteType } from '@/services/noteContentService';
 import { createBootStrategy } from '@/services/bootStrategy';
+import { clearAllNoteCache } from '@/services/noteCacheService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
@@ -941,6 +942,7 @@ export default {
       this.pendingDeleteNoteId = null;
       
       if (!noteId) return;
+      clearAllNoteCache();
       
       // Immediately remove from UI
       this.notes = this.notes.filter(note => note.id !== noteId);
@@ -1026,6 +1028,9 @@ export default {
       if (this.$route.path !== '/') {
         this.$router.push('/');
       }
+    },
+    clearNoteCache() {
+      clearAllNoteCache();
     },
     openSearch() {
       this.showSearchOverlay = true;
