@@ -116,6 +116,7 @@ import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/molecules/Preloader";
 import { toastService } from '@/services/toastService';
+import { cacheNote, getCachedNote } from '@/services/noteCacheService';
 import {
   createEmptySheetRows,
   extractNoteTextContent,
@@ -304,6 +305,7 @@ export default {
         _this.$store.commit({type: 'updateRawText', update: event.data});
       }
       _this.runEditTimeout();
+      _this.$store.commit({type: 'updateContent', content: _this.editor.getContent(0)});
       if(event.inputType === 'deleteByCut'){
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.trim().length});
       }
@@ -319,6 +321,7 @@ export default {
         _this.$store.commit({type: 'setCharactersCount', count: event.target.innerText.length});
         // Mark as having unsaved changes (skip during note loading)
         if (!_this.isLoadingNote) {
+          _this.$store.commit({type: 'updateContent', content: _this.editor.getContent(0)});
           _this.hasUnsavedChanges = true;
           // Trigger debounced auto-save on paste
           _this.triggerDebouncedAutoSave();
@@ -343,7 +346,7 @@ export default {
       this.$store.commit({type: 'clearPrefetchedNote'});
       return prefetchedNote;
     },
-    applyLoadedNote(note) {
+    applyLoadedNote(note, cacheResponse = false) {
       const noteType = resolveNoteType(note);
       this.$store.commit({type: 'updateNoteType', noteType: noteType});
       if (noteType === 'sheet') {
@@ -370,6 +373,9 @@ export default {
       this.noteTitle = note.humanName;
       this.isProgrammaticTitleUpdate = false;
       this.hasUnsavedChanges = false;
+      if (cacheResponse) {
+        cacheNote({ ...note, id: note.id || this.id });
+      }
     },
     applyPrefetchedNote(noteId) {
       if (!noteId || !this.editor) {
@@ -382,7 +388,7 @@ export default {
       }
 
       this.isLoadingNote = true;
-      this.applyLoadedNote(prefetchedNote);
+      this.applyLoadedNote(prefetchedNote, true);
       // Defer clearing the loading flag so that async MediumEditor
       // MutationObserver events still see isLoadingNote === true.
       this.$nextTick(() => {
@@ -475,17 +481,23 @@ export default {
       if (noteId && this.editor) {
         const requestId = ++this.loadRequestId;
         this.isLoadingNote = true;
+        const cachedNote = getCachedNote(noteId);
+        if (cachedNote) {
+          this.applyLoadedNote(cachedNote);
+        }
         this.noteService.getNote(noteId)
           .then(note => {
             if (this.isUnmounted || requestId !== this.loadRequestId) {
               return;
             }
-            this.applyLoadedNote(note);
+            this.applyLoadedNote(note, true);
           }).catch(() => {
             if (this.isUnmounted || requestId !== this.loadRequestId) {
               return;
             }
-            toastService.error('Error loading note');
+            if (!cachedNote) {
+              toastService.error('Error loading note');
+            }
           }).finally(() => {
             if (this.isUnmounted || requestId !== this.loadRequestId) {
               return;

@@ -25,6 +25,32 @@ function parseCacheRecord(value) {
   }
 }
 
+export function cacheNote(note) {
+  if (!note?.id) {
+    return;
+  }
+
+  localStorage.setItem(`${NOTE_CACHE_PREFIX}${note.id}`, JSON.stringify({
+    cachedAt: new Date().toISOString(),
+    note
+  }));
+}
+
+export function getCachedNote(noteId) {
+  if (!noteId) {
+    return null;
+  }
+
+  const key = `${NOTE_CACHE_PREFIX}${noteId}`;
+  const record = parseCacheRecord(localStorage.getItem(key));
+  if (isStaleCacheRecord(record) || !record?.note || record.note.id !== noteId) {
+    localStorage.removeItem(key);
+    return null;
+  }
+
+  return record.note;
+}
+
 export function clearNoteCache(noteId) {
   if (noteId) {
     localStorage.removeItem(`${NOTE_CACHE_PREFIX}${noteId}`);
@@ -68,6 +94,6 @@ export function clearStaleNoteCache() {
     }
   });
 
-  // Legacy note content has no UTC timestamp metadata and must never be used.
-  clearNoteCache();
+  localStorage.removeItem(LEGACY_NOTE_CONTENT_KEY);
+  localStorage.removeItem(LEGACY_SHEET_UNDO_KEY);
 }

@@ -122,6 +122,7 @@
 import NoteService from '@/services/noteService';
 import Preloader from '@/components/molecules/Preloader';
 import { toastService } from '@/services/toastService';
+import { cacheNote, getCachedNote } from '@/services/noteCacheService';
 import {
   countSheetCellCharacters,
   createEmptySheetState,
@@ -308,7 +309,7 @@ export default {
       this.$store.commit({ type: 'clearPrefetchedNote' });
       return prefetchedNote;
     },
-    applyLoadedNote(note) {
+    applyLoadedNote(note, cacheResponse = false) {
       this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
       const sheetState = extractSheetState(note.content);
       const trimmedColumns = trimSheetColumnsToContent(sheetState.rows, sheetState.columns);
@@ -329,6 +330,9 @@ export default {
       this.noteTitle = note.humanName;
       this.isProgrammaticTitleUpdate = false;
       this.hasUnsavedChanges = false;
+      if (cacheResponse) {
+        cacheNote({ ...note, id: note.id || this.id });
+      }
     },
     applyPrefetchedNote(noteId) {
       if (!noteId) {
@@ -341,7 +345,7 @@ export default {
       }
 
       this.isLoadingNote = true;
-      this.applyLoadedNote(prefetchedNote);
+      this.applyLoadedNote(prefetchedNote, true);
       this.$nextTick(() => {
         this.isLoadingNote = false;
         this.hasUnsavedChanges = false;
@@ -609,18 +613,24 @@ export default {
     loadNote(noteId) {
       const requestId = ++this.loadRequestId;
       this.isLoadingNote = true;
+      const cachedNote = getCachedNote(noteId);
+      if (cachedNote) {
+        this.applyLoadedNote(cachedNote);
+      }
       this.noteService.getNote(noteId)
         .then(note => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
             return;
           }
-          this.applyLoadedNote(note);
+          this.applyLoadedNote(note, true);
         })
         .catch(() => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
             return;
           }
-          toastService.error('Error loading note');
+          if (!cachedNote) {
+            toastService.error('Error loading note');
+          }
         })
         .finally(() => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {

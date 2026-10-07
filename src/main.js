@@ -6,7 +6,7 @@ import WorkspaceLayout from "@/components/workspace/WorkspaceLayout"
 import Callback from "@/components/Callback"
 import { createStore } from 'vuex'
 import VueExcelEditor from 'vue3-excel-editor'
-import { clearAllNoteCache, clearNoteCache } from '@/services/noteCacheService'
+import { cacheNote, clearAllNoteCache, clearNoteCache } from '@/services/noteCacheService'
 
 const NEW_NOTE_TAB_ID = '__new_note__';
 const PINNED_NOTE_TAB_IDS_STORAGE_KEY = 'pinnedNoteTabIds';
@@ -135,6 +135,15 @@ const store = createStore({
     },
     updateContent(state, payload){
       state.content = payload.content;
+      if (state.id) {
+        cacheNote({
+          id: state.id,
+          humanName: state.name,
+          content: state.content,
+          noteType: state.noteType,
+          timestamp: state.lastSavedAt
+        });
+      }
     },
     updateName(state, payload){
       state.name = payload.name;

@@ -295,7 +295,6 @@ export default {
   },
   mounted: async function() {
     clearStaleNoteCache();
-    window.addEventListener('pagehide', this.clearNoteCache);
     // Check for unseen discoveries on mount
     this.checkForUnseenDiscoveries();
     
@@ -313,7 +312,6 @@ export default {
     }
   },
   beforeUnmount() {
-    window.removeEventListener('pagehide', this.clearNoteCache);
   }
 }
 </script>
