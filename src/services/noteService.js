@@ -30,7 +30,7 @@ export default class NoteService {
     }
 
     async getNote(id) {
-        clearStaleNoteCache(id);
+        clearStaleNoteCache();
         const url = `/notes/${id}`;
         const rawJson = await this.readData(url);
         return rawJson.payload;

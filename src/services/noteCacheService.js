@@ -50,7 +50,7 @@ export function clearAllNoteCache() {
   clearNoteCache();
 }
 
-export function clearStaleNoteCache(activeNoteId = '') {
+export function clearStaleNoteCache() {
   const now = Date.now();
   const cacheKeys = [];
 
@@ -62,9 +62,8 @@ export function clearStaleNoteCache(activeNoteId = '') {
   }
 
   cacheKeys.forEach(key => {
-    const noteId = key.slice(NOTE_CACHE_PREFIX.length);
     const record = parseCacheRecord(localStorage.getItem(key));
-    if (noteId !== activeNoteId && isStaleCacheRecord(record, now)) {
+    if (isStaleCacheRecord(record, now)) {
       localStorage.removeItem(key);
     }
   });

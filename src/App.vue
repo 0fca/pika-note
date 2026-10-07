@@ -294,7 +294,7 @@ export default {
     }
   },
   mounted: async function() {
-    clearStaleNoteCache(this.$store.getters.id);
+    clearStaleNoteCache();
     window.addEventListener('pagehide', this.clearNoteCache);
     // Check for unseen discoveries on mount
     this.checkForUnseenDiscoveries();
