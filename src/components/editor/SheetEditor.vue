@@ -42,6 +42,11 @@
               <span class="material-symbols-outlined fab-icon">save</span>
             </button>
           </li>
+          <li v-if="id">
+            <button @click.stop="reloadNote" class="btn-floating floating-btn-orange toolbar-icon" title="Reload from server">
+              <span class="material-symbols-outlined fab-icon">refresh</span>
+            </button>
+          </li>
           <li>
             <button
               @click.stop="toggleAutoSave"
@@ -122,7 +127,7 @@
 import NoteService from '@/services/noteService';
 import Preloader from '@/components/molecules/Preloader';
 import { toastService } from '@/services/toastService';
-import { cacheNote, getCachedNote } from '@/services/noteCacheService';
+import { cacheNote, clearNoteCache, getCachedNote } from '@/services/noteCacheService';
 import {
   countSheetCellCharacters,
   createEmptySheetState,
@@ -610,10 +615,10 @@ export default {
         editor.moveTo(Math.max(rowIndex, 0), Math.max(columnIndex, 0));
       });
     },
-    loadNote(noteId) {
+    loadNote(noteId, { useCache = true } = {}) {
       const requestId = ++this.loadRequestId;
       this.isLoadingNote = true;
-      const cachedNote = getCachedNote(noteId);
+      const cachedNote = useCache ? getCachedNote(noteId) : null;
       if (cachedNote) {
         this.applyLoadedNote(cachedNote);
       }
@@ -645,6 +650,14 @@ export default {
             }
           });
         });
+    },
+    reloadNote() {
+        if (!this.id) {
+          return;
+        }
+
+        clearNoteCache(this.id);
+        this.loadNote(this.id, { useCache: false });
     },
     save() {
       if (this.autoSaveDebounceTimer) {

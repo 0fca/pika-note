@@ -50,6 +50,11 @@
               </span>
             </button>
           </li>
+          <li v-if="id">
+            <button @click.stop="reloadNote" class="btn-floating floating-btn-orange toolbar-icon" title="Reload from server">
+              <span class="material-symbols-outlined fab-icon">refresh</span>
+            </button>
+          </li>
           <li>
             <button 
               @click.stop="toggleAutoSave" 
@@ -116,7 +121,7 @@ import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/molecules/Preloader";
 import { toastService } from '@/services/toastService';
-import { cacheNote, getCachedNote } from '@/services/noteCacheService';
+import { cacheNote, clearNoteCache, getCachedNote } from '@/services/noteCacheService';
 import {
   createEmptySheetRows,
   extractNoteTextContent,
@@ -477,11 +482,11 @@ export default {
         .map(row => ({ ...row, [nextColumnName]: '' }));
       this.onSheetChanged();
     },
-    loadNote(noteId) {
+    loadNote(noteId, { useCache = true } = {}) {
       if (noteId && this.editor) {
         const requestId = ++this.loadRequestId;
         this.isLoadingNote = true;
-        const cachedNote = getCachedNote(noteId);
+        const cachedNote = useCache ? getCachedNote(noteId) : null;
         if (cachedNote) {
           this.applyLoadedNote(cachedNote);
         }
@@ -513,6 +518,14 @@ export default {
             });
           });
       }
+    },
+    reloadNote() {
+      if (!this.id) {
+        return;
+      }
+
+      clearNoteCache(this.id);
+      this.loadNote(this.id, { useCache: false });
     },
     save: function () {
       if (this.isReadOnlySheet) {

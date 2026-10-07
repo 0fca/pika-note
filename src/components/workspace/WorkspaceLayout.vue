@@ -230,6 +230,7 @@
         <EditorTabs 
           v-if="this.$store.getters.loggedIn === true && !isTouchScreen"
           @tab-selected="onTabSelected"
+          @tab-reload="reloadPinnedTab"
           @tabs-empty="onTabsEmpty"
         />
         <EmptyEditorState 
@@ -244,6 +245,7 @@
         <SheetEditor
           v-else-if="showEditor"
           :key="editorInstanceKey"
+          ref="sheetEditor"
           @note-saved="onNoteSaved"
         />
       </main>
@@ -287,7 +289,7 @@ import packageJson from '/package.json';
 import UnauthorizedException from "../exceptions/UnauthorizedException";
 import { resolveNoteType } from '@/services/noteContentService';
 import { createBootStrategy } from '@/services/bootStrategy';
-import { clearAllNoteCache } from '@/services/noteCacheService';
+import { clearAllNoteCache, clearNoteCache } from '@/services/noteCacheService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
@@ -1017,6 +1019,21 @@ export default {
       if (this.$route.params.id !== tabId) {
         this.$router.push('/editor/' + tabId);
       }
+    },
+    reloadPinnedTab(tabId) {
+      const tab = this.$store.getters.editorTabs.find(editorTab => editorTab.id === tabId);
+      if (!tab?.pinned) {
+        return;
+      }
+
+      clearNoteCache(tabId);
+      if (tabId === this.$store.getters.id) {
+        this.$refs.editor?.reloadNote?.();
+        this.$refs.sheetEditor?.reloadNote?.();
+        return;
+      }
+
+      this.onTabSelected(tabId);
     },
     onTabsEmpty() {
       // All tabs closed, show empty state
