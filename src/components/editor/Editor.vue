@@ -58,7 +58,7 @@
               :title="autoSaveEnabled ? 'Auto-save: ON' : 'Auto-save: OFF'"
             >
               <span class="material-symbols-outlined fab-icon">
-                {{ autoSaveEnabled ? 'sync' : 'sync_disabled' }}
+                {{ autoSaveEnabled ? 'save_clock' : 'sync_disabled' }}
               </span>
             </button>
           </li>
@@ -67,6 +67,11 @@
               <span class="material-symbols-outlined fab-icon">
                 clear_all
               </span>
+            </button>
+          </li>
+          <li>
+            <button @click.stop="refreshNote" class="btn-floating floating-btn-orange toolbar-icon" title="Refresh note">
+              <span class="material-symbols-outlined fab-icon">sync</span>
             </button>
           </li>
         </ul>
@@ -116,6 +121,7 @@ import NoteService from "@/services/noteService";
 import MediumEditor from "medium-editor";
 import Preloader from "@/components/molecules/Preloader";
 import { toastService } from '@/services/toastService';
+import { getCachedTabNote, setCachedTabNote, removeCachedTabNote } from '@/services/tabCacheService';
 import {
   createEmptySheetRows,
   extractNoteTextContent,
@@ -187,7 +193,9 @@ export default {
         } else {
           // Load existing note
           if (!this.applyPrefetchedNote(newId)) {
-            this.loadNote(newId);
+            if (!this.applyCachedTabNote(newId)) {
+              this.loadNote(newId);
+            }
           }
           this.isProgrammaticTitleUpdate = true;
           this.noteTitle = this.$store.getters.name;
@@ -329,7 +337,9 @@ export default {
     // Load note if ID exists
     if(this.id !== ''){
       if (!this.applyPrefetchedNote(this.id)) {
-        this.loadNote(this.id);
+        if (!this.applyCachedTabNote(this.id)) {
+          this.loadNote(this.id);
+        }
       }
     }
   },
@@ -370,6 +380,10 @@ export default {
       this.noteTitle = note.humanName;
       this.isProgrammaticTitleUpdate = false;
       this.hasUnsavedChanges = false;
+      // Cache note data for tab switching
+      if (note.id || this.id) {
+        setCachedTabNote(note.id || this.id, note);
+      }
     },
     applyPrefetchedNote(noteId) {
       if (!noteId || !this.editor) {
@@ -394,6 +408,29 @@ export default {
         }
       });
       return true;
+    },
+    applyCachedTabNote(noteId) {
+      if (!noteId || !this.editor) return false;
+      const tab = this.$store.getters.editorTabs.find(t => t.id === noteId && t.pinned);
+      if (!tab) return false;
+      const cached = getCachedTabNote(noteId);
+      if (!cached) return false;
+      this.isLoadingNote = true;
+      this.applyLoadedNote(cached);
+      this.$nextTick(() => {
+        this.isLoadingNote = false;
+        this.hasUnsavedChanges = false;
+        if (this.autoSaveDebounceTimer) {
+          clearTimeout(this.autoSaveDebounceTimer);
+          this.autoSaveDebounceTimer = null;
+        }
+      });
+      return true;
+    },
+    refreshNote() {
+      if (!this.id) return;
+      removeCachedTabNote(this.id);
+      this.loadNote(this.id);
     },
     handleClickOutsideFab(event) {
       if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
