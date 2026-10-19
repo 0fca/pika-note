@@ -9,8 +9,8 @@
       @dblclick="pinTab(tab.id)"
     >
       <span class="tab-title" :class="{ 'tab-title-italic': !tab.pinned }">{{ tab.title || 'Untitled' }}</span>
-      <button v-if="tab.pinned" class="tab-refresh" @click.stop="refreshTab(tab.id)" title="Refresh">
-        <span class="material-symbols-outlined tab-refresh-icon">sync</span>
+      <button v-if="tab.pinned" class="tab-reload" @click.stop="reloadTab(tab.id)" title="Reload from server">
+        <span class="material-symbols-outlined tab-close-icon">refresh</span>
       </button>
       <button class="tab-close" @click.stop="closeTab(tab.id)" title="Close tab">
         <span class="material-symbols-outlined tab-close-icon">close</span>
@@ -22,7 +22,7 @@
 <script>
 export default {
   name: 'EditorTabs',
-  emits: ['tab-selected', 'tabs-empty', 'tab-refresh'],
+  emits: ['tab-selected', 'tabs-empty', 'tab-reload'],
   computed: {
     tabs() {
       return this.$store.getters.editorTabs;
@@ -50,8 +50,8 @@ export default {
         this.$emit('tabs-empty');
       }
     },
-    refreshTab(id) {
-      this.$emit('tab-refresh', id);
+    reloadTab(id) {
+      this.$emit('tab-reload', id);
     }
   }
 }
@@ -121,7 +121,8 @@ export default {
   font-weight: var(--font-weight-semibold);
 }
 
-.tab-close {
+.tab-close,
+.tab-reload {
   background: none;
   border: none;
   padding: 2px;
@@ -136,11 +137,14 @@ export default {
 }
 
 .editor-tab:hover .tab-close,
-.editor-tab-active .tab-close {
+.editor-tab-active .tab-close,
+.editor-tab:hover .tab-reload,
+.editor-tab-active .tab-reload {
   opacity: 1;
 }
 
-.tab-close:hover {
+.tab-close:hover,
+.tab-reload:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
@@ -149,35 +153,9 @@ export default {
   color: var(--color-text-soft);
 }
 
-.tab-close:hover .tab-close-icon {
+.tab-close:hover .tab-close-icon,
+.tab-reload:hover .tab-close-icon {
   color: var(--color-error);
 }
 
-.tab-refresh {
-  background: none;
-  border: none;
-  padding: 2px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  opacity: 0;
-  transition: opacity var(--transition-fast), background-color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.editor-tab:hover .tab-refresh,
-.editor-tab-active .tab-refresh {
-  opacity: 1;
-}
-
-.tab-refresh:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.tab-refresh-icon {
-  font-size: 14px;
-  color: var(--color-text-soft);
-}
 </style>

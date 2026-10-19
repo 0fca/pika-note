@@ -35,7 +35,7 @@
               LOG IN
             </button>
           </form>
-          <form v-else method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout">
+          <form v-else method="post" action="https://api-core.lukas-bownik.net/Identity/Gateway/Logout" @submit="clearNoteCache">
             <button class="btn-action drawer-auth-btn" type="submit">
               LOG OUT
             </button>
@@ -230,8 +230,8 @@
         <EditorTabs 
           v-if="this.$store.getters.loggedIn === true && !isTouchScreen"
           @tab-selected="onTabSelected"
+          @tab-reload="reloadPinnedTab"
           @tabs-empty="onTabsEmpty"
-          @tab-refresh="onTabRefresh"
         />
         <EmptyEditorState 
           v-if="showEmptyEditorState"
@@ -245,7 +245,7 @@
         <SheetEditor
           v-else-if="showEditor"
           :key="editorInstanceKey"
-          ref="editor"
+          ref="sheetEditor"
           @note-saved="onNoteSaved"
         />
       </main>
@@ -288,8 +288,8 @@ import { toastService } from '@/services/toastService';
 import packageJson from '/package.json';
 import UnauthorizedException from "../exceptions/UnauthorizedException";
 import { resolveNoteType } from '@/services/noteContentService';
-import { removeCachedTabNote } from '@/services/tabCacheService';
 import { createBootStrategy } from '@/services/bootStrategy';
+import { clearAllNoteCache, clearNoteCache } from '@/services/noteCacheService';
 
 const pageSize = 15;
 const NEW_NOTE_TAB_ID = '__new_note__';
@@ -944,6 +944,7 @@ export default {
       this.pendingDeleteNoteId = null;
       
       if (!noteId) return;
+      clearAllNoteCache();
       
       // Immediately remove from UI
       this.notes = this.notes.filter(note => note.id !== noteId);
@@ -1019,6 +1020,21 @@ export default {
         this.$router.push('/editor/' + tabId);
       }
     },
+    reloadPinnedTab(tabId) {
+      const tab = this.$store.getters.editorTabs.find(editorTab => editorTab.id === tabId);
+      if (!tab?.pinned) {
+        return;
+      }
+
+      clearNoteCache(tabId);
+      if (tabId === this.$store.getters.id) {
+        this.$refs.editor?.reloadNote?.();
+        this.$refs.sheetEditor?.reloadNote?.();
+        return;
+      }
+
+      this.onTabSelected(tabId);
+    },
     onTabsEmpty() {
       // All tabs closed, show empty state
       this.$store.commit({type: 'updateId', id: ''});
@@ -1030,17 +1046,8 @@ export default {
         this.$router.push('/');
       }
     },
-    onTabRefresh(tabId) {
-      if (tabId === this.$store.getters.id) {
-        // If it's the active tab, trigger reload via editor ref
-        const editor = this.$refs.editor;
-        if (editor && typeof editor.refreshNote === 'function') {
-          editor.refreshNote();
-        }
-      } else {
-        // For inactive tabs, clear cache so next switch triggers a fresh load
-        removeCachedTabNote(tabId);
-      }
+    clearNoteCache() {
+      clearAllNoteCache();
     },
     openSearch() {
       this.showSearchOverlay = true;

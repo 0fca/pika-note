@@ -42,6 +42,11 @@
               <span class="material-symbols-outlined fab-icon">save</span>
             </button>
           </li>
+          <li v-if="id">
+            <button @click.stop="reloadNote" class="btn-floating floating-btn-orange toolbar-icon" title="Reload from server">
+              <span class="material-symbols-outlined fab-icon">refresh</span>
+            </button>
+          </li>
           <li>
             <button
               @click.stop="toggleAutoSave"
@@ -57,11 +62,6 @@
           <li>
             <button @click.stop="clearAll" class="btn-floating floating-btn-orange toolbar-icon">
               <span class="material-symbols-outlined fab-icon">clear_all</span>
-            </button>
-          </li>
-          <li>
-            <button @click.stop="refreshNote" class="btn-floating floating-btn-orange toolbar-icon" title="Refresh note">
-              <span class="material-symbols-outlined fab-icon">sync</span>
             </button>
           </li>
         </ul>
@@ -144,7 +144,7 @@
 import NoteService from '@/services/noteService';
 import Preloader from '@/components/molecules/Preloader';
 import { toastService } from '@/services/toastService';
-import { getCachedTabNote, setCachedTabNote, removeCachedTabNote } from '@/services/tabCacheService';
+import { cacheNote, clearNoteCache, getCachedNote } from '@/services/noteCacheService';
 import {
   countSheetCellCharacters,
   createEmptySheetState,
@@ -171,7 +171,6 @@ const SHEET_EDITOR_OFFSET = 320;
 const SHEET_EDITOR_MIN_HEIGHT = 360;
 const AUTO_SAVE_INTERVAL_MS = 300000;
 const AUTO_SAVE_DEBOUNCE_MS = 5000;
-const SHEET_UNDO_STORAGE_KEY = 'pika-note-sheet-editor-undo-snapshots';
 const SHEET_UNDO_SNAPSHOT_LIMIT = 50;
 
 export default {
@@ -228,9 +227,7 @@ export default {
       }
 
       if (!this.applyPrefetchedNote(newId)) {
-        if (!this.applyCachedTabNote(newId)) {
-          this.loadNote(newId);
-        }
+        this.loadNote(newId);
       }
       this.isProgrammaticTitleUpdate = true;
       this.noteTitle = this.$store.getters.name;
@@ -306,9 +303,7 @@ export default {
 
     if (this.id !== '') {
       if (!this.applyPrefetchedNote(this.id)) {
-        if (!this.applyCachedTabNote(this.id)) {
-          this.loadNote(this.id);
-        }
+        this.loadNote(this.id);
       }
     }
 
@@ -346,7 +341,7 @@ export default {
       this.$store.commit({ type: 'clearPrefetchedNote' });
       return prefetchedNote;
     },
-    applyLoadedNote(note) {
+    applyLoadedNote(note, cacheResponse = false) {
       this.$store.commit({ type: 'updateNoteType', noteType: resolveNoteType(note) });
       const sheetState = extractSheetState(note.content);
       const trimmedColumns = trimSheetColumnsToContent(sheetState.rows, sheetState.columns);
@@ -367,9 +362,8 @@ export default {
       this.noteTitle = note.humanName;
       this.isProgrammaticTitleUpdate = false;
       this.hasUnsavedChanges = false;
-      // Cache note data for tab switching
-      if (note.id || this.id) {
-        setCachedTabNote(note.id || this.id, note);
+      if (cacheResponse) {
+        cacheNote({ ...note, id: note.id || this.id });
       }
     },
     applyPrefetchedNote(noteId) {
@@ -383,7 +377,7 @@ export default {
       }
 
       this.isLoadingNote = true;
-      this.applyLoadedNote(prefetchedNote);
+      this.applyLoadedNote(prefetchedNote, true);
       this.$nextTick(() => {
         this.isLoadingNote = false;
         this.hasUnsavedChanges = false;
@@ -393,29 +387,6 @@ export default {
         }
       });
       return true;
-    },
-    applyCachedTabNote(noteId) {
-      if (!noteId) return false;
-      const tab = this.$store.getters.editorTabs.find(t => t.id === noteId && t.pinned);
-      if (!tab) return false;
-      const cached = getCachedTabNote(noteId);
-      if (!cached) return false;
-      this.isLoadingNote = true;
-      this.applyLoadedNote(cached);
-      this.$nextTick(() => {
-        this.isLoadingNote = false;
-        this.hasUnsavedChanges = false;
-        if (this.autoSaveDebounceTimer) {
-          clearTimeout(this.autoSaveDebounceTimer);
-          this.autoSaveDebounceTimer = null;
-        }
-      });
-      return true;
-    },
-    refreshNote() {
-      if (!this.id) return;
-      removeCachedTabNote(this.id);
-      this.loadNote(this.id);
     },
     handleClickOutsideFab(event) {
       if (this.fabOpen && this.$refs.fab && !this.$refs.fab.contains(event.target)) {
@@ -457,13 +428,6 @@ export default {
         rows: sanitizeSheetRows(this.sheetRows, this.sheetColumns).map(row => ({ ...row }))
       };
     },
-    persistUndoSnapshots() {
-      try {
-        localStorage.setItem(SHEET_UNDO_STORAGE_KEY, JSON.stringify(this.undoSnapshots));
-      } catch {
-        // Ignore storage quota issues; undo remains available in memory for the current boot.
-      }
-    },
     recordUndoSnapshot(force = false) {
       if (this.isApplyingSnapshot) return;
       const snapshot = this.buildSheetSnapshot();
@@ -476,7 +440,6 @@ export default {
       if (this.undoSnapshots.length > SHEET_UNDO_SNAPSHOT_LIMIT) {
         this.undoSnapshots.shift();
       }
-      this.persistUndoSnapshots();
     },
     restoreUndoSnapshot(snapshot) {
       if (!snapshot) return;
@@ -498,7 +461,6 @@ export default {
         return;
       }
       this.undoSnapshots = this.undoSnapshots.slice(0, -1);
-      this.persistUndoSnapshots();
       this.restoreUndoSnapshot(this.undoSnapshots[this.undoSnapshots.length - 1]);
     },
     handleSheetKeydown(event) {
@@ -697,21 +659,27 @@ export default {
         editor.moveTo(Math.max(rowIndex, 0), Math.max(columnIndex, 0));
       });
     },
-    loadNote(noteId) {
+    loadNote(noteId, { useCache = true } = {}) {
       const requestId = ++this.loadRequestId;
       this.isLoadingNote = true;
+      const cachedNote = useCache ? getCachedNote(noteId) : null;
+      if (cachedNote) {
+        this.applyLoadedNote(cachedNote);
+      }
       this.noteService.getNote(noteId)
         .then(note => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
             return;
           }
-          this.applyLoadedNote(note);
+          this.applyLoadedNote(note, true);
         })
         .catch(() => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
             return;
           }
-          toastService.error('Error loading note');
+          if (!cachedNote) {
+            toastService.error('Error loading note');
+          }
         })
         .finally(() => {
           if (this.isUnmounted || requestId !== this.loadRequestId) {
@@ -726,6 +694,14 @@ export default {
             }
           });
         });
+    },
+    reloadNote() {
+        if (!this.id) {
+          return;
+        }
+
+        clearNoteCache(this.id);
+        this.loadNote(this.id, { useCache: false });
     },
     save() {
       if (this.autoSaveDebounceTimer) {
