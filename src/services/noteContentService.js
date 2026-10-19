@@ -10,6 +10,12 @@ export const SHEET_COLUMN_EXPANSION_THRESHOLD = 3;
 const DEFAULT_SHEET_COLUMN_LABELS = Array.from({ length: SHEET_INITIAL_COLUMN_COUNT }, (_, i) => `Column ${i + 1}`);
 const SAFE_SHEET_FIELD_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const MAX_NESTED_SHEET_CONTENT_DEPTH = 10;
+const URL_PATTERN = /^https?:\/\/[^\s]+$/i;
+
+export function isUrl(text) {
+  if (typeof text !== 'string') return false;
+  return URL_PATTERN.test(text.trim());
+}
 
 export function normalizeNoteType(noteType) {
   return noteType === SHEET_NOTE_TYPE ? SHEET_NOTE_TYPE : DEFAULT_NOTE_TYPE;

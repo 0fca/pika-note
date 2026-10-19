@@ -22,6 +22,7 @@
 <script>
 export default {
   name: 'EditorTabs',
+  emits: ['tab-selected', 'tabs-empty', 'tab-reload'],
   computed: {
     tabs() {
       return this.$store.getters.editorTabs;
@@ -156,4 +157,5 @@ export default {
 .tab-reload:hover .tab-close-icon {
   color: var(--color-error);
 }
+
 </style>
